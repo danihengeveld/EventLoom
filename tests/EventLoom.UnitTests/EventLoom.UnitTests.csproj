@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\EventLoom\EventLoom.csproj" />
     <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore\EventLoom.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore.Sqlite\EventLoom.EntityFrameworkCore.Sqlite.csproj" />
     <PackageReference Include="TUnit" />
   </ItemGroup>
 

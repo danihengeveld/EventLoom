@@ -1,4 +1,5 @@
 using EventLoom.EntityFrameworkCore;
+using EventLoom.EntityFrameworkCore.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 
@@ -29,5 +30,14 @@ public sealed class EventStoreModelTests
             "custom_snapshots",
             "custom_streams"
         });
+    }
+
+    [Test]
+    public async Task Sqlite_rejects_distributed_worker_mode()
+    {
+        var capabilities = new SqliteProviderCapabilities();
+
+        await Assert.That(() => capabilities.ValidateWorkerConfiguration(true))
+            .Throws<DistributedWorkerConfigurationException>();
     }
 }
