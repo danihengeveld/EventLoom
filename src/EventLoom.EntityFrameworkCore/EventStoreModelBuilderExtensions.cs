@@ -108,20 +108,28 @@ public static class EventStoreModelBuilderExtensions
                 value.ResolvedAt
             }).IsUnique();
         });
-        ConfigureSimpleTable<OutboxEntity>(modelBuilder, $"{prefix}outbox", schema);
-        return modelBuilder;
-    }
-
-    private static void ConfigureSimpleTable<TEntity>(
-        ModelBuilder modelBuilder,
-        string tableName,
-        string? schema)
-        where TEntity : class, IEntityWithId
-    {
-        modelBuilder.Entity<TEntity>(entity =>
+        modelBuilder.Entity<OutboxEntity>(entity =>
         {
-            entity.ToTable(tableName, schema);
+            entity.ToTable($"{prefix}outbox", schema);
             entity.HasKey(value => value.Id);
+            entity.Property(value => value.MessageId).ValueGeneratedNever();
+            entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.StreamId).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.AggregateType).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.EventType).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.Payload).IsRequired();
+            entity.HasIndex(value => value.MessageId).IsUnique();
+            entity.HasIndex(value => new { value.TenantId, value.PublishedAt, value.TenantOffset });
         });
+        modelBuilder.Entity<OutboxAttemptEntity>(entity =>
+        {
+            entity.ToTable($"{prefix}outbox_attempts", schema);
+            entity.HasKey(value => value.Id);
+            entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.ExceptionType).HasMaxLength(512);
+            entity.HasIndex(value => new { value.MessageId, value.AttemptNumber }).IsUnique();
+            entity.HasIndex(value => new { value.TenantId, value.MessageId });
+        });
+        return modelBuilder;
     }
 }

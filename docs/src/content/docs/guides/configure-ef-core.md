@@ -100,10 +100,10 @@ eventLoom.ConfigureWorkers(options =>
 ```
 
 EventLoom validates these values during registration. Registering an
-asynchronous projection adds its checkpointed hosted worker automatically.
-PostgreSQL safely supports multiple worker instances; SQLite is limited to one
-controlled application instance. EventLoom does not provide an outbox publisher
-yet.
+asynchronous projection or an outbox publisher adds its hosted worker
+automatically. PostgreSQL safely supports multiple worker instances; SQLite is
+limited to one controlled application instance. See
+[Outbox and application integration](./outbox/) to register a publisher.
 
 ## Schema creation and migrations
 

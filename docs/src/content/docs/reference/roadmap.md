@@ -13,7 +13,7 @@ description: EventLoom delivery stages and current boundaries.
 | Distributed correctness and tenancy | In progress | Tenancy, PostgreSQL retries, tenant offsets, and lease primitives are available; worker execution stress coverage continues. |
 | Snapshots | Complete | Versioned DTOs, retention policies, upcasters, invalidation, and replay fallback. |
 | Projections | Complete | Checkpointed asynchronous and inline delivery, EF transactions, leases, failures, and administration. |
-| Outbox and operations | Planned | Not yet part of the public runtime. |
+| Outbox and application integration | Complete | Transactional messages, a leased at-least-once publisher, attempt history, and same-connection transaction enlistment. |
 
 The full engineering plan is maintained in the repository's
 [implementation roadmap](https://github.com/danihengeveld/EventLoom/blob/main/docs/architecture/implementation-roadmap.md).

@@ -3,8 +3,10 @@ using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using System.Data.Common;
 
 namespace EventLoom.UnitTests;
 
@@ -85,6 +87,23 @@ public sealed class EventLoomHostingTests
             .IsEqualTo(2);
         await Assert.That(scope.ServiceProvider.GetRequiredService<SnapshotStore>()).IsNotNull();
         await Assert.That(scope.ServiceProvider.GetRequiredService<AggregateRepository<Counter, Guid>>()).IsNotNull();
+    }
+
+    [Test]
+    public async Task Shared_connection_provider_configuration_uses_the_scoped_connection()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        var services = new ServiceCollection();
+        services.AddScoped<DbConnection>(_ => connection);
+        services.AddEventLoom(eventLoom => eventLoom
+            .RegisterEvent<CounterIncremented>()
+            .UseSqlite(provider => provider.GetRequiredService<DbConnection>()));
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+
+        var context = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
+
+        await Assert.That(ReferenceEquals(context.Database.GetDbConnection(), connection)).IsTrue();
     }
 
     [EventType("tests.counter-incremented", Version = 1)]

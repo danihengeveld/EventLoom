@@ -16,6 +16,7 @@ internal static class OrderEndpoints
         app.MapGet("/orders/{id:guid}/events", GetEventsAsync);
         app.MapGet("/orders/{id:guid}/summary", GetSummaryAsync);
         app.MapGet("/projections/order-summary", GetProjectionStatusAsync);
+        app.MapGet("/outbox/{messageId:guid}", GetOutboxMessageAsync);
     }
 
     private static async Task<IResult> CreateAsync(
@@ -153,6 +154,33 @@ internal static class OrderEndpoints
         var checkpoint = await administration.GetCheckpointAsync(tenantId, key, cancellationToken);
         var failures = await administration.ReadFailuresAsync(tenantId, key, cancellationToken: cancellationToken);
         return Results.Ok(new { checkpoint, failures });
+    }
+
+    private static async Task<IResult> GetOutboxMessageAsync(
+        Guid messageId,
+        OutboxAdministration administration,
+        ITenantAccessor tenantAccessor,
+        CancellationToken cancellationToken)
+    {
+        var tenantId = tenantAccessor.TenantId!.Value.Value;
+        var message = await administration.GetAsync(tenantId, messageId, cancellationToken);
+        if (message is null)
+        {
+            return Results.NotFound();
+        }
+
+        var attempts = await administration.ReadAttemptsAsync(tenantId, messageId, cancellationToken);
+        return Results.Ok(new
+        {
+            message.MessageId,
+            message.EventType,
+            message.EventTypeVersion,
+            message.StreamVersion,
+            message.TenantOffset,
+            message.AttemptCount,
+            message.PublishedAt,
+            attempts
+        });
     }
 
     private static EventMetadata RequestMetadata(HttpContext context) =>

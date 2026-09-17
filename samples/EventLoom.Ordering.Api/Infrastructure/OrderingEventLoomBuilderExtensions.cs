@@ -26,6 +26,7 @@ internal static class OrderingEventLoomBuilderExtensions
                 id => id.ToString("D"),
                 snapshots,
                 new EveryNEventsSnapshotPolicy(2))
+            .AddOutboxPublisher<LoggingOutboxPublisher>()
             .AddEfProjection<OrderSummaryProjection, OrderPlaced>(OrderSummaryProjection.Name)
             .AddEfProjection<OrderSummaryProjection, OrderItemAdded>(OrderSummaryProjection.Name)
             .AddEfProjection<OrderSummaryProjection, OrderCancelled>(OrderSummaryProjection.Name);

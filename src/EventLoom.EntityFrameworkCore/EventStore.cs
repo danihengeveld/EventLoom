@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using System.Data;
+using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using EventLoom;
@@ -46,8 +48,51 @@ public sealed class EventStore(
         try
         {
             return await retryPolicy.ExecuteAsync(
-                cancellationToken => AppendCoreAsync(request, tenantId, cancellationToken),
+                cancellationToken => AppendCoreAsync(request, tenantId, ownsTransaction: true, cancellationToken),
                 cancellationToken);
+        }
+        catch (DbUpdateException exception)
+        {
+            throw new EventStoreConcurrencyException(tenantId, request.StreamId, exception);
+        }
+    }
+
+    /// <summary>
+    /// Appends a batch into a transaction that the caller owns.
+    /// </summary>
+    /// <remarks>
+    /// The supplied transaction must belong to the exact database connection used by this
+    /// <see cref="EventStoreDbContext"/>. EventLoom does not commit or roll back it.
+    /// Configure application and EventLoom contexts with the same scoped connection before
+    /// using this advanced API.
+    /// </remarks>
+    /// <param name="request">The atomic append to persist.</param>
+    /// <param name="transaction">The caller-owned relational database transaction.</param>
+    /// <param name="cancellationToken">Cancels the append operation.</param>
+    /// <returns>The persisted event envelopes.</returns>
+    public async Task<AppendResult> AppendInTransactionAsync(
+        AppendRequest request,
+        DbTransaction transaction,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(transaction);
+        if (request.Events.Count == 0)
+        {
+            throw new ArgumentException("At least one event is required.", nameof(request));
+        }
+
+        if (!ReferenceEquals(context.Database.GetDbConnection(), transaction.Connection))
+        {
+            throw new InvalidOperationException(
+                "The supplied transaction must belong to the exact connection used by EventLoom.");
+        }
+
+        var tenantId = ResolveTenant(request.TenantId);
+        await using var enlisted = await context.Database.UseTransactionAsync(transaction, cancellationToken);
+        try
+        {
+            return await AppendCoreAsync(request, tenantId, ownsTransaction: false, cancellationToken);
         }
         catch (DbUpdateException exception)
         {
@@ -58,12 +103,13 @@ public sealed class EventStore(
     private async Task<AppendResult> AppendCoreAsync(
         AppendRequest request,
         string tenantId,
+        bool ownsTransaction,
         CancellationToken cancellationToken)
     {
         context.ChangeTracker.Clear();
-        await using var transaction = await context.Database.BeginTransactionAsync(
-            IsolationLevel.Serializable,
-            cancellationToken);
+        await using var transaction = ownsTransaction
+            ? await context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken)
+            : null;
         var stream = await context.Streams
             .SingleOrDefaultAsync(
                 value => value.TenantId == tenantId && value.StreamId == request.StreamId,
@@ -76,9 +122,13 @@ public sealed class EventStore(
                 .ToListAsync(cancellationToken);
             if (existing.Count > 0)
             {
-                await transaction.CommitAsync(cancellationToken);
-                return new AppendResult(existing.Select(ToEnvelope).ToArray(), true);
-            }
+                    if (transaction is not null)
+                    {
+                        await transaction.CommitAsync(cancellationToken);
+                    }
+
+                    return new AppendResult(existing.Select(ToEnvelope).ToArray(), true);
+                }
         }
 
         var currentVersion = stream?.Version;
@@ -134,6 +184,23 @@ public sealed class EventStore(
                 AppendId = request.AppendId
             };
             context.Events.Add(eventEntity);
+            context.Outbox.Add(new OutboxEntity
+            {
+                MessageId = eventEntity.EventId,
+                TenantId = eventEntity.TenantId,
+                StreamId = eventEntity.StreamId,
+                AggregateType = eventEntity.AggregateType,
+                StreamVersion = eventEntity.StreamVersion,
+                TenantOffset = eventEntity.TenantOffset,
+                EventType = eventEntity.EventType,
+                EventTypeVersion = eventEntity.EventTypeVersion,
+                Payload = eventEntity.Payload,
+                OccurredAt = eventEntity.OccurredAt,
+                CorrelationId = eventEntity.CorrelationId,
+                CausationId = eventEntity.CausationId,
+                Actor = eventEntity.Actor,
+                Headers = eventEntity.Headers
+            });
             var envelope = ToEnvelope(eventEntity, @event, request.Metadata);
             envelopes.Add(envelope);
             if (inlineProjectionDispatcher is not null)
@@ -151,7 +218,11 @@ public sealed class EventStore(
             context.ChangeTracker.Clear();
             throw;
         }
-        await transaction.CommitAsync(cancellationToken);
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+
         return new AppendResult(envelopes, false);
     }
 

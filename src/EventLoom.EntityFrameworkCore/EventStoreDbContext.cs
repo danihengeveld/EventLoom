@@ -28,6 +28,7 @@ public sealed class EventStoreDbContext(
     internal DbSet<ProjectionLeaseEntity> ProjectionLeases => Set<ProjectionLeaseEntity>();
     internal DbSet<ProjectionFailureEntity> ProjectionFailures => Set<ProjectionFailureEntity>();
     internal DbSet<OutboxEntity> Outbox => Set<OutboxEntity>();
+    internal DbSet<OutboxAttemptEntity> OutboxAttempts => Set<OutboxAttemptEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

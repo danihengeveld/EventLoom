@@ -89,4 +89,31 @@ internal sealed class ProjectionFailureEntity : IEntityWithId
 internal sealed class OutboxEntity : IEntityWithId
 {
     public long Id { get; set; }
+    public Guid MessageId { get; set; }
+    public required string TenantId { get; set; }
+    public required string StreamId { get; set; }
+    public required string AggregateType { get; set; }
+    public long StreamVersion { get; set; }
+    public long TenantOffset { get; set; }
+    public required string EventType { get; set; }
+    public int EventTypeVersion { get; set; }
+    public required string Payload { get; set; }
+    public DateTimeOffset OccurredAt { get; set; }
+    public string? CorrelationId { get; set; }
+    public string? CausationId { get; set; }
+    public string? Actor { get; set; }
+    public string? Headers { get; set; }
+    public int AttemptCount { get; set; }
+    public DateTimeOffset? PublishedAt { get; set; }
+}
+
+internal sealed class OutboxAttemptEntity : IEntityWithId
+{
+    public long Id { get; set; }
+    public Guid MessageId { get; set; }
+    public required string TenantId { get; set; }
+    public int AttemptNumber { get; set; }
+    public DateTimeOffset AttemptedAt { get; set; }
+    public bool Succeeded { get; set; }
+    public string? ExceptionType { get; set; }
 }

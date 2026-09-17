@@ -4,8 +4,8 @@ description: Operate the current EventLoom event store safely in a PostgreSQL ap
 ---
 
 This guide describes the production boundary supported by the current
-pre-release. It does not imply that outbox delivery or public package-release
-tooling is available.
+pre-release. It does not imply that public package-release tooling is
+available.
 
 ## Use PostgreSQL and one provider configuration
 
@@ -83,5 +83,7 @@ retry rates, failed command responses, and storage growth.
 `EventStoreSchema.GetTableNames(options)` can support diagnostics and health
 checks. EventLoom runs registered projections and persists their checkpoints
 and failures; inspect and repair them through `ProjectionAdministration`.
-Application code still owns outbox delivery until EventLoom's dedicated outbox
-APIs are released.
+Register an `IOutboxPublisher` for external integration and use its stable
+message ID as the transport idempotency key. See
+[Outbox and application integration](./outbox/) for the delivery and
+shared-transaction boundaries.

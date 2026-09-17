@@ -1,6 +1,6 @@
 ---
 title: Ordering API sample
-description: Run an ASP.NET Core sample using scoped tenants, aggregate commands, snapshots, and an asynchronous read-model projection.
+description: Run an ASP.NET Core sample using scoped tenants, aggregate commands, snapshots, projections, and an outbox publisher.
 ---
 
 [`samples/EventLoom.Ordering.Api`](https://github.com/danihengeveld/EventLoom/tree/main/samples/EventLoom.Ordering.Api)
@@ -16,6 +16,8 @@ is a compact, production-shaped ASP.NET Core application. It demonstrates:
 - adding items, cancellation, and inspecting persisted envelope metadata;
 - an EF order-summary projection with atomic checkpoint/read-model updates and
   an endpoint for projection health;
+- a transport-neutral logging outbox publisher and tenant-scoped delivery
+  inspection;
 - PostgreSQL as the default provider and SQLite as a local alternative.
 
 ## Run with SQLite
@@ -109,6 +111,15 @@ Inspect the summary projection's tenant checkpoint and any persisted failures:
 ```bash
 curl -H 'X-Tenant-ID: acme' \
   http://localhost:5000/projections/order-summary
+```
+
+Each event is also written to the outbox. Replace `<event-id>` with the
+event's `eventId` from the event-history response to inspect the logging
+publisher's durable delivery record and attempts:
+
+```bash
+curl -H 'X-Tenant-ID: acme' \
+  "http://localhost:5000/outbox/<event-id>"
 ```
 
 Run the complete command sequence in a single tenant. Repeating it with a

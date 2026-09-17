@@ -93,6 +93,45 @@ public sealed class PostgreSqlLeaseTests
         await Assert.That(await projections.GetCheckpointAsync("tenant-a", key)).IsNull();
     }
 
+    [Test]
+    public async Task Stale_postgresql_lease_cannot_record_an_outbox_delivery()
+    {
+        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
+        await container.StartAsync();
+        var options = new EventStoreOptions { UseSchema = true, Schema = "eventloom_test", TablePrefix = "eventloom_" };
+        await using var context = CreateContext(container.GetConnectionString(), options);
+        await context.Database.EnsureCreatedAsync();
+        var eventStore = new EventStore(
+            context,
+            new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
+            new UuidV7EventIdGenerator(),
+            TimeProvider.System);
+        var eventId = (await eventStore.AppendAsync(new AppendRequest(
+            "tenant-a",
+            "order-1",
+            "order",
+            ExpectedVersion.NoStream,
+            [new ItemAdded()],
+            new EventMetadata()))).Events.Single().EventId;
+        var outbox = new OutboxStore(context, TimeProvider.System);
+        var message = (await outbox.ReadPendingAsync("tenant-a")).Single();
+        var leases = new WorkerLeaseStore(context, TimeProvider.System);
+        var stale = (await leases.TryAcquireAsync(
+            "tenant-a",
+            OutboxStore.GetLeaseName(),
+            "node-a",
+            TimeSpan.FromMinutes(1)))!;
+        await leases.TryAcquireAsync(
+            "tenant-a",
+            OutboxStore.GetLeaseName(),
+            "node-a",
+            TimeSpan.FromMinutes(1));
+
+        await Assert.That(async () => await outbox.RecordAttemptAsync(message, stale, exception: null))
+            .Throws<OutboxLeaseLostException>();
+        await Assert.That((await outbox.GetAsync("tenant-a", eventId))!.PublishedAt).IsNull();
+    }
+
     private static EventStoreDbContext CreateContext(string connectionString, EventStoreOptions options) =>
         new(new DbContextOptionsBuilder<EventStoreDbContext>().UseNpgsql(connectionString).Options, options);
 

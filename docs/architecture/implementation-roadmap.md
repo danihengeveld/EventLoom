@@ -297,6 +297,10 @@ Projections are recoverable, observable, at-least-once, and safe across PostgreS
 
 ## Phase 8: Outbox and Application Integration
 
+### Status
+
+Complete locally.
+
 ### Ownership
 
 `src/EventLoom.Hosting`, `src/EventLoom.EntityFrameworkCore`, and samples.

@@ -52,6 +52,7 @@ public sealed class EventLoomBuilder
     private ISnapshotRetentionPolicy snapshotRetentionPolicy = new KeepLatestSnapshotsPolicy(1);
     private TimeProvider timeProvider = TimeProvider.System;
     private Action<IServiceProvider, DbContextOptionsBuilder>? configureDbContext;
+    private bool outboxPublisherRegistered;
 
     internal EventLoomBuilder(IServiceCollection services)
     {
@@ -230,6 +231,27 @@ public sealed class EventLoomBuilder
     }
 
     /// <summary>
+    /// Registers the single transport-neutral publisher that delivers durable outbox messages.
+    /// EventLoom calls it at least once and supplies <see cref="OutboxMessage.MessageId"/> as a stable
+    /// idempotency key for the transport.
+    /// </summary>
+    /// <typeparam name="TPublisher">The publisher implementation.</typeparam>
+    /// <returns>This builder.</returns>
+    /// <exception cref="InvalidOperationException">More than one publisher is registered.</exception>
+    public EventLoomBuilder AddOutboxPublisher<TPublisher>()
+        where TPublisher : class, IOutboxPublisher
+    {
+        if (outboxPublisherRegistered)
+        {
+            throw new InvalidOperationException("Only one EventLoom outbox publisher can be registered.");
+        }
+
+        services.AddScoped<IOutboxPublisher, TPublisher>();
+        outboxPublisherRegistered = true;
+        return this;
+    }
+
+    /// <summary>
     /// Uses the supplied time provider for persisted event timestamps and the EventLoom clock.
     /// </summary>
     /// <param name="provider">The time provider to use.</param>
@@ -366,6 +388,29 @@ public sealed class EventLoomBuilder
         return this;
     }
 
+    /// <summary>
+    /// Configures the EF Core options for the EventLoom event-store context using scoped services.
+    /// </summary>
+    /// <remarks>
+    /// This advanced overload is intended for sharing a scoped <c>DbConnection</c> with an
+    /// application context that uses <see cref="EventStore.AppendInTransactionAsync"/>.
+    /// </remarks>
+    /// <param name="configure">Configures the context options, including its database provider.</param>
+    /// <returns>This builder.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="configure"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException">A database provider has already been configured.</exception>
+    public EventLoomBuilder ConfigureDbContext(
+        Action<IServiceProvider, DbContextOptionsBuilder> configure)
+    {
+        if (configureDbContext is not null)
+        {
+            throw new InvalidOperationException("An EventLoom database provider has already been configured.");
+        }
+
+        configureDbContext = configure ?? throw new ArgumentNullException(nameof(configure));
+        return this;
+    }
+
     internal void RegisterServices()
     {
         if (configureDbContext is null)
@@ -410,6 +455,8 @@ public sealed class EventLoomBuilder
         services.AddScoped<ProjectionStore>();
         services.AddScoped<ProjectionAdministration>();
         services.AddScoped<WorkerLeaseStore>();
+        services.AddScoped<OutboxStore>();
+        services.AddScoped<OutboxAdministration>();
         if (projectionRegistry.AsynchronousProjections.Count > 0)
         {
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ProjectionWorker>());
@@ -418,6 +465,11 @@ public sealed class EventLoomBuilder
         if (projectionRegistrations.Any(value => value.Mode == ProjectionMode.Inline))
         {
             services.AddScoped<IInlineProjectionDispatcher, InlineProjectionDispatcher>();
+        }
+
+        if (outboxPublisherRegistered)
+        {
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, OutboxPublisherWorker>());
         }
     }
 }
