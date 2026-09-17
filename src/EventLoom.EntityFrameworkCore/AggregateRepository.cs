@@ -45,8 +45,13 @@ public sealed class AggregateRepository<TAggregate, TId>(
     {
         ArgumentNullException.ThrowIfNull(aggregate);
         var events = pendingEvents(aggregate).ToArray();
+        if (events.Length == 0)
+        {
+            return new AppendResult([], false);
+        }
+
         var expectedVersion = version(aggregate) - events.Length;
-        return await store.AppendAsync(
+        var result = await store.AppendAsync(
             new AppendRequest(
                 tenantId,
                 streamId,
@@ -56,5 +61,11 @@ public sealed class AggregateRepository<TAggregate, TId>(
                 metadata,
                 appendId),
             cancellationToken);
+        if (!result.WasIdempotentReplay)
+        {
+            aggregate.ClearPendingEvents();
+        }
+
+        return result;
     }
 }

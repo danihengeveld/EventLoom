@@ -28,6 +28,8 @@ public sealed class AggregateRepositoryTests
         aggregate.Increment(3);
 
         await repository.SaveAsync("tenant-a", aggregate.Id.ToString(), "counter", aggregate, new EventMetadata());
+        await Assert.That(aggregate.PendingEvents.Count).IsEqualTo(0);
+        await repository.SaveAsync("tenant-a", aggregate.Id.ToString(), "counter", aggregate, new EventMetadata());
         var loaded = await repository.LoadAsync("tenant-a", aggregate.Id.ToString(), aggregate.Id);
 
         await Assert.That(loaded.Value).IsEqualTo(3);

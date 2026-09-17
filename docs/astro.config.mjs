@@ -10,7 +10,7 @@ export default defineConfig({
 		sidebar: [
 			{ label: 'Getting Started', items: [{ label: 'Introduction', slug: 'index' }, { label: 'Installation', slug: 'getting-started/installation' }] },
 			{ label: 'Concepts', items: [{ label: 'Architecture', slug: 'concepts/architecture' }, { label: 'Testing strategy', slug: 'concepts/testing' }] },
-			{ label: 'How-to guides', items: [{ label: 'Configure the EF Core event store', slug: 'guides/configure-ef-core' }, { label: 'Append and read events', slug: 'guides/append-and-read' }] },
+			{ label: 'How-to guides', items: [{ label: 'Configure the EF Core event store', slug: 'guides/configure-ef-core' }, { label: 'Append and read events', slug: 'guides/append-and-read' }, { label: 'Ordering API sample', slug: 'guides/ordering-api' }] },
 			{ label: 'Reference', items: [{ autogenerate: { directory: 'reference' } }] },
 		],
 	})],
