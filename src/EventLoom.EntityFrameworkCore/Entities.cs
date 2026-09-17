@@ -1,8 +1,13 @@
 namespace EventLoom.EntityFrameworkCore;
 
+internal interface IEntityWithId
+{
+    long Id { get; set; }
+}
+
 internal sealed class StreamEntity
 {
-    public string? TenantId { get; set; }
+    public required string TenantId { get; set; }
     public required string StreamId { get; set; }
     public required string AggregateType { get; set; }
     public long Version { get; set; }
@@ -11,7 +16,7 @@ internal sealed class StreamEntity
 internal sealed class EventEntity
 {
     public Guid EventId { get; set; }
-    public string? TenantId { get; set; }
+    public required string TenantId { get; set; }
     public required string StreamId { get; set; }
     public required string AggregateType { get; set; }
     public long StreamVersion { get; set; }
@@ -28,27 +33,27 @@ internal sealed class TenantPositionEntity
     public long NextPosition { get; set; }
 }
 
-internal sealed class SnapshotEntity
+internal sealed class SnapshotEntity : IEntityWithId
 {
     public long Id { get; set; }
 }
 
-internal sealed class ProjectionCheckpointEntity
+internal sealed class ProjectionCheckpointEntity : IEntityWithId
 {
     public long Id { get; set; }
 }
 
-internal sealed class ProjectionLeaseEntity
+internal sealed class ProjectionLeaseEntity : IEntityWithId
 {
     public long Id { get; set; }
 }
 
-internal sealed class ProjectionFailureEntity
+internal sealed class ProjectionFailureEntity : IEntityWithId
 {
     public long Id { get; set; }
 }
 
-internal sealed class OutboxEntity
+internal sealed class OutboxEntity : IEntityWithId
 {
     public long Id { get; set; }
 }

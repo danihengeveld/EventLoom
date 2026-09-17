@@ -22,6 +22,7 @@ public static class EventStoreModelBuilderExtensions
         {
             entity.ToTable($"{prefix}streams", schema);
             entity.HasKey(value => new { value.TenantId, value.StreamId });
+            entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
             entity.Property(value => value.StreamId).HasMaxLength(256);
             entity.Property(value => value.AggregateType).HasMaxLength(256).IsRequired();
         });
@@ -31,13 +32,19 @@ public static class EventStoreModelBuilderExtensions
             entity.ToTable($"{prefix}events", schema);
             entity.HasKey(value => value.EventId);
             entity.Property(value => value.EventId).ValueGeneratedNever();
+            entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
             entity.Property(value => value.EventType).HasMaxLength(256).IsRequired();
             entity.Property(value => value.Payload).IsRequired();
             entity.HasIndex(value => new { value.TenantId, value.StreamId, value.StreamVersion }).IsUnique();
             entity.HasIndex(value => new { value.TenantId, value.GlobalPosition }).IsUnique();
         });
 
-        ConfigureSimpleTable< TenantPositionEntity>(modelBuilder, $"{prefix}positions", schema);
+        modelBuilder.Entity<TenantPositionEntity>(entity =>
+        {
+            entity.ToTable($"{prefix}positions", schema);
+            entity.HasKey(value => value.TenantId);
+            entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
+        });
         ConfigureSimpleTable<SnapshotEntity>(modelBuilder, $"{prefix}snapshots", schema);
         ConfigureSimpleTable<ProjectionCheckpointEntity>(modelBuilder, $"{prefix}projection_checkpoints", schema);
         ConfigureSimpleTable<ProjectionLeaseEntity>(modelBuilder, $"{prefix}projection_leases", schema);
@@ -50,8 +57,12 @@ public static class EventStoreModelBuilderExtensions
         ModelBuilder modelBuilder,
         string tableName,
         string? schema)
-        where TEntity : class
+        where TEntity : class, IEntityWithId
     {
-        modelBuilder.Entity<TEntity>().ToTable(tableName, schema);
+        modelBuilder.Entity<TEntity>(entity =>
+        {
+            entity.ToTable(tableName, schema);
+            entity.HasKey(value => value.Id);
+        });
     }
 }
