@@ -135,7 +135,7 @@ internal sealed class ProjectionWorker(
         {
             try
             {
-                return await projectionStore.ProcessAsync(
+                var result = await projectionStore.ProcessAsync(
                     tenantId,
                     key,
                     envelope,
@@ -147,6 +147,8 @@ internal sealed class ProjectionWorker(
                         context,
                         token),
                     cancellationToken);
+                EventLoomTelemetry.ProjectionDeliveries.Add(1);
+                return result;
             }
             catch (ProjectionLeaseLostException)
             {
@@ -154,6 +156,7 @@ internal sealed class ProjectionWorker(
             }
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
+                EventLoomTelemetry.ProjectionFailures.Add(1);
                 failure = exception;
                 if (attempt <= options.MaxRetryAttempts)
                 {

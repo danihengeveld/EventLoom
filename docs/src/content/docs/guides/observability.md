@@ -48,6 +48,8 @@ The `EventLoom` meter currently provides:
 - `eventloom.aggregate.loads`;
 - `eventloom.replayed.events`;
 - `eventloom.aggregate.load.duration` in milliseconds.
+- `eventloom.projection.deliveries` and `eventloom.projection.failures`;
+- `eventloom.outbox.deliveries` and `eventloom.outbox.failures`.
 
 ## Data safety
 

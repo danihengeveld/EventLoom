@@ -103,7 +103,9 @@ internal sealed class OutboxPublisherWorker(
             try
             {
                 await publisher.PublishAsync(message, cancellationToken);
-                return await store.RecordAttemptAsync(message, lease, exception: null, cancellationToken);
+                var recorded = await store.RecordAttemptAsync(message, lease, exception: null, cancellationToken);
+                EventLoomTelemetry.OutboxDeliveries.Add(1);
+                return recorded;
             }
             catch (OutboxLeaseLostException)
             {
@@ -111,6 +113,7 @@ internal sealed class OutboxPublisherWorker(
             }
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
+                EventLoomTelemetry.OutboxFailures.Add(1);
                 await store.RecordAttemptAsync(message, lease, exception, cancellationToken);
                 if (attempt < options.MaxRetryAttempts)
                 {
