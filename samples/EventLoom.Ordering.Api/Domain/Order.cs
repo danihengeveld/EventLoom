@@ -1,6 +1,4 @@
-using EventLoom;
-
-namespace EventLoom.Ordering.Api;
+namespace EventLoom.Ordering.Api.Domain;
 
 [EventType("ordering.order-placed", Version = 1)]
 internal sealed record OrderPlaced(string Sku, int Quantity) : IDomainEvent;
@@ -18,9 +16,9 @@ internal sealed record OrderSnapshot(string Status, IReadOnlyList<OrderItem> Ite
 
 internal sealed class Order(Guid id) : Aggregate<Guid>(id)
 {
-    private readonly List<OrderItem> items = [];
+    private readonly List<OrderItem> _items = [];
 
-    public IReadOnlyList<OrderItem> Items => items;
+    public IReadOnlyList<OrderItem> Items => _items;
     public string Status { get; private set; } = "new";
 
     public void Place(string sku, int quantity)
@@ -51,18 +49,18 @@ internal sealed class Order(Guid id) : Aggregate<Guid>(id)
     public void Restore(OrderSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
-        items.Clear();
-        items.AddRange(snapshot.Items);
+        _items.Clear();
+        _items.AddRange(snapshot.Items);
         Status = snapshot.Status;
     }
 
     private void Apply(OrderPlaced @event)
     {
-        items.Add(new OrderItem(@event.Sku, @event.Quantity));
+        _items.Add(new OrderItem(@event.Sku, @event.Quantity));
         Status = "placed";
     }
 
-    private void Apply(OrderItemAdded @event) => items.Add(new OrderItem(@event.Sku, @event.Quantity));
+    private void Apply(OrderItemAdded @event) => _items.Add(new OrderItem(@event.Sku, @event.Quantity));
 
     private void Apply(OrderCancelled @event) => Status = "cancelled";
 
@@ -77,9 +75,6 @@ internal sealed class Order(Guid id) : Aggregate<Guid>(id)
     private static void EnsureValidItem(string sku, int quantity)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sku);
-        if (quantity <= 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(quantity));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(quantity);
     }
 }

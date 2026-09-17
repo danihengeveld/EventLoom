@@ -1,8 +1,8 @@
-using EventLoom;
 using EventLoom.EntityFrameworkCore;
+using EventLoom.Ordering.Api.Domain;
 using Microsoft.EntityFrameworkCore;
 
-namespace EventLoom.Ordering.Api;
+namespace EventLoom.Ordering.Api.Projections;
 
 internal sealed class OrderSummary
 {

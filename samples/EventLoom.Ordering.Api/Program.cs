@@ -7,6 +7,8 @@ using EventLoom.Ordering.Api;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 using System.Text.Json.Serialization;
+using EventLoom.Ordering.Api.Api;
+using EventLoom.Ordering.Api.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.ConfigureHttpJsonOptions(options =>

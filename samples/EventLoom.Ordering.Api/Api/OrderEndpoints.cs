@@ -1,9 +1,10 @@
-using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using EventLoom.Hosting;
+using EventLoom.Ordering.Api.Domain;
+using EventLoom.Ordering.Api.Projections;
 using Microsoft.EntityFrameworkCore;
 
-namespace EventLoom.Ordering.Api;
+namespace EventLoom.Ordering.Api.Api;
 
 internal static class OrderEndpoints
 {

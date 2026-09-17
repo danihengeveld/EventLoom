@@ -1,7 +1,7 @@
 using EventLoom.EntityFrameworkCore;
 using EventLoom.Hosting;
 
-namespace EventLoom.Ordering.Api;
+namespace EventLoom.Ordering.Api.Infrastructure;
 
 internal sealed class LoggingOutboxPublisher(ILogger<LoggingOutboxPublisher> logger) : IOutboxPublisher
 {

@@ -1,6 +1,4 @@
-using EventLoom;
-
-namespace EventLoom.Ordering.Api;
+namespace EventLoom.Ordering.Api.Infrastructure;
 
 internal sealed class RequestTenantAccessor(IHttpContextAccessor httpContextAccessor) : ITenantAccessor
 {
