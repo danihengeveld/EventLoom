@@ -6,7 +6,8 @@ This is a small production-shaped ASP.NET Core application showing:
 - an aggregate rebuilt from its event stream;
 - transactional append and reload through `AggregateRepository`;
 - PostgreSQL as the default provider;
-- SQLite as an explicit local-development alternative.
+- SQLite as an explicit local-development alternative;
+- EventLoom's application composition API with explicit event registration.
 
 Run locally without PostgreSQL:
 

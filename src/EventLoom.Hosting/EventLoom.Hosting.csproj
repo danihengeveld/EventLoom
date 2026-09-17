@@ -2,12 +2,14 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EventLoom.EntityFrameworkCore\EventLoom.EntityFrameworkCore.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
   </ItemGroup>
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
 </Project>

@@ -10,6 +10,22 @@ The repository includes [`samples/EventLoom.Ordering.Api`](https://github.com/da
 3. A query loads the stream and replays the event into a fresh aggregate.
 4. PostgreSQL is the default distributed provider; SQLite is an explicit local alternative.
 
+The sample uses one composition call rather than manually registering the
+serializer, registry, clock, identifier generator, context, and event store:
+
+```csharp
+builder.Services.AddEventLoom(eventLoom =>
+{
+    eventLoom.RegisterEvent<OrderPlaced>();
+    eventLoom.AddAggregateRepository<Order, Guid>(id => new Order(id));
+    eventLoom.UsePostgreSql(connectionString);
+});
+```
+
+Event registration is intentionally explicit. Assembly scanning and strict
+source-generated serialization are available as advanced opt-ins, not hidden
+startup conventions.
+
 ## Local SQLite
 
 SQLite requires no server and is useful for development and single-node

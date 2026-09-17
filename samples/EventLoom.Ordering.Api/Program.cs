@@ -2,52 +2,30 @@ using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.EntityFrameworkCore.Sqlite;
-using Microsoft.Data.Sqlite;
-using Microsoft.EntityFrameworkCore;
+using EventLoom.Hosting;
 
 var builder = WebApplication.CreateBuilder(args);
 var provider = builder.Configuration["EVENTLOOM_DATABASE_PROVIDER"]?.Trim().ToLowerInvariant() ?? "postgres";
-if (provider == "sqlite")
-{
-    SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_sqlite3());
-}
-
 var connectionString = builder.Configuration.GetConnectionString("EventStore")
     ?? (provider == "sqlite" ? "Data Source=eventloom-ordering.db" : "Host=localhost;Database=eventloom;Username=eventloom;Password=eventloom");
-var eventStoreOptions = new EventStoreOptions
-{
-    UseSchema = provider == "postgres",
-    Schema = "eventloom",
-    TablePrefix = "eventloom_"
-};
 
-builder.Services.AddSingleton(new EventRegistry().RegisterEvent<OrderPlaced>());
-builder.Services.AddSingleton<EventSerializer>();
-builder.Services.AddSingleton<IEventIdGenerator, UuidV7EventIdGenerator>();
-builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton(eventStoreOptions);
-builder.Services.AddDbContext<EventStoreDbContext>((services, options) =>
+builder.Services.AddEventLoom(eventLoom =>
 {
+    eventLoom.RegisterEvent<OrderPlaced>();
+    eventLoom.AddAggregateRepository<Order, Guid>(id => new Order(id));
     if (provider == "sqlite")
     {
-        options.UseSqlite(connectionString);
+        eventLoom.UseSqlite(connectionString);
     }
     else if (provider == "postgres")
     {
-        options.UseNpgsql(connectionString);
+        eventLoom.UsePostgreSql(connectionString);
     }
     else
     {
         throw new InvalidOperationException("EVENTLOOM_DATABASE_PROVIDER must be 'postgres' or 'sqlite'.");
     }
 });
-builder.Services.AddScoped<EventStore>();
-builder.Services.AddScoped<AggregateRepository<Order, Guid>>(services =>
-    new AggregateRepository<Order, Guid>(
-        services.GetRequiredService<EventStore>(),
-        id => new Order(id),
-        order => order.PendingEvents.Select(value => value.Event),
-        order => order.Version));
 
 var app = builder.Build();
 await using (var scope = app.Services.CreateAsyncScope())

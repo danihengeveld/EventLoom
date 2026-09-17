@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EventLoom.EntityFrameworkCore\EventLoom.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\EventLoom.Hosting\EventLoom.Hosting.csproj" />
   </ItemGroup>
 
   <ItemGroup>

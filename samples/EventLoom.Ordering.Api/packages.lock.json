@@ -46,6 +46,7 @@
         "type": "Project",
         "dependencies": {
           "EventLoom.EntityFrameworkCore": "[0.1.0-alpha.0, )",
+          "EventLoom.Hosting": "[0.1.0-alpha.0, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.1, )"
         }
       },
@@ -53,7 +54,15 @@
         "type": "Project",
         "dependencies": {
           "EventLoom.EntityFrameworkCore": "[0.1.0-alpha.0, )",
-          "Microsoft.EntityFrameworkCore.Sqlite.Core": "[10.0.4, )"
+          "EventLoom.Hosting": "[0.1.0-alpha.0, )",
+          "Microsoft.EntityFrameworkCore.Sqlite.Core": "[10.0.4, )",
+          "SQLitePCLRaw.provider.sqlite3": "[2.1.11, )"
+        }
+      },
+      "eventloom.hosting": {
+        "type": "Project",
+        "dependencies": {
+          "EventLoom.EntityFrameworkCore": "[0.1.0-alpha.0, )"
         }
       },
       "Microsoft.Data.Sqlite.Core": {

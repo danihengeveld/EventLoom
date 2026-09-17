@@ -9,6 +9,21 @@ This guide configures the dedicated event-store context. Keep it separate from y
 
 For PostgreSQL:
 
+For the normal application path, use the hosting composition API from the
+provider package:
+
+```csharp
+builder.Services.AddEventLoom(eventLoom =>
+{
+    eventLoom.RegisterEvent<OrderPlaced>();
+    eventLoom.UsePostgreSql(connectionString);
+});
+```
+
+This registers the dedicated `EventStoreDbContext`, serializer, event store,
+UUIDv7 identifier generator, and system clock. Use the lower-level context
+registration shown below when an application needs custom EF Core composition.
+
 ```csharp
 builder.Services.AddDbContext<EventStoreDbContext>((services, options) =>
 {

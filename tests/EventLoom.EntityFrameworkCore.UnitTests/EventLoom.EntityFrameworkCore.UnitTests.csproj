@@ -2,7 +2,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore\EventLoom.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore.Sqlite\EventLoom.EntityFrameworkCore.Sqlite.csproj" />
+    <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore.PostgreSql\EventLoom.EntityFrameworkCore.PostgreSql.csproj" />
+    <ProjectReference Include="..\..\src\EventLoom.Hosting\EventLoom.Hosting.csproj" />
     <PackageReference Include="TUnit" />
+    <PackageReference Include="SQLitePCLRaw.provider.sqlite3" />
   </ItemGroup>
   <PropertyGroup>
     <IsTestProject>true</IsTestProject>
