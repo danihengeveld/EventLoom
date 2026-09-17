@@ -76,7 +76,7 @@ public sealed class AggregateRepositoryTests
         var registry = new EventRegistry().RegisterEvent<Incremented>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
-        var adapter = new JsonAggregateSnapshotAdapter<Counter, CounterSnapshot>(
+        var adapter = new AggregateSnapshotAdapter<Counter, CounterSnapshot>(
             aggregate => new CounterSnapshot(aggregate.Value),
             (aggregate, snapshot) => aggregate.Restore(snapshot));
         var repository = new AggregateRepository<Counter, Guid>(
@@ -122,7 +122,7 @@ public sealed class AggregateRepositoryTests
         var registry = new EventRegistry().RegisterEvent<Incremented>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
-        var adapter = new JsonAggregateSnapshotAdapter<Counter, CounterSnapshot>(
+        var adapter = new AggregateSnapshotAdapter<Counter, CounterSnapshot>(
             aggregate => new CounterSnapshot(aggregate.Value),
             (aggregate, snapshot) => aggregate.Restore(snapshot));
         var repository = new AggregateRepository<Counter, Guid>(

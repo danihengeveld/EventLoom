@@ -16,7 +16,7 @@ Use an immutable, versioned DTO with a stable name:
 public sealed record OrderSnapshot(string Status, IReadOnlyList<OrderItem> Items)
     : IAggregateSnapshot;
 
-var snapshots = new JsonAggregateSnapshotAdapter<Order, OrderSnapshot>(
+var snapshots = new AggregateSnapshotAdapter<Order, OrderSnapshot>(
     order => new OrderSnapshot(order.Status, order.Items.ToArray()),
     (order, snapshot) => order.Restore(snapshot));
 ```

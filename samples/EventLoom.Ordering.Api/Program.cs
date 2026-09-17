@@ -13,6 +13,9 @@ var connectionString = builder.Configuration.GetConnectionString("EventStore")
     ?? (provider == "sqlite"
         ? "Data Source=eventloom-ordering.db"
         : "Host=localhost;Database=eventloom;Username=eventloom;Password=eventloom");
+var orderSnapshots = new AggregateSnapshotAdapter<Order, OrderSnapshot>(
+    order => new OrderSnapshot(order.Status, order.Items.ToArray()),
+    (order, snapshot) => order.Restore(snapshot));
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantAccessor, RequestTenantAccessor>();
@@ -25,7 +28,9 @@ builder.Services.AddEventLoom(eventLoom =>
     eventLoom.AddAggregateRepository<Order, Guid>(
         id => new Order(id),
         "order",
-        id => id.ToString("D"));
+        id => id.ToString("D"),
+        orderSnapshots,
+        new EveryNEventsSnapshotPolicy(2));
 
     if (provider == "sqlite")
     {
@@ -221,6 +226,9 @@ internal sealed record OrderCancelled(string Reason) : IDomainEvent;
 
 internal sealed record OrderItem(string Sku, int Quantity);
 
+[SnapshotType("ordering.order", Version = 1)]
+internal sealed record OrderSnapshot(string Status, IReadOnlyList<OrderItem> Items) : IAggregateSnapshot;
+
 internal sealed class Order(Guid id) : Aggregate<Guid>(id)
 {
     private readonly List<OrderItem> items = [];
@@ -262,6 +270,13 @@ internal sealed class Order(Guid id) : Aggregate<Guid>(id)
     private void Apply(OrderItemAdded @event) => items.Add(new OrderItem(@event.Sku, @event.Quantity));
 
     private void Apply(OrderCancelled @event) => Status = "cancelled";
+
+    public void Restore(OrderSnapshot snapshot)
+    {
+        items.Clear();
+        items.AddRange(snapshot.Items);
+        Status = snapshot.Status;
+    }
 
     private void EnsureActive()
     {

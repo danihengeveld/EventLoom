@@ -44,10 +44,10 @@ public interface IAggregateSnapshotAdapter<TAggregate>
     void Restore(TAggregate aggregate, int schemaVersion, string payload);
 }
 
-/// <summary>Provides a JSON-backed adapter for an explicit aggregate snapshot DTO.</summary>
+/// <summary>Provides an adapter for an explicit aggregate snapshot DTO.</summary>
 /// <typeparam name="TAggregate">The aggregate type.</typeparam>
 /// <typeparam name="TSnapshot">The immutable application-owned snapshot DTO type.</typeparam>
-public sealed class JsonAggregateSnapshotAdapter<TAggregate, TSnapshot>(
+public sealed class AggregateSnapshotAdapter<TAggregate, TSnapshot>(
     Func<TAggregate, TSnapshot> capture,
     Action<TAggregate, TSnapshot> restore,
     JsonTypeInfo<TSnapshot>? jsonTypeInfo = null) : IAggregateSnapshotAdapter<TAggregate>

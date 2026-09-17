@@ -10,6 +10,7 @@ is a compact, production-shaped ASP.NET Core application. It demonstrates:
 - an `Order` aggregate rebuilt from persisted history;
 - configured aggregate repository identity and short `LoadAsync` / `SaveAsync`
   operations;
+- an explicit order snapshot captured every two events;
 - scoped, required tenancy;
 - request correlation metadata and caller-provided idempotency keys;
 - adding items, cancellation, and inspecting persisted envelope metadata;

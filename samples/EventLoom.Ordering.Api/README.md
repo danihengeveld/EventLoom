@@ -5,6 +5,7 @@ This ASP.NET Core sample shows the standard EventLoom application path:
 - immutable, explicitly registered, versioned events;
 - an `Order` aggregate that changes state only through event application;
 - short aggregate-repository load/save operations;
+- explicit snapshots captured every two events;
 - required request-scoped tenancy;
 - correlation metadata and caller-owned idempotency keys;
 - stream reconstruction and envelope inspection;
