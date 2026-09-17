@@ -20,7 +20,7 @@ internal sealed class EventEntity
     public required string StreamId { get; set; }
     public required string AggregateType { get; set; }
     public long StreamVersion { get; set; }
-    public long GlobalPosition { get; set; }
+    public long TenantOffset { get; set; }
     public required string EventType { get; set; }
     public int EventTypeVersion { get; set; }
     public required string Payload { get; set; }
@@ -28,14 +28,14 @@ internal sealed class EventEntity
     public string? CorrelationId { get; set; }
     public string? CausationId { get; set; }
     public string? Actor { get; set; }
-    public required string Headers { get; set; }
+    public string? Headers { get; set; }
     public string? AppendId { get; set; }
 }
 
-internal sealed class TenantPositionEntity
+internal sealed class TenantOffsetEntity
 {
     public string? TenantId { get; set; }
-    public long NextPosition { get; set; }
+    public long NextOffset { get; set; }
 }
 
 internal sealed class SnapshotEntity : IEntityWithId

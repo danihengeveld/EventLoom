@@ -11,7 +11,7 @@ is a compact, production-shaped ASP.NET Core application. It demonstrates:
 - configured aggregate repository identity and short `LoadAsync` / `SaveAsync`
   operations;
 - scoped, required tenancy;
-- request correlation metadata, persisted metadata headers, and caller-provided idempotency keys;
+- request correlation metadata and caller-provided idempotency keys;
 - adding items, cancellation, and inspecting persisted envelope metadata;
 - PostgreSQL as the default provider and SQLite as a local alternative.
 
@@ -76,8 +76,8 @@ curl -H 'X-Tenant-ID: acme' \
   "http://localhost:5000/orders/${order_id}"
 ```
 
-Inspect persisted envelope metadata, including stream version and tenant global
-position:
+Inspect persisted envelope metadata, including stream version and tenant
+offset:
 
 ```bash
 curl -H 'X-Tenant-ID: acme' \

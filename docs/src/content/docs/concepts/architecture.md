@@ -9,7 +9,7 @@ EventLoom separates domain behavior from event-store infrastructure.
 Application command
   -> Aggregate<TId> raises immutable events
   -> AggregateRepository or EventStore appends a batch
-  -> EventStoreDbContext persists streams, events, and positions
+  -> EventStoreDbContext persists streams, events, and tenant offsets
   -> Application reads a stream or tenant position range
 ```
 
@@ -17,7 +17,7 @@ Application command
 
 Your application owns aggregates and event types. An event payload contains
 business facts only: stream identity, aggregate type, tenant, event ID,
-versions, timestamps, correlation data, and positions belong to the immutable
+versions, timestamps, correlation data, and tenant offsets belong to the immutable
 event envelope. This prevents a domain event from being coupled to one
 transport or persistence layout.
 
@@ -33,7 +33,7 @@ keeps migrations, transaction ownership, indexing, and operational tuning
 independent.
 
 Each append is atomic. It validates an expected version, assigns stream
-versions and a per-tenant global position, writes all events, and commits or
+versions and a per-tenant offset, writes all events, and commits or
 rolls back as a unit. No `IQueryable` is exposed from `EventStore`; reads are
 bounded by stream version or position.
 

@@ -40,7 +40,7 @@ public static class EventStoreSchema
         [
             $"{options.TablePrefix}events",
             $"{options.TablePrefix}outbox",
-            $"{options.TablePrefix}positions",
+            $"{options.TablePrefix}offsets",
             $"{options.TablePrefix}projection_checkpoints",
             $"{options.TablePrefix}projection_failures",
             $"{options.TablePrefix}projection_leases",

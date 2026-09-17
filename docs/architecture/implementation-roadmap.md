@@ -136,7 +136,7 @@ The runtime can serialize a registered event, deserialize it through a validated
 - Common tables:
   - streams;
   - events;
-  - per-tenant positions;
+  - per-tenant offsets;
   - snapshots;
   - projection checkpoints;
   - projection leases;
@@ -172,7 +172,7 @@ EventLoom can create and validate its schema through explicit migration operatio
 - Event store append API accepting stream identity, expected version, event batch, metadata, and optional `AppendId`.
 - Stream-head concurrency handling.
 - Consecutive per-stream versions.
-- Per-tenant committed-order global positions.
+- Per-tenant committed-order offsets.
 - UUIDv7 event IDs, with injectable test identifier source.
 - Event/append idempotency constraints and result behavior.
 - Stream reads by complete history, version ranges, and position batches.
@@ -206,10 +206,10 @@ Provider packages, `EventLoom.Hosting`, and PostgreSQL Testcontainers suites.
 
 - Scoped `ITenantAccessor` integration when tenancy is enabled.
 - Explicit tenant APIs for administrative and background processes.
-- Tenant-aware keys, indexes, stream reads, append rules, snapshots, positions, leases, and checkpoints.
+- Tenant-aware keys, indexes, stream reads, append rules, snapshots, offsets, leases, and checkpoints.
 - PostgreSQL transient failure, serialization conflict, and deadlock classification.
 - Execution-strategy-aware retry policy.
-- Transactionally serialized per-tenant global positions.
+- Transactionally serialized per-tenant offsets.
 - PostgreSQL worker lease primitives with monotonic fencing tokens.
 - Worker configuration validation, including distributed-worker rejection on SQLite.
 - Instance identity, retry, polling, batch, lease and renewal options.
@@ -218,7 +218,7 @@ Provider packages, `EventLoom.Hosting`, and PostgreSQL Testcontainers suites.
 
 - Concurrent appends to one stream never create duplicate versions.
 - First-write races resolve to expected conflict/idempotent outcomes.
-- Committed-order positions cannot skip a late commit.
+- Committed-order offsets cannot skip a late commit.
 - Conflicting tenant access is impossible.
 - Lease loss fences a stale worker.
 - Multi-instance stress test with independent contexts/process boundaries.
@@ -226,7 +226,7 @@ Provider packages, `EventLoom.Hosting`, and PostgreSQL Testcontainers suites.
 
 ### Exit Criteria
 
-Multiple PostgreSQL application instances can append and operate workers without corruption, event loss, skipped positions, or cross-tenant visibility.
+Multiple PostgreSQL application instances can append and operate workers without corruption, event loss, skipped offsets, or cross-tenant visibility.
 
 ## Phase 6: Snapshots
 

@@ -97,14 +97,14 @@ public sealed class EventStore(
             context.Streams.Add(stream);
         }
 
-        var position = context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true
-            ? await EnsurePostgreSqlPositionAsync(tenantId, cancellationToken)
-            : await context.TenantPositions
+        var offset = context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true
+            ? await EnsurePostgreSqlOffsetAsync(tenantId, cancellationToken)
+            : await context.TenantOffsets
                 .SingleOrDefaultAsync(value => value.TenantId == tenantId, cancellationToken);
-        position ??= new TenantPositionEntity { TenantId = tenantId, NextPosition = 0 };
-        if (context.Entry(position).State == EntityState.Detached)
+        offset ??= new TenantOffsetEntity { TenantId = tenantId, NextOffset = 0 };
+        if (context.Entry(offset).State == EntityState.Detached)
         {
-            context.TenantPositions.Add(position);
+            context.TenantOffsets.Add(offset);
         }
 
         var envelopes = new List<EventEnvelope>(request.Events.Count);
@@ -118,7 +118,7 @@ public sealed class EventStore(
                 StreamId = request.StreamId,
                 AggregateType = request.AggregateType,
                 StreamVersion = ++stream.Version,
-                GlobalPosition = ++position.NextPosition,
+                TenantOffset = ++offset.NextOffset,
                 EventType = payload.EventName,
                 EventTypeVersion = payload.Version,
                 Payload = payload.Payload,
@@ -126,7 +126,9 @@ public sealed class EventStore(
                 CorrelationId = request.Metadata.CorrelationId,
                 CausationId = request.Metadata.CausationId,
                 Actor = request.Metadata.Actor,
-                Headers = JsonSerializer.Serialize(request.Metadata.Headers),
+                Headers = request.Metadata.Headers.Count == 0
+                    ? null
+                    : JsonSerializer.Serialize(request.Metadata.Headers),
                 AppendId = request.AppendId
             };
             context.Events.Add(eventEntity);
@@ -150,29 +152,29 @@ public sealed class EventStore(
         "Usage",
         "EF1003:Interpolated SQL queries should use the interpolated form",
         Justification = "The table identifier comes from EF's mapped model and is quoted; tenant values remain parameters.")]
-    private async Task<TenantPositionEntity?> EnsurePostgreSqlPositionAsync(
+    private async Task<TenantOffsetEntity?> EnsurePostgreSqlOffsetAsync(
         string tenantId,
         CancellationToken cancellationToken)
     {
-        var entityType = context.Model.FindEntityType(typeof(TenantPositionEntity))
-            ?? throw new InvalidOperationException("The tenant position entity is not mapped.");
+        var entityType = context.Model.FindEntityType(typeof(TenantOffsetEntity))
+            ?? throw new InvalidOperationException("The tenant offset entity is not mapped.");
         var table = QuoteIdentifier(entityType.GetTableName()
-            ?? throw new InvalidOperationException("The tenant position table is not mapped."));
+            ?? throw new InvalidOperationException("The tenant offset table is not mapped."));
         var schema = entityType.GetSchema();
         var qualifiedTable = schema is null ? table : $"{QuoteIdentifier(schema)}.{table}";
 
         var sql = "INSERT INTO " + qualifiedTable +
-            " (\"TenantId\", \"NextPosition\") VALUES ({0}, 0) ON CONFLICT (\"TenantId\") DO NOTHING";
+            " (\"TenantId\", \"NextOffset\") VALUES ({0}, 0) ON CONFLICT (\"TenantId\") DO NOTHING";
         await context.Database.ExecuteSqlRawAsync(
             sql,
             [tenantId],
             cancellationToken);
         await context.Database.ExecuteSqlRawAsync(
-            "UPDATE " + qualifiedTable + " SET \"NextPosition\" = \"NextPosition\" WHERE \"TenantId\" = {0}",
+            "UPDATE " + qualifiedTable + " SET \"NextOffset\" = \"NextOffset\" WHERE \"TenantId\" = {0}",
             [tenantId],
             cancellationToken);
 
-        return await context.TenantPositions
+        return await context.TenantOffsets
             .SingleAsync(value => value.TenantId == tenantId, cancellationToken);
     }
 
@@ -215,28 +217,28 @@ public sealed class EventStore(
     }
 
     /// <summary>
-    /// Reads committed events for a tenant by global position.
+    /// Reads committed events for a tenant by tenant offset.
     /// </summary>
-    public async Task<IReadOnlyList<EventEnvelope>> ReadPositionsAsync(
+    public async Task<IReadOnlyList<EventEnvelope>> ReadTenantOffsetsAsync(
         string tenantId,
-        long afterPosition = 0,
+        long afterOffset = 0,
         int limit = 100,
         CancellationToken cancellationToken = default)
     {
         tenantId = ResolveTenant(tenantId);
-        if (afterPosition < 0)
+        if (afterOffset < 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(afterPosition));
+            throw new ArgumentOutOfRangeException(nameof(afterOffset));
         }
 
         if (limit is < 1 or > 10_000)
         {
-            throw new ArgumentOutOfRangeException(nameof(limit), "Position read limits must be between 1 and 10,000.");
+            throw new ArgumentOutOfRangeException(nameof(limit), "Tenant offset read limits must be between 1 and 10,000.");
         }
 
         var entities = await context.Events
-            .Where(value => value.TenantId == tenantId && value.GlobalPosition > afterPosition)
-            .OrderBy(value => value.GlobalPosition)
+            .Where(value => value.TenantId == tenantId && value.TenantOffset > afterOffset)
+            .OrderBy(value => value.TenantOffset)
             .Take(limit)
             .ToListAsync(cancellationToken);
         return entities.Select(ToEnvelope).ToArray();
@@ -264,12 +266,17 @@ public sealed class EventStore(
 
     private EventEnvelope ToEnvelope(EventEntity entity) =>
         ToEnvelope(entity, serializer.Deserialize(entity.EventType, entity.EventTypeVersion, entity.Payload),
-            new EventMetadata(
+            CreateMetadata(entity));
+
+    private static EventMetadata CreateMetadata(EventEntity entity) =>
+        entity.Headers is null
+            ? new EventMetadata(entity.CorrelationId, entity.CausationId, entity.Actor)
+            : new EventMetadata(
                 entity.CorrelationId,
                 entity.CausationId,
                 entity.Actor,
                 JsonSerializer.Deserialize<Dictionary<string, string>>(entity.Headers)
-                    ?? throw new InvalidOperationException($"Event '{entity.EventId}' has invalid metadata headers.")));
+                    ?? throw new InvalidOperationException($"Event '{entity.EventId}' has invalid metadata headers."));
 
     private static EventEnvelope ToEnvelope(EventEntity entity, IDomainEvent @event, EventMetadata metadata) =>
         new(
@@ -279,7 +286,7 @@ public sealed class EventStore(
             entity.StreamId,
             entity.AggregateType,
             entity.StreamVersion,
-            entity.GlobalPosition,
+            entity.TenantOffset,
             new TenantId(entity.TenantId),
             entity.OccurredAt,
             @event,

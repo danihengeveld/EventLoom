@@ -45,6 +45,11 @@ successful append it clears pending events; an idempotent replay retains the
 aggregate's pending events because the caller may need to resolve the
 ambiguous-command outcome explicitly.
 
+`EventMetadata` stores correlation ID, causation ID, and actor in nullable
+columns. Application headers are serialized only when nonempty; an empty header
+collection is stored as `NULL` and is rehydrated as an empty read-only
+dictionary.
+
 ## Use the explicit store API
 
 Use `EventStore` when a background, import, repair, or integration workflow
@@ -63,7 +68,7 @@ var result = await store.AppendAsync(new AppendRequest(
 ```
 
 The event batch is committed atomically. Versions begin at 1, and all events
-in a batch receive consecutive stream versions and tenant positions.
+in a batch receive consecutive stream versions and tenant offsets.
 
 ## Read one stream
 
@@ -84,7 +89,7 @@ neither bound reads the full stream. Bounds must be positive and ordered.
 For a consumer that maintains a checkpoint:
 
 ```csharp
-var batch = await store.ReadPositionsAsync(
+var batch = await store.ReadTenantOffsetsAsync(
     tenantId: "acme",
     afterPosition: checkpoint,
     limit: 100,
@@ -93,11 +98,11 @@ var batch = await store.ReadPositionsAsync(
 foreach (var envelope in batch)
 {
     // Dispatch to application-owned handling code.
-    checkpoint = envelope.GlobalPosition;
+    checkpoint = envelope.TenantOffset;
 }
 ```
 
-Positions are authoritative only inside one tenant. Keep checkpoints
+Tenant offsets are authoritative only inside one tenant. Keep checkpoints
 tenant-scoped, process in order, and make handlers idempotent. Projection
 runner infrastructure is not yet included in EventLoom.
 

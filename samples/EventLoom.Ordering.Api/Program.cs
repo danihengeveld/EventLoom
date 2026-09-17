@@ -3,8 +3,11 @@ using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull);
 var provider = builder.Configuration["EVENTLOOM_DATABASE_PROVIDER"]?.Trim().ToLowerInvariant() ?? "postgres";
 var connectionString = builder.Configuration.GetConnectionString("EventStore")
     ?? (provider == "sqlite"
@@ -176,7 +179,7 @@ app.MapGet("/orders/{id:guid}/events", async (
         envelope.EventType,
         envelope.EventTypeVersion,
         envelope.StreamVersion,
-        envelope.GlobalPosition,
+        envelope.TenantOffset,
         envelope.OccurredAt,
         envelope.Metadata
     }));
@@ -187,11 +190,7 @@ app.Run();
 static EventMetadata RequestMetadata(HttpContext context) =>
     new(
         CorrelationId: context.Request.Headers["X-Correlation-ID"].FirstOrDefault(),
-        Actor: "ordering-api",
-        Headers: new Dictionary<string, string>
-        {
-            ["request-path"] = context.Request.Path
-        });
+        Actor: "ordering-api");
 
 internal sealed record PlaceOrderRequest(string Sku, int Quantity, Guid? OrderId = null);
 

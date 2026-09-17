@@ -23,7 +23,7 @@ public sealed class EventStoreModelTests
         {
             "custom_events",
             "custom_outbox",
-            "custom_positions",
+            "custom_offsets",
             "custom_projection_checkpoints",
             "custom_projection_failures",
             "custom_projection_leases",

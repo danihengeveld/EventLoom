@@ -101,13 +101,13 @@ events.RegisterAggregate<ShoppingCart, CartId>(
 
 ## Event Storage and Append Correctness
 
-Storage tables will cover streams, events, positions, snapshots, projection checkpoints, projection leases, projection failures, and outbox records.
+Storage tables will cover streams, events, tenant offsets, snapshots, projection checkpoints, projection leases, projection failures, and outbox records.
 
 Essential constraints include:
 
 - Unique `(TenantId, StreamId, StreamVersion)`.
 - Unique event ID.
-- Unique global position within a tenant.
+- Unique tenant offset within a tenant.
 - Indexes for tenant/position and tenant/stream/version access paths.
 
 Append invariant:
@@ -120,7 +120,7 @@ Write behavior:
 2. Check expected version.
 3. Advance the stream head using optimistic concurrency.
 4. Allocate consecutive stream versions.
-5. Allocate committed-order global positions.
+5. Allocate committed-order tenant offsets.
 6. Insert immutable event rows and optional outbox rows.
 7. Commit atomically.
 8. Translate provider exceptions into stable EventLoom exceptions.
@@ -141,9 +141,9 @@ Distributed safety is a core invariant, not a deployment switch.
 
 UUIDv7 event IDs are time-sortable enough for index locality, but are not an authoritative order because events in the same millisecond and clock corrections can reorder them.
 
-Decision: use transactionally serialized global positions per tenant for v1. PostgreSQL sequences alone are insufficient because sequence values can be observed out of commit order, which can make consumers skip a late-committing event.
+Decision: use transactionally serialized tenant offsets for v1. PostgreSQL sequences alone are insufficient because sequence values can be observed out of commit order, which can make consumers skip a late-committing event.
 
-Partitioned positions are a later throughput feature with explicit ordering tradeoffs.
+Partitioned offsets are a later throughput feature with explicit ordering tradeoffs.
 
 ### Idempotency
 
@@ -195,7 +195,7 @@ No mutable global or AsyncLocal tenant state is part of EventLoom.
 
 ## Metadata and Operations
 
-- Built-in envelope metadata: event ID, append ID, tenant, stream and aggregate identity, positions, timestamps via `TimeProvider`, correlation ID, causation ID, actor ID, and application headers.
+- Built-in envelope metadata: event ID, append ID, tenant, stream and aggregate identity, tenant offsets, timestamps via `TimeProvider`, correlation ID, causation ID, actor ID, and application headers.
 - Expose OpenTelemetry tracing/metrics, structured logging, health checks, projection lag/failure telemetry, and explicit schema compatibility checks.
 - Never log payload values by default.
 - Apply database migrations explicitly through a CLI/API, never automatically at application startup.

@@ -33,7 +33,7 @@ public sealed class EventStoreAppendTests
 
         await Assert.That(result.Events.Select(value => value.StreamVersion)).IsEquivalentTo(new long[] { 1, 2 });
         await Assert.That(history.Count).IsEqualTo(2);
-        await Assert.That(history[1].GlobalPosition).IsEqualTo(2);
+        await Assert.That(history[1].TenantOffset).IsEqualTo(2);
         await Assert.That(history[0].Metadata.Headers["source"]).IsEqualTo("test");
     }
 
@@ -75,6 +75,28 @@ public sealed class EventStoreAppendTests
     }
 
     [Test]
+    public async Task Empty_metadata_headers_are_stored_as_null_and_rehydrated_as_empty()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        var registry = new EventRegistry().RegisterEvent<Added>();
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+
+        await store.AppendAsync(new AppendRequest(
+            "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream, [new Added(1)], new EventMetadata()));
+
+        await using var command = connection.CreateCommand();
+        command.CommandText = """SELECT "Headers" FROM "test_events" LIMIT 1""";
+        var storedHeaders = await command.ExecuteScalarAsync();
+        var history = await store.ReadStreamAsync("tenant-a", "cart-1");
+
+        await Assert.That(storedHeaders).IsTypeOf<DBNull>();
+        await Assert.That(history.Single().Metadata.Headers).IsEmpty();
+    }
+
+    [Test]
     public async Task Stream_and_position_reads_are_bounded()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
@@ -88,10 +110,10 @@ public sealed class EventStoreAppendTests
             [new Added(1), new Added(2), new Added(3)], new EventMetadata()));
 
         var streamRange = await store.ReadStreamAsync("tenant-a", "cart-1", 2, 3);
-        var positions = await store.ReadPositionsAsync("tenant-a", 1, 2);
+        var offsets = await store.ReadTenantOffsetsAsync("tenant-a", 1, 2);
 
         await Assert.That(streamRange.Select(value => value.StreamVersion)).IsEquivalentTo(new long[] { 2, 3 });
-        await Assert.That(positions.Select(value => value.GlobalPosition)).IsEquivalentTo(new long[] { 2, 3 });
+        await Assert.That(offsets.Select(value => value.TenantOffset)).IsEquivalentTo(new long[] { 2, 3 });
     }
 
     [Test]

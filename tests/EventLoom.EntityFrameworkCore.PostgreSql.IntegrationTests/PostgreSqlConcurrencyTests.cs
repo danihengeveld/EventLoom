@@ -33,11 +33,11 @@ public sealed class PostgreSqlConcurrencyTests
     }
 
     [Test]
-    public async Task Concurrent_instances_assign_contiguous_committed_positions()
+    public async Task Concurrent_instances_assign_contiguous_committed_tenant_offsets()
     {
         await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
         await container.StartAsync();
-        var options = new EventStoreOptions { UseSchema = true, Schema = "eventloom_positions", TablePrefix = "eventloom_" };
+        var options = new EventStoreOptions { UseSchema = true, Schema = "eventloom_offsets", TablePrefix = "eventloom_" };
         await using var setupContext = CreateContext(container.GetConnectionString(), options);
         await setupContext.Database.EnsureCreatedAsync();
 
@@ -65,8 +65,8 @@ public sealed class PostgreSqlConcurrencyTests
                         [new Created()],
                         new EventMetadata()))));
 
-            var positions = results.SelectMany(value => value.Events).Select(value => value.GlobalPosition).OrderBy(value => value).ToArray();
-            await Assert.That(positions).IsEquivalentTo(Enumerable.Range(1, stores.Length).Select(value => (long)value).ToArray());
+            var offsets = results.SelectMany(value => value.Events).Select(value => value.TenantOffset).OrderBy(value => value).ToArray();
+            await Assert.That(offsets).IsEquivalentTo(Enumerable.Range(1, stores.Length).Select(value => (long)value).ToArray());
         }
         finally
         {

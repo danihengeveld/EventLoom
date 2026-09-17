@@ -30,7 +30,7 @@ behavior:
   SQLite for schema, append/read, and aggregate repository coverage.
 - `EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests` uses
   PostgreSQL Testcontainers for provider behavior, concurrent appends,
-  per-tenant positions, and worker lease fencing.
+  per-tenant offsets, and worker lease fencing.
 
 SQLite is useful for local integration tests, but it cannot prove PostgreSQL
 transaction isolation or multi-instance behavior.
@@ -61,7 +61,7 @@ workaround only when Docker lifecycle cleanup is otherwise guaranteed.
 | Replay | Same state after loading persisted history. |
 | Append | All events appear once with consecutive stream versions. |
 | Concurrency | One command succeeds; the other is a visible conflict or reevaluated retry. |
-| Tenant access | A tenant never reads another tenant's stream or positions. |
+| Tenant access | A tenant never reads another tenant's stream or offsets. |
 | Idempotency | The same append ID returns the original envelopes. |
 | Position consumer | Checkpoint advances only after a handler succeeds. |
 

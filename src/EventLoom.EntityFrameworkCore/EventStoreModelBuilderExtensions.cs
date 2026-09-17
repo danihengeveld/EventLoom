@@ -46,15 +46,14 @@ public static class EventStoreModelBuilderExtensions
             entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
             entity.Property(value => value.EventType).HasMaxLength(256).IsRequired();
             entity.Property(value => value.Payload).IsRequired();
-            entity.Property(value => value.Headers).IsRequired();
             entity.HasIndex(value => new { value.TenantId, value.StreamId, value.StreamVersion }).IsUnique();
-            entity.HasIndex(value => new { value.TenantId, value.GlobalPosition }).IsUnique();
+            entity.HasIndex(value => new { value.TenantId, value.TenantOffset }).IsUnique();
             entity.HasIndex(value => new { value.TenantId, value.AppendId });
         });
 
-        modelBuilder.Entity<TenantPositionEntity>(entity =>
+        modelBuilder.Entity<TenantOffsetEntity>(entity =>
         {
-            entity.ToTable($"{prefix}positions", schema);
+            entity.ToTable($"{prefix}offsets", schema);
             entity.HasKey(value => value.TenantId);
             entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
         });

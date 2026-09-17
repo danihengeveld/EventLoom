@@ -6,7 +6,7 @@ This ASP.NET Core sample shows the standard EventLoom application path:
 - an `Order` aggregate that changes state only through event application;
 - short aggregate-repository load/save operations;
 - required request-scoped tenancy;
-- metadata and caller-owned idempotency keys;
+- correlation metadata and caller-owned idempotency keys;
 - stream reconstruction and envelope inspection;
 - PostgreSQL by default and SQLite for local use.
 

@@ -15,7 +15,7 @@ public sealed class EventStoreDbContext(
 
     internal DbSet<StreamEntity> Streams => Set<StreamEntity>();
     internal DbSet<EventEntity> Events => Set<EventEntity>();
-    internal DbSet<TenantPositionEntity> TenantPositions => Set<TenantPositionEntity>();
+    internal DbSet<TenantOffsetEntity> TenantOffsets => Set<TenantOffsetEntity>();
     internal DbSet<SnapshotEntity> Snapshots => Set<SnapshotEntity>();
     internal DbSet<ProjectionCheckpointEntity> ProjectionCheckpoints => Set<ProjectionCheckpointEntity>();
     internal DbSet<ProjectionLeaseEntity> ProjectionLeases => Set<ProjectionLeaseEntity>();

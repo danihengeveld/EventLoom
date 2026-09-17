@@ -9,6 +9,9 @@ public sealed record EventMetadata(
     string? Actor = null,
     IReadOnlyDictionary<string, string>? Headers = null)
 {
+    /// <summary>
+    /// Gets immutable application-defined operational headers. The collection is empty when no headers were supplied.
+    /// </summary>
     public IReadOnlyDictionary<string, string> Headers { get; } =
         Headers is null
             ? new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal))
@@ -23,7 +26,7 @@ public sealed record EventEnvelope(
     string StreamId,
     string AggregateType,
     long StreamVersion,
-    long GlobalPosition,
+    long TenantOffset,
     TenantId? TenantId,
     DateTimeOffset OccurredAt,
     IDomainEvent Event,
@@ -37,7 +40,7 @@ public sealed record EventEnvelope<TEvent>(
     string StreamId,
     string AggregateType,
     long StreamVersion,
-    long GlobalPosition,
+    long TenantOffset,
     TenantId? TenantId,
     DateTimeOffset OccurredAt,
     TEvent Event,

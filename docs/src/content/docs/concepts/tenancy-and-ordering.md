@@ -1,6 +1,6 @@
 ---
 title: Tenancy and ordering
-description: Configure tenant isolation, idempotent command retries, expected versions, and global positions.
+description: Configure tenant isolation, idempotent command retries, expected versions, and tenant offsets.
 ---
 
 ## Tenancy modes
@@ -79,10 +79,10 @@ identity: generating a new append ID on each retry defeats idempotency.
 Every event has:
 
 - a **stream version**, which orders facts within one aggregate stream;
-- a **per-tenant global position**, which orders committed events for a tenant.
+- a **tenant offset**, which orders committed events for a tenant.
 
-Use `ReadStreamAsync` to rebuild one aggregate and `ReadPositionsAsync` to
+Use `ReadStreamAsync` to rebuild one aggregate and `ReadTenantOffsetsAsync` to
 read a bounded tenant sequence. Event IDs are UUIDv7 for locality and
 diagnostics, but they are not the authoritative ordering mechanism. PostgreSQL
-serializes tenant position allocation transactionally so a reader cannot skip a
+serializes tenant offset allocation transactionally so a reader cannot skip a
 late commit by advancing its checkpoint.
