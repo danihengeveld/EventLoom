@@ -2,6 +2,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EventLoom.EntityFrameworkCore;
 
+/// <summary>
+/// EF Core context containing EventLoom's event-store tables.
+/// </summary>
+/// <param name="options">The EF Core options configured for this context.</param>
+/// <param name="eventStoreOptions">Optional event-store naming and schema settings.</param>
 public sealed class EventStoreDbContext(
     DbContextOptions<EventStoreDbContext> options,
     EventStoreOptions? eventStoreOptions = null) : DbContext(options)

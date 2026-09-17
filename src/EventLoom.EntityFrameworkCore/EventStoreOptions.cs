@@ -1,10 +1,23 @@
 namespace EventLoom.EntityFrameworkCore;
 
+/// <summary>
+/// Controls the names and schema used by the EventLoom event-store tables.
+/// </summary>
 public sealed class EventStoreOptions
 {
+    /// <summary>
+    /// Gets or sets the database schema name. The default is <c>eventloom</c>.
+    /// </summary>
     public string Schema { get; set; } = "eventloom";
 
+    /// <summary>
+    /// Gets or sets the prefix applied to event-store table names. The default is <c>eventloom_</c>.
+    /// </summary>
     public string TablePrefix { get; set; } = "eventloom_";
 
+    /// <summary>
+    /// Gets or sets a value indicating whether the configured schema is used.
+    /// Set this to <see langword="false"/> for providers such as SQLite.
+    /// </summary>
     public bool UseSchema { get; set; }
 }
