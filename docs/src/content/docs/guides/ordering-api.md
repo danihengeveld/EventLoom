@@ -17,7 +17,10 @@ serializer, registry, clock, identifier generator, context, and event store:
 builder.Services.AddEventLoom(eventLoom =>
 {
     eventLoom.RegisterEvent<OrderPlaced>();
-    eventLoom.AddAggregateRepository<Order, Guid>(id => new Order(id));
+    eventLoom.AddAggregateRepository<Order, Guid>(
+        id => new Order(id),
+        "order",
+        id => id.ToString("D"));
     eventLoom.UsePostgreSql(connectionString);
 });
 ```
@@ -25,6 +28,18 @@ builder.Services.AddEventLoom(eventLoom =>
 Event registration is intentionally explicit. Assembly scanning and strict
 source-generated serialization are available as advanced opt-ins, not hidden
 startup conventions.
+
+The repository registration owns the stable aggregate and stream identity.
+Application code can then use the short operations:
+
+```csharp
+await repository.SaveAsync(order, metadata, appendId, cancellationToken);
+var order = await repository.LoadAsync(orderId, cancellationToken);
+```
+
+These overloads require a scoped `ITenantAccessor`. Explicit overloads that
+take a tenant, stream ID, aggregate type, and metadata remain available for
+administrative and background workflows.
 
 ## Local SQLite
 

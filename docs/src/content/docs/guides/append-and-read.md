@@ -32,6 +32,26 @@ The event store context is configured separately from the application context.
 See [Configure the EF Core event store](/guides/configure-ef-core) for provider
 configuration and migrations.
 
+For aggregate-oriented application code, configure identity once during
+startup:
+
+```csharp
+eventLoom.AddAggregateRepository<Order, Guid>(
+    id => new Order(id),
+    "order",
+    id => id.ToString("D"));
+```
+
+With a scoped `ITenantAccessor`, normal command handlers can use:
+
+```csharp
+await repository.SaveAsync(order);
+var loaded = await repository.LoadAsync(order.Id);
+```
+
+The explicit repository overloads remain available for administrative and
+background workflows that must supply tenant and stream identity directly.
+
 ## Append a batch
 
 An append is atomic. Stream versions and tenant global positions are assigned

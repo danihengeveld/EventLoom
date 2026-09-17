@@ -36,6 +36,33 @@ public sealed class AggregateRepositoryTests
         await Assert.That(loaded.PendingEvents.Count).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task Configured_repository_uses_short_tenant_scoped_operations()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = new EventStoreDbContext(
+            new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
+            new EventStoreOptions { TablePrefix = "test_" });
+        await context.Database.EnsureCreatedAsync();
+
+        var registry = new EventRegistry().RegisterEvent<Incremented>();
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var repository = new AggregateRepository<Counter, Guid>(
+            store,
+            id => new Counter(id),
+            "counter",
+            id => id.ToString("D"),
+            new TestTenantAccessor("tenant-a"));
+        var aggregate = new Counter(Guid.NewGuid());
+        aggregate.Increment(4);
+
+        await repository.SaveAsync(aggregate);
+        var loaded = await repository.LoadAsync(aggregate.Id);
+
+        await Assert.That(loaded.Value).IsEqualTo(4);
+    }
+
     [EventType("tests.incremented")]
     private sealed record Incremented(int Amount) : IDomainEvent;
 
@@ -46,5 +73,10 @@ public sealed class AggregateRepositoryTests
         public void Increment(int amount) => Raise(new Incremented(amount));
 
         private void Apply(Incremented @event) => Value += @event.Amount;
+    }
+
+    private sealed class TestTenantAccessor(string tenant) : ITenantAccessor
+    {
+        public TenantId? TenantId { get; } = new(tenant);
     }
 }

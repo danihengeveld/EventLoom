@@ -12,7 +12,10 @@ var connectionString = builder.Configuration.GetConnectionString("EventStore")
 builder.Services.AddEventLoom(eventLoom =>
 {
     eventLoom.RegisterEvent<OrderPlaced>();
-    eventLoom.AddAggregateRepository<Order, Guid>(id => new Order(id));
+    eventLoom.AddAggregateRepository<Order, Guid>(
+        id => new Order(id),
+        "order",
+        id => id.ToString("D"));
     if (provider == "sqlite")
     {
         eventLoom.UseSqlite(connectionString);
@@ -26,6 +29,7 @@ builder.Services.AddEventLoom(eventLoom =>
         throw new InvalidOperationException("EVENTLOOM_DATABASE_PROVIDER must be 'postgres' or 'sqlite'.");
     }
 });
+builder.Services.AddScoped<ITenantAccessor>(_ => new FixedTenantAccessor(new TenantId("default")));
 
 var app = builder.Build();
 await using (var scope = app.Services.CreateAsyncScope())
@@ -40,14 +44,7 @@ app.MapPost("/orders", async (
 {
     var order = new Order(Guid.NewGuid());
     order.Place(request.Sku, request.Quantity);
-    await repository.SaveAsync(
-        "default",
-        order.Id.ToString("D"),
-        "order",
-        order,
-        new EventMetadata(Actor: "ordering-api"),
-        Guid.NewGuid().ToString("D"),
-        cancellationToken);
+    await repository.SaveAsync(order, new EventMetadata(Actor: "ordering-api"), Guid.NewGuid().ToString("D"), cancellationToken);
     return Results.Created($"/orders/{order.Id:D}", new { order.Id, order.Status });
 });
 
@@ -56,13 +53,18 @@ app.MapGet("/orders/{id:guid}", async (
     AggregateRepository<Order, Guid> repository,
     CancellationToken cancellationToken) =>
 {
-    var order = await repository.LoadAsync("default", id.ToString("D"), id, cancellationToken);
+    var order = await repository.LoadAsync(id, cancellationToken);
     return order.Version == 0 ? Results.NotFound() : Results.Ok(new { order.Id, order.Status, order.Sku, order.Quantity });
 });
 
 app.Run();
 
 public sealed record PlaceOrderRequest(string Sku, int Quantity);
+
+public sealed class FixedTenantAccessor(TenantId tenantId) : ITenantAccessor
+{
+    public TenantId? TenantId { get; } = tenantId;
+}
 
 [EventType("ordering.order-placed", Version = 1)]
 public sealed record OrderPlaced(string Sku, int Quantity) : IDomainEvent;

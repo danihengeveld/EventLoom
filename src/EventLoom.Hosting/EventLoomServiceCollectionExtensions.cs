@@ -201,6 +201,35 @@ public sealed class EventLoomBuilder
     }
 
     /// <summary>
+    /// Registers a repository with configured aggregate and stream identity,
+    /// enabling short tenant-scoped load and save operations.
+    /// </summary>
+    /// <typeparam name="TAggregate">The aggregate type.</typeparam>
+    /// <typeparam name="TId">The aggregate identifier type.</typeparam>
+    /// <param name="factory">Creates an aggregate for its identifier.</param>
+    /// <param name="aggregateType">The stable persisted aggregate type name.</param>
+    /// <param name="streamId">Converts an aggregate ID to its canonical stream ID.</param>
+    /// <returns>This builder.</returns>
+    public EventLoomBuilder AddAggregateRepository<TAggregate, TId>(
+        Func<TId, TAggregate> factory,
+        string aggregateType,
+        Func<TId, string> streamId)
+        where TAggregate : Aggregate<TId>
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
+        ArgumentNullException.ThrowIfNull(streamId);
+
+        services.AddScoped(serviceProvider => new AggregateRepository<TAggregate, TId>(
+            serviceProvider.GetRequiredService<EventStore>(),
+            factory,
+            aggregateType,
+            streamId,
+            serviceProvider.GetService<ITenantAccessor>()));
+        return this;
+    }
+
+    /// <summary>
     /// Configures the EF Core options for the EventLoom event-store context.
     /// </summary>
     /// <param name="configure">Configures the context options, including its database provider.</param>
