@@ -79,6 +79,44 @@ public sealed class DomainKernelTests
         await Assert.That(metadata.Headers["key"]).IsEqualTo("value");
     }
 
+    [Test]
+    public async Task Apply_handler_can_be_declared_on_a_base_aggregate()
+    {
+        var aggregate = new DerivedCounterAggregate(Guid.NewGuid());
+
+        aggregate.Increment(5);
+
+        await Assert.That(aggregate.Value).IsEqualTo(5);
+    }
+
+    [Test]
+    public async Task Static_apply_handlers_are_rejected()
+    {
+        var aggregate = new StaticHandlerAggregate(Guid.NewGuid());
+
+        await Assert.That(() => aggregate.RaiseUnknown(new Incremented(1)))
+            .Throws<InvalidApplyHandlerException>();
+    }
+
+    [Test]
+    public async Task Event_type_requires_a_positive_version()
+    {
+        await Assert.That(() => new EventTypeAttribute("invalid") { Version = 0 })
+            .Throws<ArgumentOutOfRangeException>();
+    }
+
+    [Test]
+    public async Task Injected_clock_and_event_id_generator_are_deterministic()
+    {
+        var now = new DateTimeOffset(2026, 9, 17, 8, 0, 0, TimeSpan.Zero);
+        var clock = new TimeProviderClock(new FrozenTimeProvider(now));
+        var id = Guid.Parse("0198f2c3-2c00-7000-8000-000000000001");
+        var generator = new FixedEventIdGenerator(id);
+
+        await Assert.That(clock.GetUtcNow()).IsEqualTo(now);
+        await Assert.That(generator.Create()).IsEqualTo(id);
+    }
+
     [EventType("counter.incremented")]
     private sealed record Incremented(int Amount) : IDomainEvent;
 
@@ -96,5 +134,36 @@ public sealed class DomainKernelTests
     private sealed class MissingHandlerAggregate(Guid id) : Aggregate<Guid>(id)
     {
         public void RaiseUnknown(Incremented @event) => Raise(@event);
+    }
+
+    private abstract class BaseCounterAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        public int Value { get; private set; }
+
+        protected void Apply(Incremented @event) => Value += @event.Amount;
+    }
+
+    private sealed class DerivedCounterAggregate(Guid id) : BaseCounterAggregate(id)
+    {
+        public void Increment(int amount) => Raise(new Incremented(amount));
+    }
+
+    private sealed class StaticHandlerAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        public void RaiseUnknown(Incremented @event) => Raise(@event);
+
+        private static void Apply(Incremented @event)
+        {
+        }
+    }
+
+    private sealed class FrozenTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => now;
+    }
+
+    private sealed class FixedEventIdGenerator(Guid id) : IEventIdGenerator
+    {
+        public Guid Create() => id;
     }
 }

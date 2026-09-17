@@ -63,7 +63,7 @@ public abstract class Aggregate<TId>
         public static AggregateDispatcher Create(Type aggregateType)
         {
             var methods = aggregateType
-                .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
                 .Where(method => method.Name == "Apply");
             var discovered = new Dictionary<Type, Action<object, IDomainEvent>>();
 
