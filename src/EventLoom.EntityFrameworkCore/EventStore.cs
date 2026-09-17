@@ -105,7 +105,14 @@ public sealed class EventStore(
             envelopes.Add(ToEnvelope(eventEntity, @event, request.Metadata));
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception)
+        {
+            throw new EventStoreConcurrencyException(tenantId, request.StreamId, exception);
+        }
         await transaction.CommitAsync(cancellationToken);
         return new AppendResult(envelopes, false);
     }
@@ -227,3 +234,13 @@ public sealed record AppendResult(IReadOnlyList<EventEnvelope> Events, bool WasI
 /// <summary>Indicates that the current stream version did not satisfy the append expectation.</summary>
 public sealed class WrongExpectedVersionException(ExpectedVersion expected, long? actual)
     : InvalidOperationException($"Expected stream version '{expected}', but actual version was '{actual?.ToString() ?? "no stream"}'.");
+
+/// <summary>Indicates that a concurrent append conflicted with the event-store database boundary.</summary>
+public sealed class EventStoreConcurrencyException : InvalidOperationException
+{
+    /// <summary>Initializes a concurrency exception for a tenant and stream.</summary>
+    public EventStoreConcurrencyException(string tenantId, string streamId, Exception innerException)
+        : base($"A concurrent append conflicted for tenant '{tenantId}' and stream '{streamId}'.", innerException)
+    {
+    }
+}
