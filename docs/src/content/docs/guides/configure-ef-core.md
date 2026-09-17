@@ -105,6 +105,13 @@ automatically. PostgreSQL safely supports multiple worker instances; SQLite is
 limited to one controlled application instance. See
 [Outbox and application integration](./outbox/) to register a publisher.
 
+## OpenTelemetry
+
+`EventLoom.Hosting` provides optional convenience registration for the
+dependency-free EventLoom activity source and meter. See
+[Observability](./observability/) for tracing, metrics, and data-safety
+guidance.
+
 ## Schema creation and migrations
 
 The current pre-release includes the EF Core model but does not ship
