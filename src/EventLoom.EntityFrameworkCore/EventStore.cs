@@ -12,7 +12,8 @@ public sealed class EventStore(
     IEventIdGenerator eventIdGenerator,
     TimeProvider timeProvider,
     EventStoreOptions? eventStoreOptions = null,
-    ITenantAccessor? tenantAccessor = null)
+    ITenantAccessor? tenantAccessor = null,
+    IEventStoreRetryPolicy? retryPolicy = null)
 {
     private readonly EventStoreDbContext context = context ?? throw new ArgumentNullException(nameof(context));
     private readonly EventSerializer serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
@@ -21,6 +22,7 @@ public sealed class EventStore(
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly EventStoreOptions eventStoreOptions = eventStoreOptions ?? new();
     private readonly ITenantAccessor? tenantAccessor = tenantAccessor;
+    private readonly IEventStoreRetryPolicy retryPolicy = retryPolicy ?? new NoopEventStoreRetryPolicy();
 
     /// <summary>
     /// Appends a batch atomically and returns the persisted envelopes.
@@ -36,6 +38,23 @@ public sealed class EventStore(
         }
 
         var tenantId = ResolveTenant(request.TenantId);
+        try
+        {
+            return await retryPolicy.ExecuteAsync(
+                cancellationToken => AppendCoreAsync(request, tenantId, cancellationToken),
+                cancellationToken);
+        }
+        catch (DbUpdateException exception)
+        {
+            throw new EventStoreConcurrencyException(tenantId, request.StreamId, exception);
+        }
+    }
+
+    private async Task<AppendResult> AppendCoreAsync(
+        AppendRequest request,
+        string tenantId,
+        CancellationToken cancellationToken)
+    {
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         var stream = await context.Streams
             .SingleOrDefaultAsync(
@@ -109,9 +128,10 @@ public sealed class EventStore(
         {
             await context.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception)
+        catch (DbUpdateException)
         {
-            throw new EventStoreConcurrencyException(tenantId, request.StreamId, exception);
+            context.ChangeTracker.Clear();
+            throw;
         }
         await transaction.CommitAsync(cancellationToken);
         return new AppendResult(envelopes, false);

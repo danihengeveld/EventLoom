@@ -4,6 +4,7 @@ namespace EventLoom.EntityFrameworkCore.PostgreSql;
 
 /// <summary>Executes PostgreSQL operations with bounded retries for transient failures.</summary>
 public sealed class PostgreSqlRetryPolicy(EventStoreWorkerOptions options, TimeProvider timeProvider)
+    : IEventStoreRetryPolicy
 {
     private readonly EventStoreWorkerOptions options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));

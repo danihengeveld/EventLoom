@@ -58,6 +58,8 @@ public sealed class EventLoomHostingTests
 
         using var postgreSqlProvider = postgreSqlServices.BuildServiceProvider();
         await Assert.That(postgreSqlProvider.GetRequiredService<EventStoreOptions>().UseSchema).IsTrue();
+        await Assert.That(postgreSqlProvider.GetRequiredService<IEventStoreRetryPolicy>())
+            .IsTypeOf<PostgreSqlRetryPolicy>();
     }
 
     [EventType("tests.counter-incremented", Version = 1)]

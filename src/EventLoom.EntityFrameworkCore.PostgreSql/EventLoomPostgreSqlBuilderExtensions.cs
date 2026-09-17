@@ -1,4 +1,5 @@
 using EventLoom.Hosting;
+using EventLoom.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
 
@@ -27,6 +28,7 @@ public static class EventLoomPostgreSqlBuilderExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
         return builder
+            .AddEventStoreRetryPolicy<PostgreSqlRetryPolicy>()
             .ConfigureEventStore(options => options.UseSchema = true)
             .ConfigureDbContext(options => options.UseNpgsql(connectionString, configure));
     }

@@ -23,6 +23,9 @@ builder.Services.AddEventLoom(eventLoom =>
 This registers the dedicated `EventStoreDbContext`, serializer, event store,
 UUIDv7 identifier generator, and system clock. Use the lower-level context
 registration shown below when an application needs custom EF Core composition.
+The PostgreSQL provider also registers a bounded retry policy for transient
+connection failures, deadlocks, and serialization failures. Unique-constraint
+conflicts remain concurrency errors and are not retried.
 
 For a tenant-aware application, require a scoped tenant accessor:
 

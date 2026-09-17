@@ -142,6 +142,18 @@ public sealed class EventLoomBuilder
     }
 
     /// <summary>
+    /// Registers the provider-specific retry policy used by event-store appends.
+    /// </summary>
+    /// <typeparam name="TPolicy">The retry policy implementation.</typeparam>
+    /// <returns>This builder.</returns>
+    public EventLoomBuilder AddEventStoreRetryPolicy<TPolicy>()
+        where TPolicy : class, IEventStoreRetryPolicy
+    {
+        services.AddScoped<IEventStoreRetryPolicy, TPolicy>();
+        return this;
+    }
+
+    /// <summary>
     /// Uses the supplied time provider for persisted event timestamps and the EventLoom clock.
     /// </summary>
     /// <param name="provider">The time provider to use.</param>
