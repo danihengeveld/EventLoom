@@ -114,6 +114,10 @@ public sealed class AggregateRepository<TAggregate, TId>
                 {
                     aggregate = factory(id);
                 }
+                catch (SnapshotUpcastException)
+                {
+                    aggregate = factory(id);
+                }
             }
         }
 

@@ -44,21 +44,111 @@ public interface IAggregateSnapshotAdapter<TAggregate>
     void Restore(TAggregate aggregate, int schemaVersion, string payload);
 }
 
+/// <summary>Transforms one persisted snapshot payload version into its immediate successor.</summary>
+public interface ISnapshotUpcaster
+{
+    /// <summary>Gets the stable snapshot type handled by this upcaster.</summary>
+    string SnapshotType { get; }
+
+    /// <summary>Gets the source schema version.</summary>
+    int FromVersion { get; }
+
+    /// <summary>Gets the target schema version, which must be exactly one greater than the source.</summary>
+    int ToVersion { get; }
+
+    /// <summary>Transforms the source snapshot payload into the target payload.</summary>
+    /// <param name="payload">The source JSON payload.</param>
+    /// <returns>The transformed JSON payload.</returns>
+    JsonElement Upcast(JsonElement payload);
+}
+
+/// <summary>Validates and executes a deterministic sequence of upcasters for one snapshot type.</summary>
+public sealed class SnapshotUpcasterChain
+{
+    private readonly IReadOnlyList<ISnapshotUpcaster> upcasters;
+
+    /// <summary>Initializes a validated upcaster chain for a stable snapshot type.</summary>
+    /// <param name="snapshotType">The stable snapshot type handled by the chain.</param>
+    /// <param name="upcasters">The available upcasters for the snapshot type.</param>
+    public SnapshotUpcasterChain(string snapshotType, IEnumerable<ISnapshotUpcaster> upcasters)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(snapshotType);
+        ArgumentNullException.ThrowIfNull(upcasters);
+        var selected = upcasters.Where(value => value.SnapshotType == snapshotType).ToArray();
+        foreach (var upcaster in selected)
+        {
+            if (upcaster.FromVersion <= 0 || upcaster.ToVersion != upcaster.FromVersion + 1)
+            {
+                throw new SnapshotUpcastException(
+                    snapshotType,
+                    $"Upcasters must advance exactly one positive version: {upcaster.FromVersion} to {upcaster.ToVersion}.");
+            }
+        }
+
+        if (selected.GroupBy(value => value.FromVersion).Any(group => group.Count() > 1))
+        {
+            throw new SnapshotUpcastException(snapshotType, "Multiple upcasters begin at the same version.");
+        }
+
+        SnapshotType = snapshotType;
+        this.upcasters = selected;
+    }
+
+    /// <summary>Gets the stable snapshot type handled by the chain.</summary>
+    public string SnapshotType { get; }
+
+    /// <summary>Transforms a payload from its persisted schema version to the target version.</summary>
+    /// <param name="payload">The persisted JSON payload.</param>
+    /// <param name="fromVersion">The persisted schema version.</param>
+    /// <param name="targetVersion">The current schema version to reach.</param>
+    /// <returns>The transformed JSON payload.</returns>
+    public JsonElement Upcast(JsonElement payload, int fromVersion, int targetVersion)
+    {
+        var current = payload;
+        for (var version = fromVersion; version < targetVersion; version++)
+        {
+            var upcaster = upcasters.SingleOrDefault(value =>
+                value.FromVersion == version && value.ToVersion == version + 1)
+                ?? throw new SnapshotUpcastException(
+                    SnapshotType,
+                    $"No upcaster exists from version {version} to {version + 1}.");
+            current = upcaster.Upcast(current);
+        }
+
+        return current;
+    }
+}
+
 /// <summary>Provides an adapter for an explicit aggregate snapshot DTO.</summary>
 /// <typeparam name="TAggregate">The aggregate type.</typeparam>
 /// <typeparam name="TSnapshot">The immutable application-owned snapshot DTO type.</typeparam>
 public sealed class AggregateSnapshotAdapter<TAggregate, TSnapshot>(
     Func<TAggregate, TSnapshot> capture,
     Action<TAggregate, TSnapshot> restore,
-    JsonTypeInfo<TSnapshot>? jsonTypeInfo = null) : IAggregateSnapshotAdapter<TAggregate>
+    JsonTypeInfo<TSnapshot>? jsonTypeInfo = null,
+    IEnumerable<ISnapshotUpcaster>? upcasters = null) : IAggregateSnapshotAdapter<TAggregate>
     where TSnapshot : IAggregateSnapshot
 {
+    private static readonly JsonSerializerOptions DefaultJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = false
+    };
     private readonly Func<TAggregate, TSnapshot> capture = capture ?? throw new ArgumentNullException(nameof(capture));
     private readonly Action<TAggregate, TSnapshot> restore = restore ?? throw new ArgumentNullException(nameof(restore));
     private readonly SnapshotTypeAttribute metadata = typeof(TSnapshot).GetCustomAttributes(typeof(SnapshotTypeAttribute), false)
         .OfType<SnapshotTypeAttribute>()
         .SingleOrDefault() ?? throw new InvalidOperationException(
             $"Snapshot type '{typeof(TSnapshot).FullName}' is missing SnapshotTypeAttribute.");
+    private readonly SnapshotUpcasterChain? upcasterChain = upcasters is null
+        ? null
+        : new SnapshotUpcasterChain(
+            typeof(TSnapshot).GetCustomAttributes(typeof(SnapshotTypeAttribute), false)
+                .OfType<SnapshotTypeAttribute>()
+                .SingleOrDefault()?.Name
+                ?? throw new InvalidOperationException(
+                    $"Snapshot type '{typeof(TSnapshot).FullName}' is missing SnapshotTypeAttribute."),
+            upcasters);
 
     /// <inheritdoc />
     public string SnapshotType => metadata.Name;
@@ -73,7 +163,7 @@ public sealed class AggregateSnapshotAdapter<TAggregate, TSnapshot>(
     {
         ArgumentNullException.ThrowIfNull(aggregate);
         return jsonTypeInfo is null
-            ? JsonSerializer.Serialize(capture(aggregate))
+            ? JsonSerializer.Serialize(capture(aggregate), DefaultJsonOptions)
             : JsonSerializer.Serialize(capture(aggregate), jsonTypeInfo);
     }
 
@@ -82,16 +172,27 @@ public sealed class AggregateSnapshotAdapter<TAggregate, TSnapshot>(
     {
         ArgumentNullException.ThrowIfNull(aggregate);
         ArgumentException.ThrowIfNullOrWhiteSpace(payload);
-        if (schemaVersion != SchemaVersion)
+        if (schemaVersion > SchemaVersion)
         {
             throw new SnapshotIncompatibleException(SnapshotType, schemaVersion, SchemaVersion);
         }
 
         try
         {
+            var normalizedPayload = payload;
+            if (schemaVersion < SchemaVersion)
+            {
+                if (upcasterChain is null)
+                {
+                    throw new SnapshotIncompatibleException(SnapshotType, schemaVersion, SchemaVersion);
+                }
+
+                using var document = JsonDocument.Parse(payload);
+                normalizedPayload = upcasterChain.Upcast(document.RootElement, schemaVersion, SchemaVersion).GetRawText();
+            }
             var snapshot = jsonTypeInfo is null
-                ? JsonSerializer.Deserialize<TSnapshot>(payload)
-                : JsonSerializer.Deserialize(payload, jsonTypeInfo);
+                ? JsonSerializer.Deserialize<TSnapshot>(normalizedPayload, DefaultJsonOptions)
+                : JsonSerializer.Deserialize(normalizedPayload, jsonTypeInfo);
             restore(aggregate, snapshot ?? throw new SnapshotDeserializationException(SnapshotType));
         }
         catch (JsonException exception)
@@ -125,3 +226,7 @@ public sealed class SnapshotDeserializationException(string snapshotType, Except
 public sealed class SnapshotIncompatibleException(string snapshotType, int actualVersion, int expectedVersion)
     : InvalidOperationException(
         $"Snapshot '{snapshotType}' version {actualVersion} is incompatible with configured version {expectedVersion}.");
+
+/// <summary>Indicates that a snapshot upcaster chain is incomplete, ambiguous, or invalid.</summary>
+public sealed class SnapshotUpcastException(string snapshotType, string reason)
+    : InvalidOperationException($"Invalid snapshot upcaster chain for '{snapshotType}': {reason}");

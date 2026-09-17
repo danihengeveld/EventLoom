@@ -57,4 +57,6 @@ committed event history.
 
 Snapshots currently require matching schema versions. A snapshot with an
 unknown version, malformed JSON, or incompatible type falls back to full
-replay. Snapshot upcasters and custom retention policies are planned.
+replay. Pass deterministic `ISnapshotUpcaster` implementations to
+`AggregateSnapshotAdapter` when upgrading a snapshot DTO one schema version at
+a time. Custom retention policies are planned.
