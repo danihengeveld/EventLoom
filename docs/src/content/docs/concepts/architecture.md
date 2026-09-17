@@ -51,9 +51,10 @@ EventLoom context manually in most applications.
 
 ## Delivery boundary
 
-Current EventLoom supports event persistence, aggregate reconstruction,
-snapshots, and checkpointed projections. Outbox publication is planned but not
-implemented. Do not treat the current event store as a general cross-context
-transaction or message-delivery mechanism. The repository's accepted
+EventLoom supports event persistence, aggregate reconstruction, snapshots,
+checkpointed projections, and a transactional outbox. Outbox publication is
+at least once: publishers must use the stable message ID as their destination
+idempotency key. Application contexts can opt into a shared transaction only
+when both contexts use the exact same relational connection. The repository's accepted
 [architecture decisions](https://github.com/danihengeveld/EventLoom/tree/main/docs/architecture/decisions)
 record the rationale.

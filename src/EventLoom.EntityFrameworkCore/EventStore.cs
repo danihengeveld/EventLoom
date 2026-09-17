@@ -45,15 +45,29 @@ public sealed class EventStore(
         }
 
         var tenantId = ResolveTenant(request.TenantId);
+        using var activity = EventLoomTelemetry.ActivitySource.StartActivity(
+            "eventloom.append",
+            System.Diagnostics.ActivityKind.Producer);
+        activity?.SetTag("eventloom.aggregate.type", request.AggregateType);
+        activity?.SetTag("eventloom.event.count", request.Events.Count);
+        var startedAt = timeProvider.GetTimestamp();
         try
         {
-            return await retryPolicy.ExecuteAsync(
+            var result = await retryPolicy.ExecuteAsync(
                 cancellationToken => AppendCoreAsync(request, tenantId, ownsTransaction: true, cancellationToken),
                 cancellationToken);
+            RecordAppendSuccess(request, result, startedAt, activity);
+            return result;
         }
         catch (DbUpdateException exception)
         {
+            RecordAppendFailure(request, startedAt, activity, exception);
             throw new EventStoreConcurrencyException(tenantId, request.StreamId, exception);
+        }
+        catch (Exception exception)
+        {
+            RecordAppendFailure(request, startedAt, activity, exception);
+            throw;
         }
     }
 
@@ -258,6 +272,40 @@ public sealed class EventStore(
 
     private static string QuoteIdentifier(string identifier) =>
         $@"""{identifier.Replace("\"", "\"\"", StringComparison.Ordinal)}""";
+
+    private void RecordAppendSuccess(
+        AppendRequest request,
+        AppendResult result,
+        long startedAt,
+        System.Diagnostics.Activity? activity)
+    {
+        var tags = new System.Diagnostics.TagList
+        {
+            { "eventloom.aggregate.type", request.AggregateType }
+        };
+        EventLoomTelemetry.Appends.Add(1, tags);
+        EventLoomTelemetry.AppendedEvents.Add(result.Events.Count, tags);
+        EventLoomTelemetry.AppendDuration.Record(timeProvider.GetElapsedTime(startedAt).TotalMilliseconds, tags);
+        activity?.SetTag("eventloom.append.idempotent_replay", result.WasIdempotentReplay);
+        activity?.SetTag("eventloom.event.count", result.Events.Count);
+        activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Ok);
+    }
+
+    private void RecordAppendFailure(
+        AppendRequest request,
+        long startedAt,
+        System.Diagnostics.Activity? activity,
+        Exception exception)
+    {
+        var tags = new System.Diagnostics.TagList
+        {
+            { "eventloom.aggregate.type", request.AggregateType },
+            { "error.type", exception.GetType().FullName ?? exception.GetType().Name }
+        };
+        EventLoomTelemetry.AppendFailures.Add(1, tags);
+        EventLoomTelemetry.AppendDuration.Record(timeProvider.GetElapsedTime(startedAt).TotalMilliseconds, tags);
+        activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, exception.GetType().Name);
+    }
 
 
     /// <summary>

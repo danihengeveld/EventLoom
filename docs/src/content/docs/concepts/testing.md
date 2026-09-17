@@ -64,8 +64,10 @@ workaround only when Docker lifecycle cleanup is otherwise guaranteed.
 | Tenant access | A tenant never reads another tenant's stream or offsets. |
 | Idempotency | The same append ID returns the original envelopes. |
 | Projection | Checkpoint advances only after a handler succeeds; EF read-model effects are atomic with it. |
+| Outbox | Event and message commit together; retries reuse the stable message ID and persist attempt history. |
 
 Snapshot replay and projection storage are covered by SQLite integration tests.
 The hosted projection worker has restart, retry, pause, and inline-transaction
 coverage; PostgreSQL integration tests cover stale lease fencing. Outbox
-delivery is not available yet.
+delivery is covered with file-backed SQLite persistence, an idempotent retrying
+publisher, and PostgreSQL stale-lease fencing.

@@ -75,12 +75,30 @@ public sealed class AggregateRepository<TAggregate, TId>
         CancellationToken cancellationToken = default)
     {
         var aggregate = factory(id);
-        var history = await store.ReadStreamAsync(tenantId, streamId, cancellationToken: cancellationToken);
+        using var activity = EventLoomTelemetry.ActivitySource.StartActivity(
+            "eventloom.aggregate.load",
+            System.Diagnostics.ActivityKind.Client);
+        activity?.SetTag("eventloom.aggregate.type", aggregateType ?? "unconfigured");
+        var startedAt = TimeProvider.System.GetTimestamp();
+        IReadOnlyList<EventEnvelope> history;
+        using (var readActivity = EventLoomTelemetry.ActivitySource.StartActivity(
+                   "eventloom.event-stream.read",
+                   System.Diagnostics.ActivityKind.Client))
+        {
+            history = await store.ReadStreamAsync(tenantId, streamId, cancellationToken: cancellationToken);
+            readActivity?.SetTag("eventloom.event.count", history.Count);
+        }
+
         if (history.Count > 0)
         {
+            using var replayActivity = EventLoomTelemetry.ActivitySource.StartActivity(
+                "eventloom.aggregate.replay",
+                System.Diagnostics.ActivityKind.Internal);
+            replayActivity?.SetTag("eventloom.replay.tail_event_count", history.Count);
             aggregate.ApplyHistory(history.Select(value => value.Event));
         }
 
+        RecordLoad(aggregateType ?? "unconfigured", history.Count, startedAt, activity);
         return aggregate;
     }
 
@@ -92,15 +110,29 @@ public sealed class AggregateRepository<TAggregate, TId>
         EnsureConfigured();
         var tenantId = ResolveTenant();
         var aggregate = factory(id);
+        using var activity = EventLoomTelemetry.ActivitySource.StartActivity(
+            "eventloom.aggregate.load",
+            System.Diagnostics.ActivityKind.Client);
+        activity?.SetTag("eventloom.aggregate.type", aggregateType);
+        var startedAt = TimeProvider.System.GetTimestamp();
         long? fromVersion = null;
+        var snapshotUsed = false;
         if (snapshotStore is not null && snapshotAdapter is not null)
         {
-            var snapshot = await snapshotStore.ReadLatestAsync(
-                tenantId,
-                streamId!(id),
-                aggregateType!,
-                snapshotAdapter.SnapshotType,
-                cancellationToken);
+            SnapshotEnvelope? snapshot;
+            using (var snapshotActivity = EventLoomTelemetry.ActivitySource.StartActivity(
+                       "eventloom.snapshot.read",
+                       System.Diagnostics.ActivityKind.Client))
+            {
+                snapshotActivity?.SetTag("eventloom.snapshot.type", snapshotAdapter.SnapshotType);
+                snapshot = await snapshotStore.ReadLatestAsync(
+                    tenantId,
+                    streamId!(id),
+                    aggregateType!,
+                    snapshotAdapter.SnapshotType,
+                    cancellationToken);
+            }
+
             if (snapshot is not null)
             {
                 try
@@ -108,6 +140,7 @@ public sealed class AggregateRepository<TAggregate, TId>
                     snapshotAdapter.Restore(aggregate, snapshot.SchemaVersion, snapshot.Payload);
                     aggregate.RestoreSnapshotVersion(snapshot.StreamVersion);
                     fromVersion = snapshot.StreamVersion + 1;
+                    snapshotUsed = true;
                 }
                 catch (SnapshotDeserializationException)
                 {
@@ -127,12 +160,30 @@ public sealed class AggregateRepository<TAggregate, TId>
             }
         }
 
-        var history = await store.ReadStreamAsync(
-            tenantId,
-            streamId!(id),
-            fromVersion,
-            cancellationToken: cancellationToken);
-        aggregate.ApplyHistory(history.Select(value => value.Event));
+        IReadOnlyList<EventEnvelope> history;
+        using (var readActivity = EventLoomTelemetry.ActivitySource.StartActivity(
+                   "eventloom.event-stream.read",
+                   System.Diagnostics.ActivityKind.Client))
+        {
+            history = await store.ReadStreamAsync(
+                tenantId,
+                streamId!(id),
+                fromVersion,
+                cancellationToken: cancellationToken);
+            readActivity?.SetTag("eventloom.event.count", history.Count);
+        }
+
+        using (var replayActivity = EventLoomTelemetry.ActivitySource.StartActivity(
+                   "eventloom.aggregate.replay",
+                   System.Diagnostics.ActivityKind.Internal))
+        {
+            replayActivity?.SetTag("eventloom.replay.tail_event_count", history.Count);
+            replayActivity?.SetTag("eventloom.snapshot.used", snapshotUsed);
+            aggregate.ApplyHistory(history.Select(value => value.Event));
+        }
+
+        activity?.SetTag("eventloom.snapshot.used", snapshotUsed);
+        RecordLoad(aggregateType!, history.Count, startedAt, activity);
         return aggregate;
     }
 
@@ -209,6 +260,24 @@ public sealed class AggregateRepository<TAggregate, TId>
         }
 
         return result;
+    }
+
+    private static void RecordLoad(
+        string aggregateType,
+        int tailEventCount,
+        long startedAt,
+        System.Diagnostics.Activity? activity)
+    {
+        var tags = new System.Diagnostics.TagList
+        {
+            { "eventloom.aggregate.type", aggregateType }
+        };
+        EventLoomTelemetry.AggregateLoads.Add(1, tags);
+        EventLoomTelemetry.ReplayedEvents.Add(tailEventCount, tags);
+        EventLoomTelemetry.AggregateLoadDuration.Record(
+            TimeProvider.System.GetElapsedTime(startedAt).TotalMilliseconds,
+            tags);
+        activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Ok);
     }
 
     private void EnsureConfigured()
