@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\EventLoom\EventLoom.csproj" />
+    <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore\EventLoom.EntityFrameworkCore.csproj" />
     <PackageReference Include="TUnit" />
   </ItemGroup>
 
