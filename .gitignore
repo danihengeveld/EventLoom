@@ -1,0 +1,17 @@
+# .NET
+[Bb]in/
+[Oo]bj/
+TestResults/
+artifacts/
+*.user
+*.suo
+
+# Node and Astro
+docs/node_modules/
+docs/dist/
+docs/.astro/
+
+# IDE and operating system
+.vs/
+.vscode/*.local.json
+.DS_Store
