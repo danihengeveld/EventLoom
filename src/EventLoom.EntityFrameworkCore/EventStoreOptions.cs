@@ -1,10 +1,16 @@
 namespace EventLoom.EntityFrameworkCore;
 
+using EventLoom;
+
 /// <summary>
 /// Controls the names and schema used by the EventLoom event-store tables.
 /// </summary>
 public sealed class EventStoreOptions
 {
+    /// <summary>
+    /// Gets or sets the tenancy enforcement mode. The default is <see cref="TenancyMode.Disabled"/>.
+    /// </summary>
+    public TenancyMode TenancyMode { get; set; }
     /// <summary>
     /// Gets or sets the database schema name. The default is <c>eventloom</c>.
     /// </summary>

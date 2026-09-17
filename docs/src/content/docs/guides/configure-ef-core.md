@@ -24,6 +24,21 @@ This registers the dedicated `EventStoreDbContext`, serializer, event store,
 UUIDv7 identifier generator, and system clock. Use the lower-level context
 registration shown below when an application needs custom EF Core composition.
 
+For a tenant-aware application, require a scoped tenant accessor:
+
+```csharp
+builder.Services.AddScoped<ITenantAccessor, RequestTenantAccessor>();
+builder.Services.AddEventLoom(eventLoom =>
+{
+    eventLoom.ConfigureTenancy(TenancyMode.Required);
+    eventLoom.RegisterEvent<OrderPlaced>();
+    eventLoom.UsePostgreSql(connectionString);
+});
+```
+
+When required, EventLoom rejects operations without a tenant or with an
+explicit tenant that differs from the scoped accessor.
+
 ```csharp
 builder.Services.AddDbContext<EventStoreDbContext>((services, options) =>
 {

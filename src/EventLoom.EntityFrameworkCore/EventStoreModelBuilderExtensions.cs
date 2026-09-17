@@ -59,7 +59,14 @@ public static class EventStoreModelBuilderExtensions
         });
         ConfigureSimpleTable<SnapshotEntity>(modelBuilder, $"{prefix}snapshots", schema);
         ConfigureSimpleTable<ProjectionCheckpointEntity>(modelBuilder, $"{prefix}projection_checkpoints", schema);
-        ConfigureSimpleTable<ProjectionLeaseEntity>(modelBuilder, $"{prefix}projection_leases", schema);
+        modelBuilder.Entity<ProjectionLeaseEntity>(entity =>
+        {
+            entity.ToTable($"{prefix}projection_leases", schema);
+            entity.HasKey(value => new { value.TenantId, value.LeaseName });
+            entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.LeaseName).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.OwnerId).HasMaxLength(256).IsRequired();
+        });
         ConfigureSimpleTable<ProjectionFailureEntity>(modelBuilder, $"{prefix}projection_failures", schema);
         ConfigureSimpleTable<OutboxEntity>(modelBuilder, $"{prefix}outbox", schema);
         return modelBuilder;

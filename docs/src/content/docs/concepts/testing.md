@@ -27,3 +27,9 @@ The PostgreSQL integration suite requires Docker. On Docker Desktop
 installations that block the Testcontainers resource-reaper image, run the
 suite with `TESTCONTAINERS_RYUK_DISABLED=true` and clean up containers after the
 run using the Docker Desktop environment's normal lifecycle controls.
+
+Phase 5 storage primitives are tenant-aware. Configure
+`TenancyMode.Required` when every operation must match a scoped
+`ITenantAccessor`; background and administrative code should pass an explicit
+tenant ID. `WorkerLeaseStore` uses tenant-scoped ownership and fencing tokens,
+so stale owners cannot release a newer lease.

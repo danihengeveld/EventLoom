@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.Json.Serialization;
+using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -113,6 +114,24 @@ public sealed class EventLoomBuilder
     }
 
     /// <summary>
+    /// Configures tenancy enforcement for event-store operations.
+    /// When required, a scoped <see cref="ITenantAccessor"/> must provide a tenant and
+    /// explicit tenant arguments must match it.
+    /// </summary>
+    /// <param name="mode">The tenancy enforcement mode.</param>
+    /// <returns>This builder.</returns>
+    public EventLoomBuilder ConfigureTenancy(TenancyMode mode)
+    {
+        if (!Enum.IsDefined(mode))
+        {
+            throw new ArgumentOutOfRangeException(nameof(mode));
+        }
+
+        eventStoreOptions.TenancyMode = mode;
+        return this;
+    }
+
+    /// <summary>
     /// Uses the supplied time provider for persisted event timestamps and the EventLoom clock.
     /// </summary>
     /// <param name="provider">The time provider to use.</param>
@@ -214,5 +233,6 @@ public sealed class EventLoomBuilder
             configureDbContext(serviceProvider, options);
         });
         services.AddScoped<EventStore>();
+        services.AddScoped<WorkerLeaseStore>();
     }
 }

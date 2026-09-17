@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using EventLoom;
 
 namespace EventLoom.EntityFrameworkCore;
 
@@ -9,13 +10,17 @@ public sealed class EventStore(
     EventStoreDbContext context,
     EventSerializer serializer,
     IEventIdGenerator eventIdGenerator,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    EventStoreOptions? eventStoreOptions = null,
+    ITenantAccessor? tenantAccessor = null)
 {
     private readonly EventStoreDbContext context = context ?? throw new ArgumentNullException(nameof(context));
     private readonly EventSerializer serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
     private readonly IEventIdGenerator eventIdGenerator =
         eventIdGenerator ?? throw new ArgumentNullException(nameof(eventIdGenerator));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+    private readonly EventStoreOptions eventStoreOptions = eventStoreOptions ?? new();
+    private readonly ITenantAccessor? tenantAccessor = tenantAccessor;
 
     /// <summary>
     /// Appends a batch atomically and returns the persisted envelopes.
@@ -30,7 +35,7 @@ public sealed class EventStore(
             throw new ArgumentException("At least one event is required.", nameof(request));
         }
 
-        var tenantId = new TenantId(request.TenantId).Value;
+        var tenantId = ResolveTenant(request.TenantId);
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         var stream = await context.Streams
             .SingleOrDefaultAsync(
@@ -115,7 +120,7 @@ public sealed class EventStore(
         long? toVersion = null,
         CancellationToken cancellationToken = default)
     {
-        tenantId = new TenantId(tenantId).Value;
+        tenantId = ResolveTenant(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         if (fromVersion is < 1 || toVersion is < 1 || (fromVersion.HasValue && toVersion.HasValue && fromVersion > toVersion))
         {
@@ -148,7 +153,7 @@ public sealed class EventStore(
         int limit = 100,
         CancellationToken cancellationToken = default)
     {
-        tenantId = new TenantId(tenantId).Value;
+        tenantId = ResolveTenant(tenantId);
         if (afterPosition < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(afterPosition));
@@ -165,6 +170,26 @@ public sealed class EventStore(
             .Take(limit)
             .ToListAsync(cancellationToken);
         return entities.Select(ToEnvelope).ToArray();
+    }
+
+    private string ResolveTenant(string requestedTenantId)
+    {
+        var requested = new TenantId(requestedTenantId);
+        if (eventStoreOptions.TenancyMode != TenancyMode.Required)
+        {
+            return requested.Value;
+        }
+
+        var current = tenantAccessor?.TenantId
+            ?? throw new InvalidOperationException(
+                "Tenancy is required, but the scoped tenant accessor did not provide a tenant.");
+        if (current.Value != requested.Value)
+        {
+            throw new InvalidOperationException(
+                $"The requested tenant '{requested.Value}' does not match the scoped tenant '{current.Value}'.");
+        }
+
+        return current.Value;
     }
 
     private EventEnvelope ToEnvelope(EventEntity entity) =>

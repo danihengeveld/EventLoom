@@ -47,9 +47,13 @@ internal sealed class ProjectionCheckpointEntity : IEntityWithId
     public long Id { get; set; }
 }
 
-internal sealed class ProjectionLeaseEntity : IEntityWithId
+internal sealed class ProjectionLeaseEntity
 {
-    public long Id { get; set; }
+    public required string TenantId { get; set; }
+    public required string LeaseName { get; set; }
+    public required string OwnerId { get; set; }
+    public long FencingToken { get; set; }
+    public DateTimeOffset LeaseUntil { get; set; }
 }
 
 internal sealed class ProjectionFailureEntity : IEntityWithId
