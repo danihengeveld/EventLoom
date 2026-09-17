@@ -1,0 +1,21 @@
+EventLoom.EntityFrameworkCore.PostgreSql.EventLoomPostgreSqlBuilderExtensions
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification.Deadlock = 2 -> EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification.SerializationFailure = 3 -> EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification.Transient = 1 -> EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification.UniqueViolation = 4 -> EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification.Unknown = 0 -> EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassifier
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlProviderCapabilities
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlProviderCapabilities.PostgreSqlProviderCapabilities() -> void
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlProviderCapabilities.SupportsDistributedWorkers.get -> bool
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlProviderCapabilities.SupportsSchemas.get -> bool
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlRetryPolicy
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlRetryPolicy.ExecuteAsync<T>(System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<T>!>! operation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T>!
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlRetryPolicy.PostgreSqlRetryPolicy(EventLoom.Hosting.EventStoreWorkerOptions! options, System.TimeProvider! timeProvider) -> void
+static EventLoom.EntityFrameworkCore.PostgreSql.EventLoomPostgreSqlBuilderExtensions.UsePostgreSql(this EventLoom.Hosting.EventLoomBuilder! builder, System.Func<System.IServiceProvider!, System.Data.Common.DbConnection!>! connectionFactory) -> EventLoom.Hosting.EventLoomBuilder!
+static EventLoom.EntityFrameworkCore.PostgreSql.EventLoomPostgreSqlBuilderExtensions.UsePostgreSql(this EventLoom.Hosting.EventLoomBuilder! builder, System.Func<System.IServiceProvider!, System.Data.Common.DbConnection!>! connectionFactory, System.Action<Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure.NpgsqlDbContextOptionsBuilder!>? configure) -> EventLoom.Hosting.EventLoomBuilder!
+static EventLoom.EntityFrameworkCore.PostgreSql.EventLoomPostgreSqlBuilderExtensions.UsePostgreSql(this EventLoom.Hosting.EventLoomBuilder! builder, string! connectionString) -> EventLoom.Hosting.EventLoomBuilder!
+static EventLoom.EntityFrameworkCore.PostgreSql.EventLoomPostgreSqlBuilderExtensions.UsePostgreSql(this EventLoom.Hosting.EventLoomBuilder! builder, string! connectionString, System.Action<Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure.NpgsqlDbContextOptionsBuilder!>? configure) -> EventLoom.Hosting.EventLoomBuilder!
+static EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassifier.Classify(System.Exception! exception) -> EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification
+static EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassifier.IsTransient(EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification classification) -> bool

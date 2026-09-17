@@ -1,0 +1,10 @@
+EventLoom.EntityFrameworkCore.Sqlite.EventLoomSqliteBuilderExtensions
+EventLoom.EntityFrameworkCore.Sqlite.SqliteProviderCapabilities
+EventLoom.EntityFrameworkCore.Sqlite.SqliteProviderCapabilities.SqliteProviderCapabilities() -> void
+EventLoom.EntityFrameworkCore.Sqlite.SqliteProviderCapabilities.SupportsDistributedWorkers.get -> bool
+EventLoom.EntityFrameworkCore.Sqlite.SqliteProviderCapabilities.SupportsSchemas.get -> bool
+EventLoom.EntityFrameworkCore.Sqlite.SqliteProviderCapabilities.ValidateWorkerConfiguration(bool distributedWorkersEnabled) -> void
+static EventLoom.EntityFrameworkCore.Sqlite.EventLoomSqliteBuilderExtensions.UseSqlite(this EventLoom.Hosting.EventLoomBuilder! builder, System.Func<System.IServiceProvider!, System.Data.Common.DbConnection!>! connectionFactory) -> EventLoom.Hosting.EventLoomBuilder!
+static EventLoom.EntityFrameworkCore.Sqlite.EventLoomSqliteBuilderExtensions.UseSqlite(this EventLoom.Hosting.EventLoomBuilder! builder, System.Func<System.IServiceProvider!, System.Data.Common.DbConnection!>! connectionFactory, System.Action<Microsoft.EntityFrameworkCore.Infrastructure.SqliteDbContextOptionsBuilder!>? configure) -> EventLoom.Hosting.EventLoomBuilder!
+static EventLoom.EntityFrameworkCore.Sqlite.EventLoomSqliteBuilderExtensions.UseSqlite(this EventLoom.Hosting.EventLoomBuilder! builder, string! connectionString) -> EventLoom.Hosting.EventLoomBuilder!
+static EventLoom.EntityFrameworkCore.Sqlite.EventLoomSqliteBuilderExtensions.UseSqlite(this EventLoom.Hosting.EventLoomBuilder! builder, string! connectionString, System.Action<Microsoft.EntityFrameworkCore.Infrastructure.SqliteDbContextOptionsBuilder!>? configure) -> EventLoom.Hosting.EventLoomBuilder!

@@ -1,0 +1,63 @@
+EventLoom.Hosting.EventLoomBuilder
+EventLoom.Hosting.EventLoomBuilder.AddAggregateRepository<TAggregate, TId>(System.Func<TId, TAggregate!>! factory) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.AddAggregateRepository<TAggregate, TId>(System.Func<TId, TAggregate!>! factory, System.Func<TAggregate!, System.Collections.Generic.IEnumerable<EventLoom.IDomainEvent!>!>! pendingEvents, System.Func<TAggregate!, long>! version) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.AddAggregateRepository<TAggregate, TId>(System.Func<TId, TAggregate!>! factory, string! aggregateType, System.Func<TId, string!>! streamId) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.AddAggregateRepository<TAggregate, TId>(System.Func<TId, TAggregate!>! factory, string! aggregateType, System.Func<TId, string!>! streamId, EventLoom.IAggregateSnapshotAdapter<TAggregate!>! snapshotAdapter, EventLoom.ISnapshotPolicy? snapshotPolicy = null, EventLoom.ISnapshotInvalidator? snapshotInvalidator = null) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.AddEfProjection<TProjection, TEvent>(string! name, int version = 1) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.AddEventStoreRetryPolicy<TPolicy>() -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.AddInlineProjection<TProjection, TEvent>(string! name, int version = 1) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.AddJsonSerializerContext(System.Text.Json.Serialization.JsonSerializerContext! context) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.AddOutboxPublisher<TPublisher>() -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.AddProjection<TProjection, TEvent>(string! name, int version = 1) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.AddUpcaster(EventLoom.IEventUpcaster! upcaster) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.ConfigureDbContext(System.Action<Microsoft.EntityFrameworkCore.DbContextOptionsBuilder!>! configure) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.ConfigureDbContext(System.Action<System.IServiceProvider!, Microsoft.EntityFrameworkCore.DbContextOptionsBuilder!>! configure) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.ConfigureEventStore(System.Action<EventLoom.EntityFrameworkCore.EventStoreOptions!>! configure) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.ConfigureProjectionModel(System.Action<Microsoft.EntityFrameworkCore.ModelBuilder!>! configure) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.ConfigureSnapshotRetention(EventLoom.ISnapshotRetentionPolicy! retentionPolicy) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.ConfigureTenancy(EventLoom.TenancyMode mode) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.ConfigureWorkers(System.Action<EventLoom.Hosting.EventStoreWorkerOptions!>! configure) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.RegisterEvent<TEvent>() -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.RegisterEventsFromAssembly(System.Reflection.Assembly! assembly) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomBuilder.UseTimeProvider(System.TimeProvider! provider) -> EventLoom.Hosting.EventLoomBuilder!
+EventLoom.Hosting.EventLoomHealthCheckOptions
+EventLoom.Hosting.EventLoomHealthCheckOptions.EventLoomHealthCheckOptions() -> void
+EventLoom.Hosting.EventLoomHealthCheckOptions.MaximumOutboxBacklog.get -> int
+EventLoom.Hosting.EventLoomHealthCheckOptions.MaximumOutboxBacklog.set -> void
+EventLoom.Hosting.EventLoomHealthCheckOptions.MaximumProjectionLag.get -> long
+EventLoom.Hosting.EventLoomHealthCheckOptions.MaximumProjectionLag.set -> void
+EventLoom.Hosting.EventLoomHealthCheckServiceCollectionExtensions
+EventLoom.Hosting.EventLoomOpenTelemetryExtensions
+EventLoom.Hosting.EventLoomServiceCollectionExtensions
+EventLoom.Hosting.EventStoreWorkerOptions
+EventLoom.Hosting.EventStoreWorkerOptions.BatchSize.get -> int
+EventLoom.Hosting.EventStoreWorkerOptions.BatchSize.set -> void
+EventLoom.Hosting.EventStoreWorkerOptions.EventStoreWorkerOptions() -> void
+EventLoom.Hosting.EventStoreWorkerOptions.InstanceId.get -> string!
+EventLoom.Hosting.EventStoreWorkerOptions.InstanceId.set -> void
+EventLoom.Hosting.EventStoreWorkerOptions.LeaseDuration.get -> System.TimeSpan
+EventLoom.Hosting.EventStoreWorkerOptions.LeaseDuration.set -> void
+EventLoom.Hosting.EventStoreWorkerOptions.LeaseRenewalInterval.get -> System.TimeSpan
+EventLoom.Hosting.EventStoreWorkerOptions.LeaseRenewalInterval.set -> void
+EventLoom.Hosting.EventStoreWorkerOptions.MaxRetryAttempts.get -> int
+EventLoom.Hosting.EventStoreWorkerOptions.MaxRetryAttempts.set -> void
+EventLoom.Hosting.EventStoreWorkerOptions.PollInterval.get -> System.TimeSpan
+EventLoom.Hosting.EventStoreWorkerOptions.PollInterval.set -> void
+EventLoom.Hosting.EventStoreWorkerOptions.Validate() -> void
+EventLoom.Hosting.IOutboxPublisher
+EventLoom.Hosting.IOutboxPublisher.PublishAsync(EventLoom.EntityFrameworkCore.OutboxMessage! message, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+EventLoom.Hosting.OutboxAdministration
+EventLoom.Hosting.OutboxAdministration.GetAsync(string! tenantId, System.Guid messageId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.OutboxMessage?>!
+EventLoom.Hosting.OutboxAdministration.OutboxAdministration(EventLoom.EntityFrameworkCore.OutboxStore! store) -> void
+EventLoom.Hosting.OutboxAdministration.ReadAttemptsAsync(string! tenantId, System.Guid messageId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<EventLoom.EntityFrameworkCore.OutboxAttempt!>!>!
+EventLoom.Hosting.ProjectionAdministration
+EventLoom.Hosting.ProjectionAdministration.GetCheckpointAsync(string! tenantId, EventLoom.EntityFrameworkCore.ProjectionKey! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.ProjectionCheckpoint?>!
+EventLoom.Hosting.ProjectionAdministration.ProjectionAdministration(EventLoom.EntityFrameworkCore.ProjectionStore! store) -> void
+EventLoom.Hosting.ProjectionAdministration.ReadFailuresAsync(string! tenantId, EventLoom.EntityFrameworkCore.ProjectionKey! key, bool includeResolved = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<EventLoom.EntityFrameworkCore.ProjectionFailure!>!>!
+EventLoom.Hosting.ProjectionAdministration.ReplayAsync(string! tenantId, EventLoom.EntityFrameworkCore.ProjectionKey! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+EventLoom.Hosting.ProjectionAdministration.ResumeAsync(string! tenantId, EventLoom.EntityFrameworkCore.ProjectionKey! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+EventLoom.Hosting.ProjectionAdministration.SkipAsync(string! tenantId, EventLoom.EntityFrameworkCore.ProjectionKey! key, System.Guid eventId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+static EventLoom.Hosting.EventLoomHealthCheckServiceCollectionExtensions.AddEventLoomHealthChecks(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<EventLoom.Hosting.EventLoomHealthCheckOptions!>? configure = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static EventLoom.Hosting.EventLoomOpenTelemetryExtensions.AddEventLoomInstrumentation(this OpenTelemetry.Metrics.MeterProviderBuilder! builder) -> OpenTelemetry.Metrics.MeterProviderBuilder!
+static EventLoom.Hosting.EventLoomOpenTelemetryExtensions.AddEventLoomInstrumentation(this OpenTelemetry.Trace.TracerProviderBuilder! builder) -> OpenTelemetry.Trace.TracerProviderBuilder!
+static EventLoom.Hosting.EventLoomServiceCollectionExtensions.AddEventLoom(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Action<EventLoom.Hosting.EventLoomBuilder!>! configure) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

@@ -8,17 +8,32 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <AnalysisLevel>latest</AnalysisLevel>
     <Deterministic>true</Deterministic>
+    <EventLoomPackageVersion>0.1.0-alpha.0</EventLoomPackageVersion>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(IsTestProject)' != 'true' and '$(MSBuildProjectName)' != 'EventLoom.UnitTests'">
+  <PropertyGroup>
+    <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom'">true</IsEventLoomPackage>
+    <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore'">true</IsEventLoomPackage>
+    <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.Hosting'">true</IsEventLoomPackage>
+    <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.PostgreSql'">true</IsEventLoomPackage>
+    <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.Sqlite'">true</IsEventLoomPackage>
+    <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.Testing'">true</IsEventLoomPackage>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsEventLoomPackage)' == 'true'">
     <IsPackable>true</IsPackable>
     <PackageId>$(MSBuildProjectName)</PackageId>
-    <Version>0.1.0-alpha.0</Version>
-    <Authors>EventLoom Contributors</Authors>
+    <Version>$(EventLoomPackageVersion)</Version>
+    <Authors>Dani Hengeveld</Authors>
+    <Company>Dani Hengeveld</Company>
+    <Copyright>Copyright (c) 2026 Dani Hengeveld</Copyright>
+    <PackageProjectUrl>https://github.com/danihengeveld/EventLoom</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/danihengeveld/EventLoom.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <Description>EventLoom event sourcing framework component.</Description>
     <PackageTags>event-sourcing;ef-core;postgresql;sqlite</PackageTags>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
@@ -29,7 +44,21 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(IsPackable)' == 'true' and Exists('$(MSBuildThisFileDirectory)README.md')">
-    <None Include="$(MSBuildThisFileDirectory)README.md" Pack="true" PackagePath="\" />
+  <PropertyGroup>
+    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom'">Core abstractions for building versioned event-sourced aggregates with EventLoom.</Description>
+    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore'">EF Core event-store persistence, aggregate repositories, snapshots, projections, and outbox support for EventLoom.</Description>
+    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.Hosting'">Dependency-injection, background-worker, health-check, and OpenTelemetry integration for EventLoom.</Description>
+    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.PostgreSql'">PostgreSQL storage provider with distributed append and worker correctness for EventLoom.</Description>
+    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.Sqlite'">SQLite storage provider for local and controlled single-node EventLoom deployments.</Description>
+    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.Testing'">Testing helpers for EventLoom aggregates and event contracts.</Description>
+    <PackageTags Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.PostgreSql'">event-sourcing;ef-core;postgresql;event-store</PackageTags>
+    <PackageTags Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.Sqlite'">event-sourcing;ef-core;sqlite;event-store</PackageTags>
+    <PackageTags Condition="'$(MSBuildProjectName)' == 'EventLoom.Testing'">event-sourcing;testing;aggregate-testing</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsEventLoomPackage)' == 'true'">
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
+    <None Include="$(MSBuildProjectDirectory)/README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 </Project>

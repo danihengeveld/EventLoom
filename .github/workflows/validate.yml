@@ -23,7 +23,39 @@ jobs:
       - run: dotnet run --project tests/EventLoom.EntityFrameworkCore.UnitTests --configuration Release --no-build
       - run: dotnet run --project tests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests --configuration Release --no-build
       - run: dotnet run --project tests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests --configuration Release --no-build
-      - run: dotnet pack EventLoom.slnx --configuration Release --no-build --output artifacts/packages
+
+  packages:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - run: dotnet restore EventLoom.slnx --locked-mode
+      - run: dotnet build EventLoom.slnx --configuration Release --no-restore
+      - name: Pack supported library packages
+        shell: bash
+        run: |
+          for project in src/*/*.csproj; do
+            dotnet pack "$project" --configuration Release --no-build --no-restore --output artifacts/packages
+          done
+      - name: Verify intended package set
+        shell: bash
+        run: |
+          cat <<'EOF' | sort > expected-packages.txt
+          EventLoom.0.1.0-alpha.0.nupkg
+          EventLoom.EntityFrameworkCore.0.1.0-alpha.0.nupkg
+          EventLoom.EntityFrameworkCore.PostgreSql.0.1.0-alpha.0.nupkg
+          EventLoom.EntityFrameworkCore.Sqlite.0.1.0-alpha.0.nupkg
+          EventLoom.Hosting.0.1.0-alpha.0.nupkg
+          EventLoom.Testing.0.1.0-alpha.0.nupkg
+          EOF
+          find artifacts/packages -maxdepth 1 -name '*.nupkg' -exec basename {} \; | sort > actual-packages.txt
+          diff --unified expected-packages.txt actual-packages.txt
+      - name: Restore package consumer
+        run: dotnet restore tests/EventLoom.PackageConsumerTests --configfile tests/EventLoom.PackageConsumerTests/NuGet.Config -p:RestorePackagesWithLockFile=false
+      - name: Run package consumer
+        run: dotnet run --project tests/EventLoom.PackageConsumerTests --configuration Release --no-restore
 
   docs:
     runs-on: ubuntu-latest

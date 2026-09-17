@@ -1,0 +1,6 @@
+EventLoom.Testing.EventTestBuilder<TEvent>
+EventLoom.Testing.EventTestBuilder<TEvent>.Build() -> TEvent
+EventLoom.Testing.EventTestBuilder<TEvent>.EventTestBuilder() -> void
+EventLoom.Testing.EventTestBuilder<TEvent>.Serialize(EventLoom.EventSerializer! serializer) -> string!
+EventLoom.Testing.EventTestBuilder<TEvent>.SerializeToDocument(EventLoom.EventSerializer! serializer) -> System.Text.Json.JsonDocument!
+EventLoom.Testing.EventTestBuilder<TEvent>.With(TEvent event) -> EventLoom.Testing.EventTestBuilder<TEvent>!

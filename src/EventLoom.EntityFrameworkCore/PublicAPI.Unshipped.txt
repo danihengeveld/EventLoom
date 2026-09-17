@@ -1,0 +1,370 @@
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.AggregateRepository(EventLoom.EntityFrameworkCore.EventStore! store, System.Func<TId, TAggregate!>! factory, System.Func<TAggregate!, System.Collections.Generic.IEnumerable<EventLoom.IDomainEvent!>!>! pendingEvents, System.Func<TAggregate!, long>! version) -> void
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.AggregateRepository(EventLoom.EntityFrameworkCore.EventStore! store, System.Func<TId, TAggregate!>! factory, string! aggregateType, System.Func<TId, string!>! streamId, EventLoom.ITenantAccessor? tenantAccessor = null, EventLoom.EntityFrameworkCore.SnapshotStore? snapshotStore = null, EventLoom.IAggregateSnapshotAdapter<TAggregate!>? snapshotAdapter = null, EventLoom.ISnapshotPolicy? snapshotPolicy = null, EventLoom.ISnapshotInvalidator? snapshotInvalidator = null) -> void
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.LoadAsync(TId id) -> System.Threading.Tasks.Task<TAggregate!>!
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.LoadAsync(TId id, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<TAggregate!>!
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.LoadAsync(string! tenantId, string! streamId, TId id) -> System.Threading.Tasks.Task<TAggregate!>!
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.LoadAsync(string! tenantId, string! streamId, TId id, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<TAggregate!>!
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.SaveAsync(TAggregate! aggregate) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.AppendResult!>!
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.SaveAsync(TAggregate! aggregate, EventLoom.EventMetadata? metadata) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.AppendResult!>!
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.SaveAsync(TAggregate! aggregate, EventLoom.EventMetadata? metadata, string? appendId) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.AppendResult!>!
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.SaveAsync(TAggregate! aggregate, EventLoom.EventMetadata? metadata, string? appendId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.AppendResult!>!
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.SaveAsync(string! tenantId, string! streamId, string! aggregateType, TAggregate! aggregate, EventLoom.EventMetadata! metadata) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.AppendResult!>!
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.SaveAsync(string! tenantId, string! streamId, string! aggregateType, TAggregate! aggregate, EventLoom.EventMetadata! metadata, string? appendId) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.AppendResult!>!
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.SaveAsync(string! tenantId, string! streamId, string! aggregateType, TAggregate! aggregate, EventLoom.EventMetadata! metadata, string? appendId, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.AppendResult!>!
+EventLoom.EntityFrameworkCore.AppendRequest
+EventLoom.EntityFrameworkCore.AppendRequest.<Clone>$() -> EventLoom.EntityFrameworkCore.AppendRequest!
+EventLoom.EntityFrameworkCore.AppendRequest.AggregateType.get -> string!
+EventLoom.EntityFrameworkCore.AppendRequest.AggregateType.init -> void
+EventLoom.EntityFrameworkCore.AppendRequest.AppendId.get -> string?
+EventLoom.EntityFrameworkCore.AppendRequest.AppendId.init -> void
+EventLoom.EntityFrameworkCore.AppendRequest.AppendRequest(string! TenantId, string! StreamId, string! AggregateType, EventLoom.ExpectedVersion ExpectedVersion, System.Collections.Generic.IReadOnlyList<EventLoom.IDomainEvent!>! Events, EventLoom.EventMetadata! Metadata, string? AppendId = null) -> void
+EventLoom.EntityFrameworkCore.AppendRequest.Deconstruct(out string! TenantId, out string! StreamId, out string! AggregateType, out EventLoom.ExpectedVersion ExpectedVersion, out System.Collections.Generic.IReadOnlyList<EventLoom.IDomainEvent!>! Events, out EventLoom.EventMetadata! Metadata, out string? AppendId) -> void
+EventLoom.EntityFrameworkCore.AppendRequest.Equals(EventLoom.EntityFrameworkCore.AppendRequest? other) -> bool
+EventLoom.EntityFrameworkCore.AppendRequest.Events.get -> System.Collections.Generic.IReadOnlyList<EventLoom.IDomainEvent!>!
+EventLoom.EntityFrameworkCore.AppendRequest.Events.init -> void
+EventLoom.EntityFrameworkCore.AppendRequest.ExpectedVersion.get -> EventLoom.ExpectedVersion
+EventLoom.EntityFrameworkCore.AppendRequest.ExpectedVersion.init -> void
+EventLoom.EntityFrameworkCore.AppendRequest.Metadata.get -> EventLoom.EventMetadata!
+EventLoom.EntityFrameworkCore.AppendRequest.Metadata.init -> void
+EventLoom.EntityFrameworkCore.AppendRequest.StreamId.get -> string!
+EventLoom.EntityFrameworkCore.AppendRequest.StreamId.init -> void
+EventLoom.EntityFrameworkCore.AppendRequest.TenantId.get -> string!
+EventLoom.EntityFrameworkCore.AppendRequest.TenantId.init -> void
+EventLoom.EntityFrameworkCore.AppendResult
+EventLoom.EntityFrameworkCore.AppendResult.<Clone>$() -> EventLoom.EntityFrameworkCore.AppendResult!
+EventLoom.EntityFrameworkCore.AppendResult.AppendResult(System.Collections.Generic.IReadOnlyList<EventLoom.EventEnvelope!>! Events, bool WasIdempotentReplay) -> void
+EventLoom.EntityFrameworkCore.AppendResult.Deconstruct(out System.Collections.Generic.IReadOnlyList<EventLoom.EventEnvelope!>! Events, out bool WasIdempotentReplay) -> void
+EventLoom.EntityFrameworkCore.AppendResult.Equals(EventLoom.EntityFrameworkCore.AppendResult? other) -> bool
+EventLoom.EntityFrameworkCore.AppendResult.Events.get -> System.Collections.Generic.IReadOnlyList<EventLoom.EventEnvelope!>!
+EventLoom.EntityFrameworkCore.AppendResult.Events.init -> void
+EventLoom.EntityFrameworkCore.AppendResult.WasIdempotentReplay.get -> bool
+EventLoom.EntityFrameworkCore.AppendResult.WasIdempotentReplay.init -> void
+EventLoom.EntityFrameworkCore.DistributedWorkerConfigurationException
+EventLoom.EntityFrameworkCore.DistributedWorkerConfigurationException.DistributedWorkerConfigurationException(string! providerName) -> void
+EventLoom.EntityFrameworkCore.EventStore
+EventLoom.EntityFrameworkCore.EventStore.AppendAsync(EventLoom.EntityFrameworkCore.AppendRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.AppendResult!>!
+EventLoom.EntityFrameworkCore.EventStore.AppendInTransactionAsync(EventLoom.EntityFrameworkCore.AppendRequest! request, System.Data.Common.DbTransaction! transaction, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.AppendResult!>!
+EventLoom.EntityFrameworkCore.EventStore.EventStore(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, EventLoom.EventSerializer! serializer, EventLoom.IEventIdGenerator! eventIdGenerator, System.TimeProvider! timeProvider, EventLoom.EntityFrameworkCore.EventStoreOptions? eventStoreOptions = null, EventLoom.ITenantAccessor? tenantAccessor = null, EventLoom.EntityFrameworkCore.IEventStoreRetryPolicy? retryPolicy = null, EventLoom.IInlineProjectionDispatcher? inlineProjectionDispatcher = null) -> void
+EventLoom.EntityFrameworkCore.EventStore.ReadStreamAsync(string! tenantId, string! streamId, long? fromVersion = null, long? toVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<EventLoom.EventEnvelope!>!>!
+EventLoom.EntityFrameworkCore.EventStore.ReadTenantOffsetsAsync(string! tenantId, long afterOffset = 0, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<EventLoom.EventEnvelope!>!>!
+EventLoom.EntityFrameworkCore.EventStore.ReadTenantOffsetsForBackgroundAsync(string! tenantId, long afterOffset = 0, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<EventLoom.EventEnvelope!>!>!
+EventLoom.EntityFrameworkCore.EventStoreConcurrencyException
+EventLoom.EntityFrameworkCore.EventStoreConcurrencyException.EventStoreConcurrencyException(string! tenantId, string! streamId, System.Exception! innerException) -> void
+EventLoom.EntityFrameworkCore.EventStoreDbContext
+EventLoom.EntityFrameworkCore.EventStoreDbContext.EventStoreDbContext(Microsoft.EntityFrameworkCore.DbContextOptions<EventLoom.EntityFrameworkCore.EventStoreDbContext!>! options, EventLoom.EntityFrameworkCore.EventStoreOptions? eventStoreOptions = null, System.Action<Microsoft.EntityFrameworkCore.ModelBuilder!>? configureModel = null) -> void
+EventLoom.EntityFrameworkCore.EventStoreModelBuilderExtensions
+EventLoom.EntityFrameworkCore.EventStoreOptions
+EventLoom.EntityFrameworkCore.EventStoreOptions.EventStoreOptions() -> void
+EventLoom.EntityFrameworkCore.EventStoreOptions.Schema.get -> string!
+EventLoom.EntityFrameworkCore.EventStoreOptions.Schema.set -> void
+EventLoom.EntityFrameworkCore.EventStoreOptions.TablePrefix.get -> string!
+EventLoom.EntityFrameworkCore.EventStoreOptions.TablePrefix.set -> void
+EventLoom.EntityFrameworkCore.EventStoreOptions.TenancyMode.get -> EventLoom.TenancyMode
+EventLoom.EntityFrameworkCore.EventStoreOptions.TenancyMode.set -> void
+EventLoom.EntityFrameworkCore.EventStoreOptions.UseSchema.get -> bool
+EventLoom.EntityFrameworkCore.EventStoreOptions.UseSchema.set -> void
+EventLoom.EntityFrameworkCore.EventStoreSchema
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.<Clone>$() -> EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult!
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.Deconstruct(out System.Collections.Generic.IReadOnlyList<string!>! MissingTables, out System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<string!>!>! MissingColumns) -> void
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.Equals(EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult? other) -> bool
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.EventStoreSchemaValidationResult(System.Collections.Generic.IReadOnlyList<string!>! MissingTables, System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<string!>!>! MissingColumns) -> void
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.IsCompatible.get -> bool
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.MissingColumns.get -> System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<string!>!>!
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.MissingColumns.init -> void
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.MissingTables.get -> System.Collections.Generic.IReadOnlyList<string!>!
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.MissingTables.init -> void
+EventLoom.EntityFrameworkCore.IEfProjectionHandler<TEvent>
+EventLoom.EntityFrameworkCore.IEfProjectionHandler<TEvent>.HandleAsync(EventLoom.EventEnvelope<TEvent>! envelope, EventLoom.EntityFrameworkCore.EventStoreDbContext! context, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+EventLoom.EntityFrameworkCore.IEventStoreProviderCapabilities
+EventLoom.EntityFrameworkCore.IEventStoreProviderCapabilities.SupportsDistributedWorkers.get -> bool
+EventLoom.EntityFrameworkCore.IEventStoreProviderCapabilities.SupportsSchemas.get -> bool
+EventLoom.EntityFrameworkCore.IEventStoreRetryPolicy
+EventLoom.EntityFrameworkCore.IEventStoreRetryPolicy.ExecuteAsync<T>(System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<T>!>! operation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<T>!
+EventLoom.EntityFrameworkCore.OutboxAttempt
+EventLoom.EntityFrameworkCore.OutboxAttempt.<Clone>$() -> EventLoom.EntityFrameworkCore.OutboxAttempt!
+EventLoom.EntityFrameworkCore.OutboxAttempt.AttemptNumber.get -> int
+EventLoom.EntityFrameworkCore.OutboxAttempt.AttemptNumber.init -> void
+EventLoom.EntityFrameworkCore.OutboxAttempt.AttemptedAt.get -> System.DateTimeOffset
+EventLoom.EntityFrameworkCore.OutboxAttempt.AttemptedAt.init -> void
+EventLoom.EntityFrameworkCore.OutboxAttempt.Deconstruct(out System.Guid MessageId, out string! TenantId, out int AttemptNumber, out System.DateTimeOffset AttemptedAt, out bool Succeeded, out string? ExceptionType) -> void
+EventLoom.EntityFrameworkCore.OutboxAttempt.Equals(EventLoom.EntityFrameworkCore.OutboxAttempt? other) -> bool
+EventLoom.EntityFrameworkCore.OutboxAttempt.ExceptionType.get -> string?
+EventLoom.EntityFrameworkCore.OutboxAttempt.ExceptionType.init -> void
+EventLoom.EntityFrameworkCore.OutboxAttempt.MessageId.get -> System.Guid
+EventLoom.EntityFrameworkCore.OutboxAttempt.MessageId.init -> void
+EventLoom.EntityFrameworkCore.OutboxAttempt.OutboxAttempt(System.Guid MessageId, string! TenantId, int AttemptNumber, System.DateTimeOffset AttemptedAt, bool Succeeded, string? ExceptionType) -> void
+EventLoom.EntityFrameworkCore.OutboxAttempt.Succeeded.get -> bool
+EventLoom.EntityFrameworkCore.OutboxAttempt.Succeeded.init -> void
+EventLoom.EntityFrameworkCore.OutboxAttempt.TenantId.get -> string!
+EventLoom.EntityFrameworkCore.OutboxAttempt.TenantId.init -> void
+EventLoom.EntityFrameworkCore.OutboxHealthSummary
+EventLoom.EntityFrameworkCore.OutboxHealthSummary.<Clone>$() -> EventLoom.EntityFrameworkCore.OutboxHealthSummary!
+EventLoom.EntityFrameworkCore.OutboxHealthSummary.Deconstruct(out int PendingMessageCount) -> void
+EventLoom.EntityFrameworkCore.OutboxHealthSummary.Equals(EventLoom.EntityFrameworkCore.OutboxHealthSummary? other) -> bool
+EventLoom.EntityFrameworkCore.OutboxHealthSummary.OutboxHealthSummary(int PendingMessageCount) -> void
+EventLoom.EntityFrameworkCore.OutboxHealthSummary.PendingMessageCount.get -> int
+EventLoom.EntityFrameworkCore.OutboxHealthSummary.PendingMessageCount.init -> void
+EventLoom.EntityFrameworkCore.OutboxLeaseLostException
+EventLoom.EntityFrameworkCore.OutboxLeaseLostException.OutboxLeaseLostException(string! tenantId) -> void
+EventLoom.EntityFrameworkCore.OutboxMessage
+EventLoom.EntityFrameworkCore.OutboxMessage.<Clone>$() -> EventLoom.EntityFrameworkCore.OutboxMessage!
+EventLoom.EntityFrameworkCore.OutboxMessage.AggregateType.get -> string!
+EventLoom.EntityFrameworkCore.OutboxMessage.AggregateType.init -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.AttemptCount.get -> int
+EventLoom.EntityFrameworkCore.OutboxMessage.AttemptCount.init -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.Deconstruct(out System.Guid MessageId, out string! TenantId, out string! StreamId, out string! AggregateType, out long StreamVersion, out long TenantOffset, out string! EventType, out int EventTypeVersion, out string! Payload, out System.DateTimeOffset OccurredAt, out EventLoom.EventMetadata! Metadata, out int AttemptCount, out System.DateTimeOffset? PublishedAt) -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.Equals(EventLoom.EntityFrameworkCore.OutboxMessage? other) -> bool
+EventLoom.EntityFrameworkCore.OutboxMessage.EventType.get -> string!
+EventLoom.EntityFrameworkCore.OutboxMessage.EventType.init -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.EventTypeVersion.get -> int
+EventLoom.EntityFrameworkCore.OutboxMessage.EventTypeVersion.init -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.MessageId.get -> System.Guid
+EventLoom.EntityFrameworkCore.OutboxMessage.MessageId.init -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.Metadata.get -> EventLoom.EventMetadata!
+EventLoom.EntityFrameworkCore.OutboxMessage.Metadata.init -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.OccurredAt.get -> System.DateTimeOffset
+EventLoom.EntityFrameworkCore.OutboxMessage.OccurredAt.init -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.OutboxMessage(System.Guid MessageId, string! TenantId, string! StreamId, string! AggregateType, long StreamVersion, long TenantOffset, string! EventType, int EventTypeVersion, string! Payload, System.DateTimeOffset OccurredAt, EventLoom.EventMetadata! Metadata, int AttemptCount, System.DateTimeOffset? PublishedAt) -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.Payload.get -> string!
+EventLoom.EntityFrameworkCore.OutboxMessage.Payload.init -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.PublishedAt.get -> System.DateTimeOffset?
+EventLoom.EntityFrameworkCore.OutboxMessage.PublishedAt.init -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.StreamId.get -> string!
+EventLoom.EntityFrameworkCore.OutboxMessage.StreamId.init -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.StreamVersion.get -> long
+EventLoom.EntityFrameworkCore.OutboxMessage.StreamVersion.init -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.TenantId.get -> string!
+EventLoom.EntityFrameworkCore.OutboxMessage.TenantId.init -> void
+EventLoom.EntityFrameworkCore.OutboxMessage.TenantOffset.get -> long
+EventLoom.EntityFrameworkCore.OutboxMessage.TenantOffset.init -> void
+EventLoom.EntityFrameworkCore.OutboxStore
+EventLoom.EntityFrameworkCore.OutboxStore.GetAsync(string! tenantId, System.Guid messageId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.OutboxMessage?>!
+EventLoom.EntityFrameworkCore.OutboxStore.GetHealthSummaryAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.OutboxHealthSummary!>!
+EventLoom.EntityFrameworkCore.OutboxStore.OutboxStore(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, System.TimeProvider! timeProvider) -> void
+EventLoom.EntityFrameworkCore.OutboxStore.ReadAttemptsAsync(string! tenantId, System.Guid messageId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<EventLoom.EntityFrameworkCore.OutboxAttempt!>!>!
+EventLoom.EntityFrameworkCore.OutboxStore.ReadPendingAsync(string! tenantId, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<EventLoom.EntityFrameworkCore.OutboxMessage!>!>!
+EventLoom.EntityFrameworkCore.OutboxStore.ReadPendingTenantIdsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+EventLoom.EntityFrameworkCore.OutboxStore.RecordAttemptAsync(EventLoom.EntityFrameworkCore.OutboxMessage! message, EventLoom.EntityFrameworkCore.WorkerLease! lease, System.Exception? exception, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.<Clone>$() -> EventLoom.EntityFrameworkCore.ProjectionCheckpoint!
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.Deconstruct(out string! TenantId, out EventLoom.EntityFrameworkCore.ProjectionKey! Key, out long TenantOffset, out EventLoom.EntityFrameworkCore.ProjectionStatus Status, out System.DateTimeOffset UpdatedAt) -> void
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.Equals(EventLoom.EntityFrameworkCore.ProjectionCheckpoint? other) -> bool
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.Key.get -> EventLoom.EntityFrameworkCore.ProjectionKey!
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.Key.init -> void
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.ProjectionCheckpoint(string! TenantId, EventLoom.EntityFrameworkCore.ProjectionKey! Key, long TenantOffset, EventLoom.EntityFrameworkCore.ProjectionStatus Status, System.DateTimeOffset UpdatedAt) -> void
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.Status.get -> EventLoom.EntityFrameworkCore.ProjectionStatus
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.Status.init -> void
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.TenantId.get -> string!
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.TenantId.init -> void
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.TenantOffset.get -> long
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.TenantOffset.init -> void
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.UpdatedAt.get -> System.DateTimeOffset
+EventLoom.EntityFrameworkCore.ProjectionCheckpoint.UpdatedAt.init -> void
+EventLoom.EntityFrameworkCore.ProjectionDeliveryResult
+EventLoom.EntityFrameworkCore.ProjectionDeliveryResult.AlreadyProcessed = 1 -> EventLoom.EntityFrameworkCore.ProjectionDeliveryResult
+EventLoom.EntityFrameworkCore.ProjectionDeliveryResult.Paused = 2 -> EventLoom.EntityFrameworkCore.ProjectionDeliveryResult
+EventLoom.EntityFrameworkCore.ProjectionDeliveryResult.Processed = 0 -> EventLoom.EntityFrameworkCore.ProjectionDeliveryResult
+EventLoom.EntityFrameworkCore.ProjectionFailure
+EventLoom.EntityFrameworkCore.ProjectionFailure.<Clone>$() -> EventLoom.EntityFrameworkCore.ProjectionFailure!
+EventLoom.EntityFrameworkCore.ProjectionFailure.AttemptCount.get -> int
+EventLoom.EntityFrameworkCore.ProjectionFailure.AttemptCount.init -> void
+EventLoom.EntityFrameworkCore.ProjectionFailure.Deconstruct(out string! TenantId, out EventLoom.EntityFrameworkCore.ProjectionKey! Key, out System.Guid EventId, out string! EventType, out long TenantOffset, out int AttemptCount, out string! ExceptionType, out System.DateTimeOffset FailedAt, out System.DateTimeOffset? ResolvedAt, out bool WasSkipped) -> void
+EventLoom.EntityFrameworkCore.ProjectionFailure.Equals(EventLoom.EntityFrameworkCore.ProjectionFailure? other) -> bool
+EventLoom.EntityFrameworkCore.ProjectionFailure.EventId.get -> System.Guid
+EventLoom.EntityFrameworkCore.ProjectionFailure.EventId.init -> void
+EventLoom.EntityFrameworkCore.ProjectionFailure.EventType.get -> string!
+EventLoom.EntityFrameworkCore.ProjectionFailure.EventType.init -> void
+EventLoom.EntityFrameworkCore.ProjectionFailure.ExceptionType.get -> string!
+EventLoom.EntityFrameworkCore.ProjectionFailure.ExceptionType.init -> void
+EventLoom.EntityFrameworkCore.ProjectionFailure.FailedAt.get -> System.DateTimeOffset
+EventLoom.EntityFrameworkCore.ProjectionFailure.FailedAt.init -> void
+EventLoom.EntityFrameworkCore.ProjectionFailure.Key.get -> EventLoom.EntityFrameworkCore.ProjectionKey!
+EventLoom.EntityFrameworkCore.ProjectionFailure.Key.init -> void
+EventLoom.EntityFrameworkCore.ProjectionFailure.ProjectionFailure(string! TenantId, EventLoom.EntityFrameworkCore.ProjectionKey! Key, System.Guid EventId, string! EventType, long TenantOffset, int AttemptCount, string! ExceptionType, System.DateTimeOffset FailedAt, System.DateTimeOffset? ResolvedAt, bool WasSkipped) -> void
+EventLoom.EntityFrameworkCore.ProjectionFailure.ResolvedAt.get -> System.DateTimeOffset?
+EventLoom.EntityFrameworkCore.ProjectionFailure.ResolvedAt.init -> void
+EventLoom.EntityFrameworkCore.ProjectionFailure.TenantId.get -> string!
+EventLoom.EntityFrameworkCore.ProjectionFailure.TenantId.init -> void
+EventLoom.EntityFrameworkCore.ProjectionFailure.TenantOffset.get -> long
+EventLoom.EntityFrameworkCore.ProjectionFailure.TenantOffset.init -> void
+EventLoom.EntityFrameworkCore.ProjectionFailure.WasSkipped.get -> bool
+EventLoom.EntityFrameworkCore.ProjectionFailure.WasSkipped.init -> void
+EventLoom.EntityFrameworkCore.ProjectionHealthSummary
+EventLoom.EntityFrameworkCore.ProjectionHealthSummary.<Clone>$() -> EventLoom.EntityFrameworkCore.ProjectionHealthSummary!
+EventLoom.EntityFrameworkCore.ProjectionHealthSummary.Deconstruct(out int ProjectionCount, out int UnresolvedFailureCount, out long MaximumLag) -> void
+EventLoom.EntityFrameworkCore.ProjectionHealthSummary.Equals(EventLoom.EntityFrameworkCore.ProjectionHealthSummary? other) -> bool
+EventLoom.EntityFrameworkCore.ProjectionHealthSummary.MaximumLag.get -> long
+EventLoom.EntityFrameworkCore.ProjectionHealthSummary.MaximumLag.init -> void
+EventLoom.EntityFrameworkCore.ProjectionHealthSummary.ProjectionCount.get -> int
+EventLoom.EntityFrameworkCore.ProjectionHealthSummary.ProjectionCount.init -> void
+EventLoom.EntityFrameworkCore.ProjectionHealthSummary.ProjectionHealthSummary(int ProjectionCount, int UnresolvedFailureCount, long MaximumLag) -> void
+EventLoom.EntityFrameworkCore.ProjectionHealthSummary.UnresolvedFailureCount.get -> int
+EventLoom.EntityFrameworkCore.ProjectionHealthSummary.UnresolvedFailureCount.init -> void
+EventLoom.EntityFrameworkCore.ProjectionKey
+EventLoom.EntityFrameworkCore.ProjectionKey.<Clone>$() -> EventLoom.EntityFrameworkCore.ProjectionKey!
+EventLoom.EntityFrameworkCore.ProjectionKey.Deconstruct(out string! Name, out int Version) -> void
+EventLoom.EntityFrameworkCore.ProjectionKey.Equals(EventLoom.EntityFrameworkCore.ProjectionKey? other) -> bool
+EventLoom.EntityFrameworkCore.ProjectionKey.Name.get -> string!
+EventLoom.EntityFrameworkCore.ProjectionKey.Name.init -> void
+EventLoom.EntityFrameworkCore.ProjectionKey.ProjectionKey(string! Name, int Version) -> void
+EventLoom.EntityFrameworkCore.ProjectionKey.Validate() -> void
+EventLoom.EntityFrameworkCore.ProjectionKey.Version.get -> int
+EventLoom.EntityFrameworkCore.ProjectionKey.Version.init -> void
+EventLoom.EntityFrameworkCore.ProjectionLeaseLostException
+EventLoom.EntityFrameworkCore.ProjectionLeaseLostException.ProjectionLeaseLostException(string! tenantId, EventLoom.EntityFrameworkCore.ProjectionKey! key) -> void
+EventLoom.EntityFrameworkCore.ProjectionStatus
+EventLoom.EntityFrameworkCore.ProjectionStatus.Paused = 1 -> EventLoom.EntityFrameworkCore.ProjectionStatus
+EventLoom.EntityFrameworkCore.ProjectionStatus.Running = 0 -> EventLoom.EntityFrameworkCore.ProjectionStatus
+EventLoom.EntityFrameworkCore.ProjectionStore
+EventLoom.EntityFrameworkCore.ProjectionStore.GetCheckpointAsync(string! tenantId, EventLoom.EntityFrameworkCore.ProjectionKey! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.ProjectionCheckpoint?>!
+EventLoom.EntityFrameworkCore.ProjectionStore.GetHealthSummaryAsync(System.Collections.Generic.IEnumerable<EventLoom.EntityFrameworkCore.ProjectionKey!>! keys, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.ProjectionHealthSummary!>!
+EventLoom.EntityFrameworkCore.ProjectionStore.ProcessAsync(string! tenantId, EventLoom.EntityFrameworkCore.ProjectionKey! key, EventLoom.EventEnvelope! envelope, EventLoom.EntityFrameworkCore.WorkerLease! lease, System.Func<EventLoom.EntityFrameworkCore.EventStoreDbContext!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! apply, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.ProjectionDeliveryResult>!
+EventLoom.EntityFrameworkCore.ProjectionStore.ProjectionStore(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, System.TimeProvider! timeProvider) -> void
+EventLoom.EntityFrameworkCore.ProjectionStore.ReadFailuresAsync(string! tenantId, EventLoom.EntityFrameworkCore.ProjectionKey! key, bool includeResolved = false, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<EventLoom.EntityFrameworkCore.ProjectionFailure!>!>!
+EventLoom.EntityFrameworkCore.ProjectionStore.ReadTenantIdsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<string!>!>!
+EventLoom.EntityFrameworkCore.ProjectionStore.RecordFailureAsync(string! tenantId, EventLoom.EntityFrameworkCore.ProjectionKey! key, EventLoom.EventEnvelope! envelope, EventLoom.EntityFrameworkCore.WorkerLease! lease, int attemptCount, System.Exception! exception, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+EventLoom.EntityFrameworkCore.ProjectionStore.ReplayAsync(string! tenantId, EventLoom.EntityFrameworkCore.ProjectionKey! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+EventLoom.EntityFrameworkCore.ProjectionStore.ResumeAsync(string! tenantId, EventLoom.EntityFrameworkCore.ProjectionKey! key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+EventLoom.EntityFrameworkCore.ProjectionStore.SkipAsync(string! tenantId, EventLoom.EntityFrameworkCore.ProjectionKey! key, System.Guid eventId, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+EventLoom.EntityFrameworkCore.SnapshotEnvelope
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.<Clone>$() -> EventLoom.EntityFrameworkCore.SnapshotEnvelope!
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.AggregateType.get -> string!
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.AggregateType.init -> void
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.CreatedAt.get -> System.DateTimeOffset
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.CreatedAt.init -> void
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.Deconstruct(out string! TenantId, out string! StreamId, out string! AggregateType, out long StreamVersion, out string! SnapshotType, out int SchemaVersion, out string! Payload, out System.DateTimeOffset CreatedAt) -> void
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.Equals(EventLoom.EntityFrameworkCore.SnapshotEnvelope? other) -> bool
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.Payload.get -> string!
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.Payload.init -> void
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.SchemaVersion.get -> int
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.SchemaVersion.init -> void
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.SnapshotEnvelope(string! TenantId, string! StreamId, string! AggregateType, long StreamVersion, string! SnapshotType, int SchemaVersion, string! Payload, System.DateTimeOffset CreatedAt) -> void
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.SnapshotType.get -> string!
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.SnapshotType.init -> void
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.StreamId.get -> string!
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.StreamId.init -> void
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.StreamVersion.get -> long
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.StreamVersion.init -> void
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.TenantId.get -> string!
+EventLoom.EntityFrameworkCore.SnapshotEnvelope.TenantId.init -> void
+EventLoom.EntityFrameworkCore.SnapshotStore
+EventLoom.EntityFrameworkCore.SnapshotStore.InvalidateAsync(EventLoom.EntityFrameworkCore.SnapshotEnvelope! snapshot, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+EventLoom.EntityFrameworkCore.SnapshotStore.ReadLatestAsync(string! tenantId, string! streamId, string! aggregateType, string! snapshotType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.SnapshotEnvelope?>!
+EventLoom.EntityFrameworkCore.SnapshotStore.SnapshotStore(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, System.TimeProvider! timeProvider, EventLoom.ISnapshotRetentionPolicy? retentionPolicy = null) -> void
+EventLoom.EntityFrameworkCore.SnapshotStore.WriteAsync(EventLoom.EntityFrameworkCore.SnapshotWriteRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.<Clone>$() -> EventLoom.EntityFrameworkCore.SnapshotWriteRequest!
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.AggregateType.get -> string!
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.AggregateType.init -> void
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.Deconstruct(out string! TenantId, out string! StreamId, out string! AggregateType, out long StreamVersion, out string! SnapshotType, out int SchemaVersion, out string! Payload) -> void
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.Equals(EventLoom.EntityFrameworkCore.SnapshotWriteRequest? other) -> bool
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.Payload.get -> string!
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.Payload.init -> void
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.SchemaVersion.get -> int
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.SchemaVersion.init -> void
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.SnapshotType.get -> string!
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.SnapshotType.init -> void
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.SnapshotWriteRequest(string! TenantId, string! StreamId, string! AggregateType, long StreamVersion, string! SnapshotType, int SchemaVersion, string! Payload) -> void
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.StreamId.get -> string!
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.StreamId.init -> void
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.StreamVersion.get -> long
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.StreamVersion.init -> void
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.TenantId.get -> string!
+EventLoom.EntityFrameworkCore.SnapshotWriteRequest.TenantId.init -> void
+EventLoom.EntityFrameworkCore.WorkerLease
+EventLoom.EntityFrameworkCore.WorkerLease.<Clone>$() -> EventLoom.EntityFrameworkCore.WorkerLease!
+EventLoom.EntityFrameworkCore.WorkerLease.Deconstruct(out string! TenantId, out string! LeaseName, out string! OwnerId, out long FencingToken, out System.DateTimeOffset LeaseUntil) -> void
+EventLoom.EntityFrameworkCore.WorkerLease.Equals(EventLoom.EntityFrameworkCore.WorkerLease? other) -> bool
+EventLoom.EntityFrameworkCore.WorkerLease.FencingToken.get -> long
+EventLoom.EntityFrameworkCore.WorkerLease.FencingToken.init -> void
+EventLoom.EntityFrameworkCore.WorkerLease.LeaseName.get -> string!
+EventLoom.EntityFrameworkCore.WorkerLease.LeaseName.init -> void
+EventLoom.EntityFrameworkCore.WorkerLease.LeaseUntil.get -> System.DateTimeOffset
+EventLoom.EntityFrameworkCore.WorkerLease.LeaseUntil.init -> void
+EventLoom.EntityFrameworkCore.WorkerLease.OwnerId.get -> string!
+EventLoom.EntityFrameworkCore.WorkerLease.OwnerId.init -> void
+EventLoom.EntityFrameworkCore.WorkerLease.TenantId.get -> string!
+EventLoom.EntityFrameworkCore.WorkerLease.TenantId.init -> void
+EventLoom.EntityFrameworkCore.WorkerLease.WorkerLease(string! TenantId, string! LeaseName, string! OwnerId, long FencingToken, System.DateTimeOffset LeaseUntil) -> void
+EventLoom.EntityFrameworkCore.WorkerLeaseConflictException
+EventLoom.EntityFrameworkCore.WorkerLeaseConflictException.WorkerLeaseConflictException(string! tenantId, string! leaseName, System.Exception! innerException) -> void
+EventLoom.EntityFrameworkCore.WorkerLeaseStore
+EventLoom.EntityFrameworkCore.WorkerLeaseStore.ReleaseAsync(EventLoom.EntityFrameworkCore.WorkerLease! lease, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
+EventLoom.EntityFrameworkCore.WorkerLeaseStore.TryAcquireAsync(string! tenantId, string! leaseName, string! ownerId, System.TimeSpan duration, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.WorkerLease?>!
+EventLoom.EntityFrameworkCore.WorkerLeaseStore.WorkerLeaseStore(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, System.TimeProvider! timeProvider) -> void
+EventLoom.EntityFrameworkCore.WrongExpectedVersionException
+EventLoom.EntityFrameworkCore.WrongExpectedVersionException.WrongExpectedVersionException(EventLoom.ExpectedVersion expected, long? actual) -> void
+const EventLoom.EntityFrameworkCore.EventStoreSchema.MigrationsAssemblyName = "EventLoom.EntityFrameworkCore" -> string!
+override EventLoom.EntityFrameworkCore.AppendRequest.Equals(object? obj) -> bool
+override EventLoom.EntityFrameworkCore.AppendRequest.GetHashCode() -> int
+override EventLoom.EntityFrameworkCore.AppendRequest.ToString() -> string!
+override EventLoom.EntityFrameworkCore.AppendResult.Equals(object? obj) -> bool
+override EventLoom.EntityFrameworkCore.AppendResult.GetHashCode() -> int
+override EventLoom.EntityFrameworkCore.AppendResult.ToString() -> string!
+override EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.Equals(object? obj) -> bool
+override EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.GetHashCode() -> int
+override EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.ToString() -> string!
+override EventLoom.EntityFrameworkCore.OutboxAttempt.Equals(object? obj) -> bool
+override EventLoom.EntityFrameworkCore.OutboxAttempt.GetHashCode() -> int
+override EventLoom.EntityFrameworkCore.OutboxAttempt.ToString() -> string!
+override EventLoom.EntityFrameworkCore.OutboxHealthSummary.Equals(object? obj) -> bool
+override EventLoom.EntityFrameworkCore.OutboxHealthSummary.GetHashCode() -> int
+override EventLoom.EntityFrameworkCore.OutboxHealthSummary.ToString() -> string!
+override EventLoom.EntityFrameworkCore.OutboxMessage.Equals(object? obj) -> bool
+override EventLoom.EntityFrameworkCore.OutboxMessage.GetHashCode() -> int
+override EventLoom.EntityFrameworkCore.OutboxMessage.ToString() -> string!
+override EventLoom.EntityFrameworkCore.ProjectionCheckpoint.Equals(object? obj) -> bool
+override EventLoom.EntityFrameworkCore.ProjectionCheckpoint.GetHashCode() -> int
+override EventLoom.EntityFrameworkCore.ProjectionCheckpoint.ToString() -> string!
+override EventLoom.EntityFrameworkCore.ProjectionFailure.Equals(object? obj) -> bool
+override EventLoom.EntityFrameworkCore.ProjectionFailure.GetHashCode() -> int
+override EventLoom.EntityFrameworkCore.ProjectionFailure.ToString() -> string!
+override EventLoom.EntityFrameworkCore.ProjectionHealthSummary.Equals(object? obj) -> bool
+override EventLoom.EntityFrameworkCore.ProjectionHealthSummary.GetHashCode() -> int
+override EventLoom.EntityFrameworkCore.ProjectionHealthSummary.ToString() -> string!
+override EventLoom.EntityFrameworkCore.ProjectionKey.Equals(object? obj) -> bool
+override EventLoom.EntityFrameworkCore.ProjectionKey.GetHashCode() -> int
+override EventLoom.EntityFrameworkCore.ProjectionKey.ToString() -> string!
+override EventLoom.EntityFrameworkCore.SnapshotEnvelope.Equals(object? obj) -> bool
+override EventLoom.EntityFrameworkCore.SnapshotEnvelope.GetHashCode() -> int
+override EventLoom.EntityFrameworkCore.SnapshotEnvelope.ToString() -> string!
+override EventLoom.EntityFrameworkCore.SnapshotWriteRequest.Equals(object? obj) -> bool
+override EventLoom.EntityFrameworkCore.SnapshotWriteRequest.GetHashCode() -> int
+override EventLoom.EntityFrameworkCore.SnapshotWriteRequest.ToString() -> string!
+override EventLoom.EntityFrameworkCore.WorkerLease.Equals(object? obj) -> bool
+override EventLoom.EntityFrameworkCore.WorkerLease.GetHashCode() -> int
+override EventLoom.EntityFrameworkCore.WorkerLease.ToString() -> string!
+static EventLoom.EntityFrameworkCore.AppendRequest.operator !=(EventLoom.EntityFrameworkCore.AppendRequest? left, EventLoom.EntityFrameworkCore.AppendRequest? right) -> bool
+static EventLoom.EntityFrameworkCore.AppendRequest.operator ==(EventLoom.EntityFrameworkCore.AppendRequest? left, EventLoom.EntityFrameworkCore.AppendRequest? right) -> bool
+static EventLoom.EntityFrameworkCore.AppendResult.operator !=(EventLoom.EntityFrameworkCore.AppendResult? left, EventLoom.EntityFrameworkCore.AppendResult? right) -> bool
+static EventLoom.EntityFrameworkCore.AppendResult.operator ==(EventLoom.EntityFrameworkCore.AppendResult? left, EventLoom.EntityFrameworkCore.AppendResult? right) -> bool
+static EventLoom.EntityFrameworkCore.EventStoreModelBuilderExtensions.ApplyEventStoreConfiguration(this Microsoft.EntityFrameworkCore.ModelBuilder! modelBuilder, EventLoom.EntityFrameworkCore.EventStoreOptions! options) -> Microsoft.EntityFrameworkCore.ModelBuilder!
+static EventLoom.EntityFrameworkCore.EventStoreSchema.GetTableNames(EventLoom.EntityFrameworkCore.EventStoreOptions! options) -> string![]!
+static EventLoom.EntityFrameworkCore.EventStoreSchema.MigrateAsync(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+static EventLoom.EntityFrameworkCore.EventStoreSchema.ValidateAsync(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult!>!
+static EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.operator !=(EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult? left, EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult? right) -> bool
+static EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.operator ==(EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult? left, EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult? right) -> bool
+static EventLoom.EntityFrameworkCore.OutboxAttempt.operator !=(EventLoom.EntityFrameworkCore.OutboxAttempt? left, EventLoom.EntityFrameworkCore.OutboxAttempt? right) -> bool
+static EventLoom.EntityFrameworkCore.OutboxAttempt.operator ==(EventLoom.EntityFrameworkCore.OutboxAttempt? left, EventLoom.EntityFrameworkCore.OutboxAttempt? right) -> bool
+static EventLoom.EntityFrameworkCore.OutboxHealthSummary.operator !=(EventLoom.EntityFrameworkCore.OutboxHealthSummary? left, EventLoom.EntityFrameworkCore.OutboxHealthSummary? right) -> bool
+static EventLoom.EntityFrameworkCore.OutboxHealthSummary.operator ==(EventLoom.EntityFrameworkCore.OutboxHealthSummary? left, EventLoom.EntityFrameworkCore.OutboxHealthSummary? right) -> bool
+static EventLoom.EntityFrameworkCore.OutboxMessage.operator !=(EventLoom.EntityFrameworkCore.OutboxMessage? left, EventLoom.EntityFrameworkCore.OutboxMessage? right) -> bool
+static EventLoom.EntityFrameworkCore.OutboxMessage.operator ==(EventLoom.EntityFrameworkCore.OutboxMessage? left, EventLoom.EntityFrameworkCore.OutboxMessage? right) -> bool
+static EventLoom.EntityFrameworkCore.OutboxStore.GetLeaseName() -> string!
+static EventLoom.EntityFrameworkCore.ProjectionCheckpoint.operator !=(EventLoom.EntityFrameworkCore.ProjectionCheckpoint? left, EventLoom.EntityFrameworkCore.ProjectionCheckpoint? right) -> bool
+static EventLoom.EntityFrameworkCore.ProjectionCheckpoint.operator ==(EventLoom.EntityFrameworkCore.ProjectionCheckpoint? left, EventLoom.EntityFrameworkCore.ProjectionCheckpoint? right) -> bool
+static EventLoom.EntityFrameworkCore.ProjectionFailure.operator !=(EventLoom.EntityFrameworkCore.ProjectionFailure? left, EventLoom.EntityFrameworkCore.ProjectionFailure? right) -> bool
+static EventLoom.EntityFrameworkCore.ProjectionFailure.operator ==(EventLoom.EntityFrameworkCore.ProjectionFailure? left, EventLoom.EntityFrameworkCore.ProjectionFailure? right) -> bool
+static EventLoom.EntityFrameworkCore.ProjectionHealthSummary.operator !=(EventLoom.EntityFrameworkCore.ProjectionHealthSummary? left, EventLoom.EntityFrameworkCore.ProjectionHealthSummary? right) -> bool
+static EventLoom.EntityFrameworkCore.ProjectionHealthSummary.operator ==(EventLoom.EntityFrameworkCore.ProjectionHealthSummary? left, EventLoom.EntityFrameworkCore.ProjectionHealthSummary? right) -> bool
+static EventLoom.EntityFrameworkCore.ProjectionKey.operator !=(EventLoom.EntityFrameworkCore.ProjectionKey? left, EventLoom.EntityFrameworkCore.ProjectionKey? right) -> bool
+static EventLoom.EntityFrameworkCore.ProjectionKey.operator ==(EventLoom.EntityFrameworkCore.ProjectionKey? left, EventLoom.EntityFrameworkCore.ProjectionKey? right) -> bool
+static EventLoom.EntityFrameworkCore.ProjectionStore.GetLeaseName(EventLoom.EntityFrameworkCore.ProjectionKey! key) -> string!
+static EventLoom.EntityFrameworkCore.SnapshotEnvelope.operator !=(EventLoom.EntityFrameworkCore.SnapshotEnvelope? left, EventLoom.EntityFrameworkCore.SnapshotEnvelope? right) -> bool
+static EventLoom.EntityFrameworkCore.SnapshotEnvelope.operator ==(EventLoom.EntityFrameworkCore.SnapshotEnvelope? left, EventLoom.EntityFrameworkCore.SnapshotEnvelope? right) -> bool
+static EventLoom.EntityFrameworkCore.SnapshotWriteRequest.operator !=(EventLoom.EntityFrameworkCore.SnapshotWriteRequest? left, EventLoom.EntityFrameworkCore.SnapshotWriteRequest? right) -> bool
+static EventLoom.EntityFrameworkCore.SnapshotWriteRequest.operator ==(EventLoom.EntityFrameworkCore.SnapshotWriteRequest? left, EventLoom.EntityFrameworkCore.SnapshotWriteRequest? right) -> bool
+static EventLoom.EntityFrameworkCore.WorkerLease.operator !=(EventLoom.EntityFrameworkCore.WorkerLease? left, EventLoom.EntityFrameworkCore.WorkerLease? right) -> bool
+static EventLoom.EntityFrameworkCore.WorkerLease.operator ==(EventLoom.EntityFrameworkCore.WorkerLease? left, EventLoom.EntityFrameworkCore.WorkerLease? right) -> bool
