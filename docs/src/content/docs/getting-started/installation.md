@@ -20,5 +20,8 @@ To work on the repository, install the SDK selected by `global.json`, then run:
 ```bash
 dotnet build EventLoom.slnx
 dotnet run --project tests/EventLoom.UnitTests
+dotnet run --project tests/EventLoom.EntityFrameworkCore.UnitTests
+dotnet run --project tests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests
+dotnet run --project tests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests
 pnpm --dir docs build
 ```

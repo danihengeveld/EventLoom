@@ -9,6 +9,9 @@
     <Project Path="src/EventLoom/EventLoom.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests.csproj" />
+    <Project Path="tests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests.csproj" />
+    <Project Path="tests/EventLoom.EntityFrameworkCore.UnitTests/EventLoom.EntityFrameworkCore.UnitTests.csproj" />
     <Project Path="tests/EventLoom.UnitTests/EventLoom.UnitTests.csproj" />
   </Folder>
 </Solution>

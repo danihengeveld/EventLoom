@@ -1,15 +1,13 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <ProjectReference Include="..\..\src\EventLoom\EventLoom.csproj" />
+    <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore\EventLoom.EntityFrameworkCore.csproj" />
+    <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore.Sqlite\EventLoom.EntityFrameworkCore.Sqlite.csproj" />
     <PackageReference Include="TUnit" />
   </ItemGroup>
-
   <PropertyGroup>
     <IsTestProject>true</IsTestProject>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-
 </Project>

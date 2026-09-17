@@ -9,6 +9,7 @@
     <PackageVersion Include="Microsoft.Data.Sqlite.Core" Version="10.0.4" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.4" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
+    <PackageVersion Include="Npgsql" Version="10.0.2" />
     <PackageVersion Include="SQLitePCLRaw.provider.sqlite3" Version="2.1.11" />
     <PackageVersion Include="TUnit" Version="1.68.4" />
   </ItemGroup>

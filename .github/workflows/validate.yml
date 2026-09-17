@@ -20,6 +20,9 @@ jobs:
       - run: dotnet restore EventLoom.slnx --locked-mode
       - run: dotnet build EventLoom.slnx --configuration Release --no-restore
       - run: dotnet run --project tests/EventLoom.UnitTests --configuration Release --no-build
+      - run: dotnet run --project tests/EventLoom.EntityFrameworkCore.UnitTests --configuration Release --no-build
+      - run: dotnet run --project tests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests --configuration Release --no-build
+      - run: dotnet run --project tests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests --configuration Release --no-build
       - run: dotnet pack EventLoom.slnx --configuration Release --no-build --output artifacts/packages
 
   docs:
