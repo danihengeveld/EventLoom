@@ -5,24 +5,40 @@ using System.Reflection;
 
 namespace EventLoom;
 
+/// <summary>
+/// Base type for an event-sourced aggregate with a stable application-defined identifier.
+/// </summary>
+/// <typeparam name="TId">The aggregate identifier type.</typeparam>
 public abstract class Aggregate<TId>
 {
     private static readonly ConcurrentDictionary<Type, AggregateDispatcher> Dispatchers = new();
     private readonly List<PendingEvent> pendingEvents = [];
     private readonly ReadOnlyCollection<PendingEvent> readOnlyPendingEvents;
 
+    /// <summary>
+    /// Initializes an aggregate with its identifier.
+    /// </summary>
+    /// <param name="id">The application-defined aggregate identifier.</param>
     protected Aggregate(TId id)
     {
         Id = id;
         readOnlyPendingEvents = pendingEvents.AsReadOnly();
     }
 
+    /// <summary>Gets the aggregate identifier.</summary>
     public TId Id { get; }
 
+    /// <summary>Gets the version after all applied persisted and pending events.</summary>
     public long Version { get; private set; }
 
+    /// <summary>Gets the events raised since the last successful non-idempotent save.</summary>
     public IReadOnlyList<PendingEvent> PendingEvents => readOnlyPendingEvents;
 
+    /// <summary>
+    /// Raises and immediately applies a new domain event.
+    /// </summary>
+    /// <typeparam name="TEvent">The concrete event type.</typeparam>
+    /// <param name="event">The event representing the state transition.</param>
     protected void Raise<TEvent>(TEvent @event)
         where TEvent : IDomainEvent
     {
@@ -31,6 +47,10 @@ public abstract class Aggregate<TId>
         pendingEvents.Add(new PendingEvent(@event, Version));
     }
 
+    /// <summary>
+    /// Replays historical events without adding them to the pending collection.
+    /// </summary>
+    /// <param name="history">The events to replay in stream-version order.</param>
     protected void Replay(IEnumerable<IDomainEvent> history)
     {
         ArgumentNullException.ThrowIfNull(history);
@@ -46,8 +66,10 @@ public abstract class Aggregate<TId>
     /// </summary>
     public void ApplyHistory(IEnumerable<IDomainEvent> history) => Replay(history);
 
+    /// <summary>Gets the events raised since the last successful non-idempotent save.</summary>
     public IReadOnlyList<PendingEvent> GetPendingEvents() => PendingEvents;
 
+    /// <summary>Removes all pending events after they have been persisted.</summary>
     public void ClearPendingEvents() => pendingEvents.Clear();
 
     private void ApplyEvent(IDomainEvent @event)
@@ -57,6 +79,9 @@ public abstract class Aggregate<TId>
         Version++;
     }
 
+    /// <summary>Describes a pending event and its aggregate version after application.</summary>
+    /// <param name="Event">The raised domain event.</param>
+    /// <param name="StreamVersion">The aggregate version after applying the event.</param>
     public sealed record PendingEvent(IDomainEvent Event, long StreamVersion);
 
     private sealed class AggregateDispatcher

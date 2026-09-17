@@ -1,17 +1,59 @@
 ---
 title: Architecture
-description: The architectural boundaries agreed for EventLoom.
+description: The storage, domain, and provider boundaries used by EventLoom.
 ---
 
-EventLoom uses a dedicated `EventStoreDbContext`, separate from an application's EF Core context. Both can use the same database, while the event store retains clear transaction, migration, and performance boundaries.
+EventLoom separates domain behavior from event-store infrastructure.
 
-PostgreSQL is the distributed production provider. SQLite supports development and single-node scenarios. Events are immutable records with stable type metadata, while stream identity and operational metadata live in persisted envelopes.
+```text
+Application command
+  -> Aggregate<TId> raises immutable events
+  -> AggregateRepository or EventStore appends a batch
+  -> EventStoreDbContext persists streams, events, and positions
+  -> Application reads a stream or tenant position range
+```
 
-Phase 3 introduces the EF Core storage boundary:
+## Domain boundary
 
-- `EventStoreDbContext` owns the event-store model and is kept separate from an application's context.
-- `EventStoreOptions` controls the table prefix and optional database schema.
-- `EventStoreSchema.MigrateAsync` applies the event-store migrations, while `GetTableNames` exposes the tables for diagnostics.
-- Provider capability objects make schema and distributed-worker support explicit. PostgreSQL supports both; SQLite does not support schemas or distributed workers.
+Your application owns aggregates and event types. An event payload contains
+business facts only: stream identity, aggregate type, tenant, event ID,
+versions, timestamps, correlation data, and positions belong to the immutable
+event envelope. This prevents a domain event from being coupled to one
+transport or persistence layout.
 
-See the architecture decisions in the repository for the complete rationale.
+`Aggregate<TId>` uses cached, compiled dispatch to invoke typed private or
+protected `Apply(TEvent)` methods. It is intentionally opinionated: state
+changes flow through events, and events are replayed in stream order.
+
+## Storage boundary
+
+`EventStoreDbContext` is dedicated to EventLoom. Keep it separate from an
+application `DbContext`, even when both use the same physical database. This
+keeps migrations, transaction ownership, indexing, and operational tuning
+independent.
+
+Each append is atomic. It validates an expected version, assigns stream
+versions and a per-tenant global position, writes all events, and commits or
+rolls back as a unit. No `IQueryable` is exposed from `EventStore`; reads are
+bounded by stream version or position.
+
+## Provider boundary
+
+- **PostgreSQL** is the distributed production provider. It supports schemas,
+  serializable append transactions, per-tenant position allocation, retry
+  classification, and worker-lease primitives.
+- **SQLite** supports the same normal append/read API for local, embedded, and
+  controlled single-node use. It does not support schemas or distributed
+  workers.
+
+Use the provider-specific composition extensions rather than configuring the
+EventLoom context manually in most applications.
+
+## Delivery boundary
+
+Current EventLoom supports event persistence and aggregate reconstruction.
+Snapshots, projection runners, and outbox publication are planned but not
+implemented. Do not treat the current event store as a general cross-context
+transaction or message-delivery mechanism. The repository's accepted
+[architecture decisions](https://github.com/danihengeveld/EventLoom/tree/main/docs/architecture/decisions)
+record the rationale.

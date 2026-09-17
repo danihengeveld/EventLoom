@@ -1,12 +1,44 @@
 ---
 title: EventLoom
-description: An opinionated event sourcing framework for .NET and EF Core.
+description: Event sourcing for .NET 10 applications using EF Core.
 ---
 
-EventLoom is an event sourcing framework for .NET 10 applications using EF Core.
+EventLoom is an opinionated event-sourcing library for .NET 10. It provides
+immutable, versioned events; aggregate replay; a dedicated EF Core event store;
+and safe PostgreSQL and SQLite persistence paths.
 
-It uses a dedicated event-store context and supports PostgreSQL and SQLite. The project is designed around reliable appends, optional multi-tenancy, snapshots, asynchronous projections, and distributed PostgreSQL deployments.
+## Choose your path
 
-## Status
+- **New to EventLoom?** Start with [Installation](/getting-started/installation)
+  and [Build your first aggregate](/getting-started/first-aggregate).
+- **Adding EventLoom to an application?** Read
+  [Configure the event store](/guides/configure-ef-core), then
+  [Append and read events](/guides/append-and-read).
+- **Building a service?** The [Ordering API sample](/guides/ordering-api)
+  demonstrates scoped tenancy, aggregate commands, metadata, idempotency keys,
+  and stream inspection.
+- **Preparing a PostgreSQL deployment?** Follow
+  [Production deployment](/guides/production-deployment).
 
-EventLoom is in early development. The initial repository foundation is complete; the domain kernel is next.
+## What EventLoom provides today
+
+- `Aggregate<TId>` for event-only state changes and replay through typed
+  `Apply(TEvent)` methods.
+- Stable event names and versions through `[EventType]`, explicit registration,
+  and `System.Text.Json` serialization.
+- Deterministic JSON upcaster chains for changing persisted event schemas.
+- Transactional append and bounded read APIs with expected-version checks,
+  UUIDv7 event IDs, and authoritative per-tenant global positions.
+- A PostgreSQL provider for multi-instance deployments and a SQLite provider
+  for local, embedded, and controlled single-node use.
+- Optional required tenancy with a scoped `ITenantAccessor`.
+- A configured `AggregateRepository<TAggregate, TId>` path that keeps tenant,
+  aggregate type, and stream-ID plumbing out of normal command handlers.
+
+## Current scope
+
+EventLoom is pre-release software and NuGet packages are not published yet.
+The current source tree and sample are the supported way to evaluate it.
+Snapshots, projections, outbox publishing, and public package-release
+automation are not yet available. See the [implementation roadmap](/reference/roadmap)
+for the staged plan.

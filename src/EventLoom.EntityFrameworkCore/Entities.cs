@@ -28,6 +28,7 @@ internal sealed class EventEntity
     public string? CorrelationId { get; set; }
     public string? CausationId { get; set; }
     public string? Actor { get; set; }
+    public required string Headers { get; set; }
     public string? AppendId { get; set; }
 }
 

@@ -9,12 +9,18 @@ public sealed class EventRegistry
     private readonly Dictionary<Type, EventRegistration> registrationsByType = [];
     private readonly Dictionary<EventTypeKey, EventRegistration> registrationsByName = [];
 
+    /// <summary>Registers one concrete event type using its stable event metadata.</summary>
+    /// <typeparam name="TEvent">The concrete event type to register.</typeparam>
+    /// <returns>This registry.</returns>
     public EventRegistry RegisterEvent<TEvent>()
         where TEvent : IDomainEvent
     {
         return RegisterEvent(typeof(TEvent));
     }
 
+    /// <summary>Registers every concrete domain-event type in an assembly.</summary>
+    /// <param name="assembly">The assembly containing event types.</param>
+    /// <returns>This registry.</returns>
     public EventRegistry RegisterAssembly(Assembly assembly)
     {
         ArgumentNullException.ThrowIfNull(assembly);
@@ -28,6 +34,9 @@ public sealed class EventRegistry
         return this;
     }
 
+    /// <summary>Gets the registration for a concrete event type.</summary>
+    /// <typeparam name="TEvent">The registered event type.</typeparam>
+    /// <returns>The event registration.</returns>
     public EventRegistration Get<TEvent>()
         where TEvent : IDomainEvent
     {
@@ -43,6 +52,10 @@ public sealed class EventRegistry
         return GetRegistration(eventType);
     }
 
+    /// <summary>Gets the registration for a persisted event name and schema version.</summary>
+    /// <param name="eventName">The stable persisted event name.</param>
+    /// <param name="version">The positive schema version.</param>
+    /// <returns>The event registration.</returns>
     public EventRegistration Get(string eventName, int version)
     {
         if (string.IsNullOrWhiteSpace(eventName))
@@ -60,6 +73,9 @@ public sealed class EventRegistry
             : throw new EventNotRegisteredException(eventName, version);
     }
 
+    /// <summary>Gets the latest registered schema version for a persisted event name.</summary>
+    /// <param name="eventName">The stable persisted event name.</param>
+    /// <returns>The latest event registration.</returns>
     public EventRegistration GetCurrent(string eventName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
@@ -70,6 +86,7 @@ public sealed class EventRegistry
             ?? throw new EventNotRegisteredException(eventName, 0);
     }
 
+    /// <summary>Gets all explicitly registered event types.</summary>
     public IReadOnlyCollection<EventRegistration> Registrations =>
         new ReadOnlyCollection<EventRegistration>(registrationsByType.Values.ToList());
 
@@ -109,18 +126,26 @@ public sealed class EventRegistry
 }
 
 /// <summary>Describes a registered event type.</summary>
+/// <summary>Describes a CLR event type and its stable persisted identity.</summary>
+/// <param name="ClrType">The concrete CLR event type.</param>
+/// <param name="Name">The stable persisted event name.</param>
+/// <param name="Version">The positive event schema version.</param>
 public sealed record EventRegistration(Type ClrType, string Name, int Version);
 
+/// <summary>Indicates that a domain-event type has no <see cref="EventTypeAttribute"/>.</summary>
 public sealed class EventTypeMetadataMissingException(Type eventType)
     : InvalidOperationException($"Event type '{eventType.FullName}' is missing EventTypeAttribute.");
 
+/// <summary>Indicates that a CLR event type was registered more than once.</summary>
 public sealed class DuplicateEventRegistrationException(Type eventType)
     : InvalidOperationException($"Event CLR type '{eventType.FullName}' is registered more than once.");
 
+/// <summary>Indicates that two CLR event types claim the same persisted event identity.</summary>
 public sealed class DuplicateEventTypeException(string name, int version, Type existingType, Type duplicateType)
     : InvalidOperationException(
         $"Event type '{name}' version {version} is already registered for '{existingType.FullName}', cannot register '{duplicateType.FullName}'.");
 
+/// <summary>Indicates that a requested CLR or persisted event identity was not registered.</summary>
 public sealed class EventNotRegisteredException : InvalidOperationException
 {
     public EventNotRegisteredException(Type eventType)

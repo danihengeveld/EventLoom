@@ -1,39 +1,20 @@
 ---
 title: Append and read events
-description: Persist and read tenant-scoped event streams with EventLoom.
+description: Persist event batches, rebuild aggregates, and consume a tenant's committed event order.
 ---
 
-Use `EventStore` for bounded append and read operations. The API does not expose
-`IQueryable`, so callers cannot accidentally bypass tenant and ordering
-boundaries.
+There are two EventLoom application paths:
 
-## Configure the store
+1. Use `AggregateRepository<TAggregate, TId>` for ordinary command handlers.
+2. Use `EventStore` when a process needs explicit stream identity or consumes
+   position-ordered envelopes.
 
-Register an `EventRegistry`, `EventSerializer`, and the provider-specific
-`EventStoreDbContext` through dependency injection:
+Both paths require events to be registered and a provider to be configured;
+see [Configure the event store](/guides/configure-ef-core).
 
-```csharp
-services.AddSingleton(new EventRegistry()
-    .RegisterEvent<ProductAdded>());
-services.AddSingleton<EventSerializer>();
-services.AddSingleton<IEventIdGenerator, UuidV7EventIdGenerator>();
-services.AddSingleton(TimeProvider.System);
-services.AddScoped<EventStore>();
-```
+## Save and load an aggregate
 
-The event type must be registered and carry stable metadata:
-
-```csharp
-[EventType("shopping-cart.product-added")]
-public sealed record ProductAdded(string ProductId, int Quantity) : IDomainEvent;
-```
-
-The event store context is configured separately from the application context.
-See [Configure the EF Core event store](/guides/configure-ef-core) for provider
-configuration and migrations.
-
-For aggregate-oriented application code, configure identity once during
-startup:
+Configure its persistence identity once:
 
 ```csharp
 eventLoom.AddAggregateRepository<Order, Guid>(
@@ -42,50 +23,94 @@ eventLoom.AddAggregateRepository<Order, Guid>(
     id => id.ToString("D"));
 ```
 
-With a scoped `ITenantAccessor`, normal command handlers can use:
+With a scoped tenant accessor, command code stays focused on domain behavior:
 
 ```csharp
-await repository.SaveAsync(order);
-var loaded = await repository.LoadAsync(order.Id);
+var order = new Order(orderId);
+order.Place("coffee", 2);
+
+var result = await repository.SaveAsync(
+    order,
+    new EventMetadata(
+        CorrelationId: correlationId,
+        Actor: currentUserId),
+    appendId: commandId,
+    cancellationToken);
+
+var reloaded = await repository.LoadAsync(orderId, cancellationToken);
 ```
 
-The explicit repository overloads remain available for administrative and
-background workflows that must supply tenant and stream identity directly.
+`SaveAsync` returns an empty result when no events are pending. On a normal
+successful append it clears pending events; an idempotent replay retains the
+aggregate's pending events because the caller may need to resolve the
+ambiguous-command outcome explicitly.
 
-## Append a batch
+## Use the explicit store API
 
-An append is atomic. Stream versions and tenant global positions are assigned
-consecutively inside the transaction:
+Use `EventStore` when a background, import, repair, or integration workflow
+must provide explicit identity:
 
 ```csharp
 var result = await store.AppendAsync(new AppendRequest(
     TenantId: "acme",
-    StreamId: "cart-123",
-    AggregateType: "shopping-cart",
-    ExpectedVersion: ExpectedVersion.NoStream,
-    Events: [new ProductAdded("sku-1", 2)],
-    Metadata: new EventMetadata(Actor: "checkout"),
-    AppendId: "checkout-command-456"),
+    StreamId: "order-42",
+    AggregateType: "order",
+    ExpectedVersion: ExpectedVersion.Exact(3),
+    Events: [new OrderCancelled("duplicate")],
+    Metadata: new EventMetadata(Actor: "support-tool"),
+    AppendId: "support-command-123"),
     cancellationToken);
 ```
 
-Use `AppendId` when retrying a command after an ambiguous network failure. A
-successful retry returns the original persisted envelopes and marks
-`WasIdempotentReplay` as `true`.
+The event batch is committed atomically. Versions begin at 1, and all events
+in a batch receive consecutive stream versions and tenant positions.
 
-## Read a stream
+## Read one stream
 
 ```csharp
 var history = await store.ReadStreamAsync(
     tenantId: "acme",
-    streamId: "cart-123",
+    streamId: "order-42",
+    fromVersion: 2,
+    toVersion: 5,
     cancellationToken: cancellationToken);
 ```
 
-Use `fromVersion` and `toVersion` for a bounded stream range, or
-`ReadPositionsAsync` to consume a tenant's committed global order in batches.
-Every returned `EventEnvelope` contains stream identity, tenant, event identity,
-stream version, global position, timestamp, and operational metadata.
+`ReadStreamAsync` returns persisted envelopes in stream-version order. Passing
+neither bound reads the full stream. Bounds must be positive and ordered.
 
-SQLite supports this API for local and single-node use. Use PostgreSQL when
-multiple application instances or distributed workers are required.
+## Read a tenant's committed order
+
+For a consumer that maintains a checkpoint:
+
+```csharp
+var batch = await store.ReadPositionsAsync(
+    tenantId: "acme",
+    afterPosition: checkpoint,
+    limit: 100,
+    cancellationToken: cancellationToken);
+
+foreach (var envelope in batch)
+{
+    // Dispatch to application-owned handling code.
+    checkpoint = envelope.GlobalPosition;
+}
+```
+
+Positions are authoritative only inside one tenant. Keep checkpoints
+tenant-scoped, process in order, and make handlers idempotent. Projection
+runner infrastructure is not yet included in EventLoom.
+
+## Handle failures correctly
+
+- `WrongExpectedVersionException` means the stream changed relative to the
+  request's expectation. Reload and reevaluate the business command.
+- `EventStoreConcurrencyException` means the database reported a concurrent
+  append conflict. Treat it like an optimistic-concurrency failure.
+- PostgreSQL retries classified transient, deadlock, and serialization failures
+  a bounded number of times. It never silently retries logical conflicts.
+- Reuse the same caller-owned `AppendId` after an ambiguous failure. Do not
+  reuse an append ID for a different command in the same tenant.
+
+See [Tenancy and ordering](/concepts/tenancy-and-ordering) for the full
+concurrency and retry model.

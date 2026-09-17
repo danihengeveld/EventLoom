@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
+using System.Text.Json;
 using EventLoom;
 
 namespace EventLoom.EntityFrameworkCore;
@@ -125,6 +126,7 @@ public sealed class EventStore(
                 CorrelationId = request.Metadata.CorrelationId,
                 CausationId = request.Metadata.CausationId,
                 Actor = request.Metadata.Actor,
+                Headers = JsonSerializer.Serialize(request.Metadata.Headers),
                 AppendId = request.AppendId
             };
             context.Events.Add(eventEntity);
@@ -262,7 +264,12 @@ public sealed class EventStore(
 
     private EventEnvelope ToEnvelope(EventEntity entity) =>
         ToEnvelope(entity, serializer.Deserialize(entity.EventType, entity.EventTypeVersion, entity.Payload),
-            new EventMetadata(entity.CorrelationId, entity.CausationId, entity.Actor));
+            new EventMetadata(
+                entity.CorrelationId,
+                entity.CausationId,
+                entity.Actor,
+                JsonSerializer.Deserialize<Dictionary<string, string>>(entity.Headers)
+                    ?? throw new InvalidOperationException($"Event '{entity.EventId}' has invalid metadata headers.")));
 
     private static EventEnvelope ToEnvelope(EventEntity entity, IDomainEvent @event, EventMetadata metadata) =>
         new(

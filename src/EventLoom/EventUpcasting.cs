@@ -3,21 +3,32 @@ using System.Text.Json;
 
 namespace EventLoom;
 
+/// <summary>Transforms one persisted event payload version into its immediate successor.</summary>
 public interface IEventUpcaster
 {
+    /// <summary>Gets the stable event name handled by this upcaster.</summary>
     string EventName { get; }
 
+    /// <summary>Gets the source schema version.</summary>
     int FromVersion { get; }
 
+    /// <summary>Gets the target schema version, which must be exactly one greater than the source.</summary>
     int ToVersion { get; }
 
+    /// <summary>Transforms the source payload into the target payload.</summary>
+    /// <param name="payload">The source JSON payload.</param>
+    /// <returns>The transformed JSON payload.</returns>
     JsonElement Upcast(JsonElement payload);
 }
 
+/// <summary>Validates and executes a deterministic sequence of upcasters for one event name.</summary>
 public sealed class EventUpcasterChain
 {
     private readonly IReadOnlyList<IEventUpcaster> upcasters;
 
+    /// <summary>Initializes a validated upcaster chain for a stable event name.</summary>
+    /// <param name="eventName">The stable event name handled by the chain.</param>
+    /// <param name="upcasters">The available upcasters for the event name.</param>
     public EventUpcasterChain(string eventName, IEnumerable<IEventUpcaster> upcasters)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
@@ -29,8 +40,14 @@ public sealed class EventUpcasterChain
         EventName = eventName;
     }
 
+    /// <summary>Gets the stable event name handled by the chain.</summary>
     public string EventName { get; }
 
+    /// <summary>Transforms a payload from its persisted version to a target version.</summary>
+    /// <param name="payload">The persisted JSON payload.</param>
+    /// <param name="fromVersion">The persisted schema version.</param>
+    /// <param name="targetVersion">The current schema version to reach.</param>
+    /// <returns>The transformed JSON payload.</returns>
     public JsonElement Upcast(JsonElement payload, int fromVersion, int targetVersion)
     {
         if (fromVersion <= 0)
@@ -85,5 +102,6 @@ public sealed class EventUpcasterChain
     }
 }
 
+/// <summary>Indicates that an event upcaster chain is incomplete, ambiguous, or invalid.</summary>
 public sealed class EventUpcastChainException(string eventName, string reason)
     : InvalidOperationException($"Invalid upcaster chain for event '{eventName}': {reason}");

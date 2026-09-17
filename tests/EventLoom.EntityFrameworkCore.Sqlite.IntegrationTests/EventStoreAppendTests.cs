@@ -27,13 +27,14 @@ public sealed class EventStoreAppendTests
             "cart",
             ExpectedVersion.NoStream,
             [new Added(1), new Added(2)],
-            new EventMetadata(),
+            new EventMetadata(Headers: new Dictionary<string, string> { ["source"] = "test" }),
             "append-1"));
         var history = await store.ReadStreamAsync("tenant-a", "cart-1");
 
         await Assert.That(result.Events.Select(value => value.StreamVersion)).IsEquivalentTo(new long[] { 1, 2 });
         await Assert.That(history.Count).IsEqualTo(2);
         await Assert.That(history[1].GlobalPosition).IsEqualTo(2);
+        await Assert.That(history[0].Metadata.Headers["source"]).IsEqualTo("test");
     }
 
     [Test]

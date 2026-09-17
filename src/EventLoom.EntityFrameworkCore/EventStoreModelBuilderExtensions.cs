@@ -46,6 +46,7 @@ public static class EventStoreModelBuilderExtensions
             entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
             entity.Property(value => value.EventType).HasMaxLength(256).IsRequired();
             entity.Property(value => value.Payload).IsRequired();
+            entity.Property(value => value.Headers).IsRequired();
             entity.HasIndex(value => new { value.TenantId, value.StreamId, value.StreamVersion }).IsUnique();
             entity.HasIndex(value => new { value.TenantId, value.GlobalPosition }).IsUnique();
             entity.HasIndex(value => new { value.TenantId, value.AppendId });
