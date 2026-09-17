@@ -8,13 +8,17 @@ public sealed class EventSerializer
 {
     private readonly EventRegistry registry;
     private readonly JsonSerializerOptions options;
+    private readonly IReadOnlyDictionary<string, EventUpcasterChain> upcasterChains;
 
     public EventSerializer(
         EventRegistry registry,
         IEnumerable<JsonSerializerContext>? contexts = null,
-        bool reflectionFallback = true)
+        bool reflectionFallback = true,
+        IEnumerable<EventUpcasterChain>? upcasterChains = null)
     {
         this.registry = registry ?? throw new ArgumentNullException(nameof(registry));
+        this.upcasterChains = (upcasterChains ?? [])
+            .ToDictionary(chain => chain.EventName, StringComparer.Ordinal);
         var contextList = contexts?.ToArray() ?? [];
 
         options = new JsonSerializerOptions
@@ -44,11 +48,28 @@ public sealed class EventSerializer
     public IDomainEvent Deserialize(string eventName, int version, string payload)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(payload);
-        var registration = registry.Get(eventName, version);
+        _ = registry.Get(eventName, version);
+        var currentRegistration = registry.GetCurrent(eventName);
+        var normalizedPayload = payload;
+        if (version < currentRegistration.Version)
+        {
+            if (!upcasterChains.TryGetValue(eventName, out var chain))
+            {
+                throw new EventUpcastChainException(
+                    eventName,
+                    $"No upcaster chain is registered from version {version} to {currentRegistration.Version}.");
+            }
+
+            using var document = JsonDocument.Parse(payload);
+            normalizedPayload = chain.Upcast(document.RootElement, version, currentRegistration.Version).GetRawText();
+        }
 
         try
         {
-            return (IDomainEvent)(JsonSerializer.Deserialize(payload, registration.ClrType, options)
+            return (IDomainEvent)(JsonSerializer.Deserialize(
+                    normalizedPayload,
+                    currentRegistration.ClrType,
+                    options)
                 ?? throw new EventDeserializationException(eventName, version));
         }
         catch (JsonException exception)
@@ -56,6 +77,18 @@ public sealed class EventSerializer
             throw new EventDeserializationException(eventName, version, exception);
         }
     }
+
+    public SerializedEventPayload SerializePayload<TEvent>(TEvent @event)
+        where TEvent : IDomainEvent
+    {
+        var registration = registry.Get<TEvent>();
+        return new SerializedEventPayload(
+            registration.Name,
+            registration.Version,
+            Serialize(@event));
+    }
+
+    public sealed record SerializedEventPayload(string EventName, int Version, string Payload);
 
     private sealed class EmptyJsonTypeInfoResolver : IJsonTypeInfoResolver
     {

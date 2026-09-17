@@ -50,6 +50,16 @@ public sealed class EventRegistry
             : throw new EventNotRegisteredException(eventName, version);
     }
 
+    public EventRegistration GetCurrent(string eventName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
+        return registrationsByName.Values
+            .Where(registration => registration.Name == eventName)
+            .OrderByDescending(registration => registration.Version)
+            .FirstOrDefault()
+            ?? throw new EventNotRegisteredException(eventName, 0);
+    }
+
     public IReadOnlyCollection<EventRegistration> Registrations =>
         new ReadOnlyCollection<EventRegistration>(registrationsByType.Values.ToList());
 
