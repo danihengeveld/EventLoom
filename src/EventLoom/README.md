@@ -1,15 +1,39 @@
 # EventLoom
 
-`EventLoom` provides the core domain abstractions for immutable, versioned
-domain events and event-sourced aggregates.
+`EventLoom` is the core package for immutable, versioned domain events and
+event-sourced aggregates. It contains event contracts, stable
+`[EventType]` names, strongly typed identifiers, metadata, expected-version
+rules, aggregate dispatch, and serializer registration.
 
-Use this package to define `IDomainEvent` contracts, stable `[EventType]`
-names, aggregates, event metadata, expected-version rules, and serialization
-registrations. Add `EventLoom.EntityFrameworkCore` and a provider package to
-persist events.
+Install it directly when your domain layer needs EventLoom abstractions:
 
-EventLoom targets .NET 10. It is pre-release software and is not published to
-NuGet yet.
+```bash
+dotnet add package EventLoom --prerelease
+```
 
-See the [getting started guide](https://github.com/danihengeveld/EventLoom/tree/main/docs/src/content/docs/getting-started)
+Define a stable persisted event and apply it through an aggregate:
+
+```csharp
+using EventLoom;
+
+[EventType("inventory.received", Version = 1)]
+public sealed record InventoryReceived(int Quantity) : IDomainEvent;
+
+public sealed class InventoryItem(Guid id) : Aggregate<Guid>(id)
+{
+    public int Available { get; private set; }
+
+    public void Receive(int quantity) => Raise(new InventoryReceived(quantity));
+
+    private void Apply(InventoryReceived @event) => Available += @event.Quantity;
+}
+```
+
+This package has no storage provider. Add
+`EventLoom.EntityFrameworkCore.PostgreSql` for distributed production
+deployments or `EventLoom.EntityFrameworkCore.Sqlite` for local and
+single-node use.
+
+Packages are currently pre-release and not published to NuGet. See the
+[getting started guide](https://github.com/danihengeveld/EventLoom/tree/main/docs/src/content/docs/getting-started)
 and [architecture documentation](https://github.com/danihengeveld/EventLoom/tree/main/docs/architecture).

@@ -1,13 +1,28 @@
 # EventLoom.Hosting
 
-`EventLoom.Hosting` composes EventLoom with `IServiceCollection`. It registers
-the event store, configured aggregate repositories, projection and outbox
-workers, health checks, and optional OpenTelemetry SDK helpers.
+`EventLoom.Hosting` is EventLoom's public application-composition package. It
+contains the `AddEventLoom` service-registration API, background projection and
+outbox workers, health checks, and optional OpenTelemetry SDK extensions.
 
-Use it with `EventLoom.EntityFrameworkCore` and one EventLoom provider package.
-PostgreSQL supports distributed worker leases; SQLite is only supported for
-local or controlled single-node use.
+Install it alongside exactly one EventLoom provider package:
 
-This pre-release package targets .NET 10. See the
-[production deployment guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/production-deployment.md)
-for deployment and recovery boundaries.
+- `EventLoom.EntityFrameworkCore.PostgreSql` for the distributed production
+  path;
+- `EventLoom.EntityFrameworkCore.Sqlite` for local and controlled single-node
+  use.
+
+After configuring EventLoom, add readiness checks and optional telemetry with:
+
+```csharp
+using EventLoom.Hosting;
+
+builder.Services.AddEventLoomHealthChecks();
+builder.Services.AddOpenTelemetry()
+    .WithTracing(tracing => tracing.AddEventLoomInstrumentation())
+    .WithMetrics(metrics => metrics.AddEventLoomInstrumentation());
+```
+
+Packages are currently pre-release and not published to NuGet. See the
+[observability guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/observability.md)
+and [production deployment guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/production-deployment.md)
+for operational boundaries.

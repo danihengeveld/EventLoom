@@ -1,13 +1,35 @@
 # EventLoom.EntityFrameworkCore.PostgreSql
 
-`EventLoom.EntityFrameworkCore.PostgreSql` configures EventLoom's EF Core
-event store for PostgreSQL. It provides transient-failure retry classification,
-transactionally ordered tenant offsets, and fenced worker leases for
-multi-instance deployments.
+`EventLoom.EntityFrameworkCore.PostgreSql` is the EventLoom provider for
+PostgreSQL. It provides transactional tenant offsets, transient-failure retry
+classification, and fenced worker leases for multi-instance deployments.
 
-Register it through `UsePostgreSql` on `EventLoomBuilder`. It is the supported
-provider for distributed production deployments.
+Use this as the normal application entry point for EventLoom persistence:
 
-This pre-release package targets .NET 10. Follow the
-[production deployment guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/production-deployment.md)
-for migrations, tenancy, and operational requirements.
+```bash
+dotnet add package EventLoom.EntityFrameworkCore.PostgreSql --prerelease
+```
+
+Configure it through the hosting API:
+
+```csharp
+using EventLoom;
+using EventLoom.EntityFrameworkCore.PostgreSql;
+using EventLoom.Hosting;
+
+builder.Services.AddEventLoom(eventLoom => eventLoom
+    .RegisterEvent<OrderPlaced>()
+    .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!));
+```
+
+The package restores the core, EF Core, and hosting packages transitively, but
+applications should directly reference `EventLoom.Hosting` because it provides
+their composition, worker, health-check, and telemetry APIs. Use PostgreSQL for
+any production application that runs multiple instances, uses distributed
+projection or outbox workers, or needs the provider's distributed correctness
+guarantees.
+
+Packages are currently pre-release and not published to NuGet. Follow the
+[EF Core configuration guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/configure-ef-core.md)
+and [production deployment guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/production-deployment.md)
+for schema, tenancy, and recovery requirements.

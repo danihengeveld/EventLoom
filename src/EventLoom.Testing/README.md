@@ -1,10 +1,19 @@
 # EventLoom.Testing
 
-`EventLoom.Testing` contains helpers for testing EventLoom aggregates and
-event contracts without configuring relational storage.
+`EventLoom.Testing` contains small source-level fixture helpers for aggregate
+and event-contract tests, including `EventTestBuilder<TEvent>`.
 
-Use the normal EventLoom packages for event persistence, projections, and
-outbox delivery. This pre-release package targets .NET 10.
+It is intentionally not part of the initial NuGet release. The project remains
+in the repository while its testing surface matures beyond basic fixture
+construction. Consumers should test domain behavior directly against their
+aggregates and use real relational providers for persistence behavior.
+
+```csharp
+var @event = new EventTestBuilder<OrderPlaced>()
+    .With(new OrderPlaced("coffee", 2))
+    .Build();
+```
 
 See the [testing guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/concepts/testing.md)
-for the recommended test boundaries.
+for the recommended domain, relational, and PostgreSQL distributed test
+boundaries.

@@ -16,12 +16,12 @@
   </PropertyGroup>
 
   <PropertyGroup>
+    <IsPackable>false</IsPackable>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom'">true</IsEventLoomPackage>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore'">true</IsEventLoomPackage>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.Hosting'">true</IsEventLoomPackage>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.PostgreSql'">true</IsEventLoomPackage>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.Sqlite'">true</IsEventLoomPackage>
-    <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.Testing'">true</IsEventLoomPackage>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IsEventLoomPackage)' == 'true'">
@@ -37,6 +37,7 @@
     <Description>EventLoom event sourcing framework component.</Description>
     <PackageTags>event-sourcing;ef-core;postgresql;sqlite</PackageTags>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageIcon>eventloom-icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
@@ -46,8 +47,8 @@
 
   <PropertyGroup>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom'">Core abstractions for building versioned event-sourced aggregates with EventLoom.</Description>
-    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore'">EF Core event-store persistence, aggregate repositories, snapshots, projections, and outbox support for EventLoom.</Description>
-    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.Hosting'">Dependency-injection, background-worker, health-check, and OpenTelemetry integration for EventLoom.</Description>
+    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore'">Infrastructure dependency containing EF Core event-store persistence, aggregate repositories, snapshots, projections, and outbox support for EventLoom.</Description>
+    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.Hosting'">Application composition, background-worker, health-check, and OpenTelemetry integration for EventLoom.</Description>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.PostgreSql'">PostgreSQL storage provider with distributed append and worker correctness for EventLoom.</Description>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.Sqlite'">SQLite storage provider for local and controlled single-node EventLoom deployments.</Description>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.Testing'">Testing helpers for EventLoom aggregates and event contracts.</Description>
@@ -59,6 +60,7 @@
   <ItemGroup Condition="'$(IsEventLoomPackage)' == 'true'">
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
+    <None Include="$(MSBuildThisFileDirectory)assets/eventloom-icon.png" Pack="true" PackagePath="\" />
     <None Include="$(MSBuildProjectDirectory)/README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 </Project>
