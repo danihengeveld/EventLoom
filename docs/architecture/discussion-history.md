@@ -23,7 +23,6 @@ EventLoom.EntityFrameworkCore
 EventLoom.EntityFrameworkCore.PostgreSql
 EventLoom.EntityFrameworkCore.Sqlite
 EventLoom.Hosting
-EventLoom.OpenTelemetry
 EventLoom.Testing
 ```
 
@@ -196,7 +195,7 @@ No mutable global or AsyncLocal tenant state is part of EventLoom.
 ## Metadata and Operations
 
 - Built-in envelope metadata: event ID, append ID, tenant, stream and aggregate identity, tenant offsets, timestamps via `TimeProvider`, correlation ID, causation ID, actor ID, and application headers.
-- Expose OpenTelemetry tracing/metrics, structured logging, health checks, projection lag/failure telemetry, and explicit schema compatibility checks.
+- Expose dependency-free .NET activities/metrics compatible with OpenTelemetry, structured logging, health checks, projection lag/failure telemetry, and explicit schema compatibility checks.
 - Never log payload values by default.
 - Apply database migrations explicitly through a CLI/API, never automatically at application startup.
 

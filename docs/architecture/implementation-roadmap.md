@@ -329,7 +329,7 @@ Applications can reliably publish integration messages after committed appends w
 
 ### Ownership
 
-`src/EventLoom.OpenTelemetry`, `src/EventLoom.Hosting`, and `tools/EventLoom.Cli`.
+`src/EventLoom`, `src/EventLoom.Hosting`, and `tools/EventLoom.Cli`.
 
 ### Deliverables
 

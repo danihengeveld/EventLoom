@@ -4,7 +4,6 @@
     <Project Path="src/EventLoom.EntityFrameworkCore.Sqlite/EventLoom.EntityFrameworkCore.Sqlite.csproj" />
     <Project Path="src/EventLoom.EntityFrameworkCore/EventLoom.EntityFrameworkCore.csproj" />
     <Project Path="src/EventLoom.Hosting/EventLoom.Hosting.csproj" />
-    <Project Path="src/EventLoom.OpenTelemetry/EventLoom.OpenTelemetry.csproj" />
     <Project Path="src/EventLoom.Testing/EventLoom.Testing.csproj" />
     <Project Path="src/EventLoom/EventLoom.csproj" />
   </Folder>
