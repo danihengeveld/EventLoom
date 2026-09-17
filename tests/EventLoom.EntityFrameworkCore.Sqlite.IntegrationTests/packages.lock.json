@@ -11,13 +11,14 @@
           "SQLitePCLRaw.core": "2.1.11"
         }
       },
-      "SQLitePCLRaw.provider.sqlite3": {
+      "SQLitePCLRaw.bundle_e_sqlite3": {
         "type": "Direct",
-        "requested": "[2.1.11, )",
-        "resolved": "2.1.11",
-        "contentHash": "tsTSoMsBaFXdL3EOU8TsUQ+hrGTKhFREQ9kcrutL6Ex8+hlJLlxYHHatMGrbiy9ToboiQB/yHz0lHnFcVrvJBA==",
+        "requested": "[2.1.13, )",
+        "resolved": "2.1.13",
+        "contentHash": "NlDixlC7uHmo+ojXRgkNvN0tQtVGpLDZ3x2OpgNj+G07VHh5cXSszFDrAiC4BpUiPwkcaeuQkMV9WQ123xVtmQ==",
         "dependencies": {
-          "SQLitePCLRaw.core": "2.1.11"
+          "SQLitePCLRaw.lib.e_sqlite3": "2.1.13",
+          "SQLitePCLRaw.provider.e_sqlite3": "2.1.13"
         }
       },
       "TUnit": {
@@ -264,8 +265,21 @@
       },
       "SQLitePCLRaw.core": {
         "type": "Transitive",
-        "resolved": "2.1.11",
-        "contentHash": "PK0GLFkfhZzLQeR3PJf71FmhtHox+U3vcY6ZtswoMjrefkB9k6ErNJEnwXqc5KgXDSjige2XXrezqS39gkpQKA=="
+        "resolved": "2.1.13",
+        "contentHash": "2joofoinuHBFs0nMX3nKuXgxpXryRkCOdM2Ua6HBqQLLy6IW+5f28ZI+HAvMyF8vG7XfNz/lwfBfE6V4juru8Q=="
+      },
+      "SQLitePCLRaw.lib.e_sqlite3": {
+        "type": "Transitive",
+        "resolved": "2.1.13",
+        "contentHash": "D2UAuiGxFYBqeRXjjjGgvJ5UQifzn6wefmSqeKU7XcNGKLbJRP6X7kcPZ6opOBJGdCIlgbSxTvDpBbLvsN594A=="
+      },
+      "SQLitePCLRaw.provider.e_sqlite3": {
+        "type": "Transitive",
+        "resolved": "2.1.13",
+        "contentHash": "ZU60dSqoSNRe49KcQDUmOVgdRtjITOssVXFtiISs+zJXDI4D2Sndwpn2NOtzDQNPu0ZAvpoLPQ+GLKv6iEZn8Q==",
+        "dependencies": {
+          "SQLitePCLRaw.core": "2.1.13"
+        }
       },
       "TUnit.Assertions": {
         "type": "Transitive",
@@ -305,7 +319,7 @@
           "EventLoom.EntityFrameworkCore": "[0.1.0-alpha.0, )",
           "EventLoom.Hosting": "[0.1.0-alpha.0, )",
           "Microsoft.EntityFrameworkCore.Sqlite.Core": "[10.0.4, )",
-          "SQLitePCLRaw.provider.sqlite3": "[2.1.11, )"
+          "SQLitePCLRaw.bundle_e_sqlite3": "[2.1.13, )"
         }
       },
       "eventloom.hosting": {

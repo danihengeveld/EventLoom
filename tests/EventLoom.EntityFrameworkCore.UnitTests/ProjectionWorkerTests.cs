@@ -91,7 +91,7 @@ public sealed class ProjectionWorkerTests
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
         var services = new ServiceCollection();
-        SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_sqlite3());
+        SQLitePCL.Batteries_V2.Init();
         services.AddEventLoom(eventLoom => eventLoom
             .RegisterEvent<ItemAdded>()
             .ConfigureProjectionModel(modelBuilder =>
@@ -128,7 +128,7 @@ public sealed class ProjectionWorkerTests
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
         var services = new ServiceCollection();
-        SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_sqlite3());
+        SQLitePCL.Batteries_V2.Init();
         services.AddEventLoom(eventLoom => eventLoom
             .RegisterEvent<ItemAdded>()
             .UseSqlite($"Data Source={databasePath}")
@@ -157,7 +157,7 @@ public sealed class ProjectionWorkerTests
         ProjectionRecorder recorder,
         ProjectionFailureRecorder? failures = null)
     {
-        SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_sqlite3());
+        SQLitePCL.Batteries_V2.Init();
         var services = new ServiceCollection();
         services.AddSingleton(recorder);
         if (failures is not null)

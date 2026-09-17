@@ -53,8 +53,10 @@ builder.Services.AddEventLoom(eventLoom => eventLoom
     .UseSqlite("Data Source=eventloom.db"));
 ```
 
-`UseSqlite` disables schemas and initializes the SQLite provider. It does not
-support distributed workers; use PostgreSQL for multi-instance correctness.
+`UseSqlite` disables schemas and initializes the SQLite provider from its
+bundled native dependency, so applications do not need a system SQLite library.
+It does not support distributed workers; use PostgreSQL for multi-instance
+correctness.
 
 ## Storage names and tenancy
 

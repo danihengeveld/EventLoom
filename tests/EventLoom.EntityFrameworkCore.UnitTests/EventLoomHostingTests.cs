@@ -15,7 +15,7 @@ public sealed class EventLoomHostingTests
     [Test]
     public async Task AddEventLoomRegistersCoreServicesAndTypedRepository()
     {
-        SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_sqlite3());
+        SQLitePCL.Batteries_V2.Init();
         var services = new ServiceCollection();
 
         services.AddEventLoom(eventLoom => eventLoom

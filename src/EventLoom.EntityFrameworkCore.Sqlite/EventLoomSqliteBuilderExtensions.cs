@@ -39,7 +39,7 @@ public static class EventLoomSqliteBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
-        SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_sqlite3());
+        SQLitePCL.Batteries_V2.Init();
 
         return builder
             .ConfigureEventStore(options => options.UseSchema = false)
@@ -79,7 +79,7 @@ public static class EventLoomSqliteBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(connectionFactory);
-        SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_sqlite3());
+        SQLitePCL.Batteries_V2.Init();
 
         return builder
             .ConfigureEventStore(options => options.UseSchema = false)

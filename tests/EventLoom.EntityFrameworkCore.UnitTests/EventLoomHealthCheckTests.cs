@@ -14,7 +14,7 @@ public sealed class EventLoomHealthCheckTests
     [Test]
     public async Task Health_checks_validate_schema_and_report_projection_and_outbox_work()
     {
-        SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_sqlite3());
+        SQLitePCL.Batteries_V2.Init();
         var databasePath = Path.Combine(
             Environment.CurrentDirectory,
             $"eventloom-health-{Guid.NewGuid():N}.db");

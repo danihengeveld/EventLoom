@@ -3,7 +3,7 @@
     <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore.Sqlite\EventLoom.EntityFrameworkCore.Sqlite.csproj" />
     <PackageReference Include="TUnit" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" />
-    <PackageReference Include="SQLitePCLRaw.provider.sqlite3" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
   </ItemGroup>
   <PropertyGroup>
     <IsTestProject>true</IsTestProject>

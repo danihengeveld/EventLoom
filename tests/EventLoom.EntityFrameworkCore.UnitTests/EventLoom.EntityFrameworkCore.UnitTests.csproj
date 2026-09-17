@@ -5,7 +5,7 @@
     <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore.PostgreSql\EventLoom.EntityFrameworkCore.PostgreSql.csproj" />
     <ProjectReference Include="..\..\src\EventLoom.Hosting\EventLoom.Hosting.csproj" />
     <PackageReference Include="TUnit" />
-    <PackageReference Include="SQLitePCLRaw.provider.sqlite3" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
   </ItemGroup>
   <PropertyGroup>
     <IsTestProject>true</IsTestProject>
