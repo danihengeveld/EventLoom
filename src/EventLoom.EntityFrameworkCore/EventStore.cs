@@ -78,7 +78,6 @@ public sealed class EventStore(
         var envelopes = new List<EventEnvelope>(request.Events.Count);
         foreach (var @event in request.Events)
         {
-            var registration = serializer.SerializePayload(@event).EventName;
             var payload = serializer.SerializePayload(@event);
             var eventEntity = new EventEntity
             {
@@ -88,7 +87,7 @@ public sealed class EventStore(
                 AggregateType = request.AggregateType,
                 StreamVersion = ++stream.Version,
                 GlobalPosition = ++position.NextPosition,
-                EventType = registration,
+                EventType = payload.EventName,
                 EventTypeVersion = payload.Version,
                 Payload = payload.Payload,
                 OccurredAt = timeProvider.GetUtcNow(),
