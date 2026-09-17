@@ -3,6 +3,7 @@
     <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore.PostgreSql\EventLoom.EntityFrameworkCore.PostgreSql.csproj" />
     <PackageReference Include="TUnit" />
     <PackageReference Include="Npgsql" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
   </ItemGroup>
   <PropertyGroup>
     <IsTestProject>true</IsTestProject>
