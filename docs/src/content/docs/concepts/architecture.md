@@ -51,9 +51,9 @@ EventLoom context manually in most applications.
 
 ## Delivery boundary
 
-Current EventLoom supports event persistence and aggregate reconstruction.
-Snapshots, projection runners, and outbox publication are planned but not
-implemented. Do not treat the current event store as a general cross-context
-transaction or message-delivery mechanism. The repository's accepted
+Current EventLoom supports event persistence, aggregate reconstruction, and
+optional snapshots. Projection runners and outbox publication are planned but
+not implemented. Do not treat the current event store as a general
+cross-context transaction or message-delivery mechanism. The repository's accepted
 [architecture decisions](https://github.com/danihengeveld/EventLoom/tree/main/docs/architecture/decisions)
 record the rationale.

@@ -63,6 +63,97 @@ public sealed class AggregateRepositoryTests
         await Assert.That(loaded.Value).IsEqualTo(4);
     }
 
+    [Test]
+    public async Task Configured_repository_restores_latest_snapshot_and_replays_tail_events()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = new EventStoreDbContext(
+            new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
+            new EventStoreOptions { TablePrefix = "test_" });
+        await context.Database.EnsureCreatedAsync();
+
+        var registry = new EventRegistry().RegisterEvent<Incremented>();
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var snapshots = new SnapshotStore(context, TimeProvider.System);
+        var adapter = new JsonAggregateSnapshotAdapter<Counter, CounterSnapshot>(
+            aggregate => new CounterSnapshot(aggregate.Value),
+            (aggregate, snapshot) => aggregate.Restore(snapshot));
+        var repository = new AggregateRepository<Counter, Guid>(
+            store,
+            id => new Counter(id),
+            "counter",
+            id => id.ToString("D"),
+            new TestTenantAccessor("tenant-a"),
+            snapshots,
+            adapter,
+            new EveryNEventsSnapshotPolicy(2));
+        var aggregate = new Counter(Guid.NewGuid());
+
+        aggregate.Increment(2);
+        await repository.SaveAsync(aggregate);
+        aggregate.Increment(3);
+        await repository.SaveAsync(aggregate);
+        aggregate.Increment(4);
+        await repository.SaveAsync(aggregate);
+
+        var snapshot = await snapshots.ReadLatestAsync(
+            "tenant-a",
+            aggregate.Id.ToString("D"),
+            "counter",
+            "tests.counter");
+        var loaded = await repository.LoadAsync(aggregate.Id);
+
+        await Assert.That(snapshot!.StreamVersion).IsEqualTo(2);
+        await Assert.That(loaded.Value).IsEqualTo(9);
+        await Assert.That(loaded.Version).IsEqualTo(3);
+    }
+
+    [Test]
+    public async Task Corrupt_snapshot_falls_back_to_full_event_replay()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = new EventStoreDbContext(
+            new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
+            new EventStoreOptions { TablePrefix = "test_" });
+        await context.Database.EnsureCreatedAsync();
+
+        var registry = new EventRegistry().RegisterEvent<Incremented>();
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var snapshots = new SnapshotStore(context, TimeProvider.System);
+        var adapter = new JsonAggregateSnapshotAdapter<Counter, CounterSnapshot>(
+            aggregate => new CounterSnapshot(aggregate.Value),
+            (aggregate, snapshot) => aggregate.Restore(snapshot));
+        var repository = new AggregateRepository<Counter, Guid>(
+            store,
+            id => new Counter(id),
+            "counter",
+            id => id.ToString("D"),
+            new TestTenantAccessor("tenant-a"),
+            snapshots,
+            adapter,
+            new EveryNEventsSnapshotPolicy(100));
+        var aggregate = new Counter(Guid.NewGuid());
+        aggregate.Increment(2);
+        await repository.SaveAsync(aggregate);
+        aggregate.Increment(3);
+        await repository.SaveAsync(aggregate);
+        await snapshots.WriteAsync(new SnapshotWriteRequest(
+            "tenant-a",
+            aggregate.Id.ToString("D"),
+            "counter",
+            2,
+            "tests.counter",
+            1,
+            "{corrupt"));
+
+        var loaded = await repository.LoadAsync(aggregate.Id);
+
+        await Assert.That(loaded.Value).IsEqualTo(5);
+        await Assert.That(loaded.Version).IsEqualTo(2);
+    }
+
     [EventType("tests.incremented")]
     private sealed record Incremented(int Amount) : IDomainEvent;
 
@@ -73,7 +164,12 @@ public sealed class AggregateRepositoryTests
         public void Increment(int amount) => Raise(new Incremented(amount));
 
         private void Apply(Incremented @event) => Value += @event.Amount;
+
+        public void Restore(CounterSnapshot snapshot) => Value = snapshot.Value;
     }
+
+    [SnapshotType("tests.counter", Version = 1)]
+    private sealed record CounterSnapshot(int Value) : IAggregateSnapshot;
 
     private sealed class TestTenantAccessor(string tenant) : ITenantAccessor
     {

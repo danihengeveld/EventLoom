@@ -41,6 +41,14 @@ internal sealed class TenantOffsetEntity
 internal sealed class SnapshotEntity : IEntityWithId
 {
     public long Id { get; set; }
+    public required string TenantId { get; set; }
+    public required string StreamId { get; set; }
+    public required string AggregateType { get; set; }
+    public long StreamVersion { get; set; }
+    public required string SnapshotType { get; set; }
+    public int SchemaVersion { get; set; }
+    public required string Payload { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }
 
 internal sealed class ProjectionCheckpointEntity : IEntityWithId

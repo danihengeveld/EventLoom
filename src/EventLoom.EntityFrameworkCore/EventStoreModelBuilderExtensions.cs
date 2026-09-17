@@ -57,7 +57,17 @@ public static class EventStoreModelBuilderExtensions
             entity.HasKey(value => value.TenantId);
             entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
         });
-        ConfigureSimpleTable<SnapshotEntity>(modelBuilder, $"{prefix}snapshots", schema);
+        modelBuilder.Entity<SnapshotEntity>(entity =>
+        {
+            entity.ToTable($"{prefix}snapshots", schema);
+            entity.HasKey(value => value.Id);
+            entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.StreamId).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.AggregateType).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.SnapshotType).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.Payload).IsRequired();
+            entity.HasIndex(value => new { value.TenantId, value.StreamId, value.AggregateType, value.StreamVersion });
+        });
         ConfigureSimpleTable<ProjectionCheckpointEntity>(modelBuilder, $"{prefix}projection_checkpoints", schema);
         modelBuilder.Entity<ProjectionLeaseEntity>(entity =>
         {

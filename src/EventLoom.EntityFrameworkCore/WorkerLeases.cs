@@ -25,13 +25,16 @@ public sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider t
         }
 
         var now = timeProvider.GetUtcNow();
-        var lease = await context.ProjectionLeases.SingleOrDefaultAsync(
+        var isPostgreSql = context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true;
+        var leases = context.ProjectionLeases.AsQueryable();
+        if (isPostgreSql)
+        {
+            leases = leases.AsNoTracking();
+        }
+
+        var lease = await leases.SingleOrDefaultAsync(
             value => value.TenantId == tenantId && value.LeaseName == leaseName,
             cancellationToken);
-        if (lease is not null && lease.LeaseUntil > now && lease.OwnerId != ownerId)
-        {
-            return null;
-        }
 
         if (lease is null)
         {
@@ -51,16 +54,55 @@ public sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider t
             }
             catch (DbUpdateException exception)
             {
-                context.Entry(newLease).State = EntityState.Detached;
+                context.ChangeTracker.Clear();
+                var current = await context.ProjectionLeases.AsNoTracking().SingleOrDefaultAsync(
+                    value => value.TenantId == tenantId && value.LeaseName == leaseName,
+                    cancellationToken);
+                if (current is not null && current.LeaseUntil > now && current.OwnerId != ownerId)
+                {
+                    return null;
+                }
+
                 throw new WorkerLeaseConflictException(tenantId, leaseName, exception);
             }
         }
 
-        lease!.OwnerId = ownerId;
-        lease.FencingToken++;
-        lease.LeaseUntil = now.Add(duration);
-        await context.SaveChangesAsync(cancellationToken);
-        return new WorkerLease(tenantId, leaseName, ownerId, lease.FencingToken, lease.LeaseUntil);
+        var leaseUntil = now.Add(duration);
+        if (!isPostgreSql)
+        {
+            if (lease.LeaseUntil > now && lease.OwnerId != ownerId)
+            {
+                return null;
+            }
+
+            lease.OwnerId = ownerId;
+            lease.FencingToken++;
+            lease.LeaseUntil = leaseUntil;
+            context.ProjectionLeases.Update(lease);
+            await context.SaveChangesAsync(cancellationToken);
+            return new WorkerLease(tenantId, leaseName, ownerId, lease.FencingToken, lease.LeaseUntil);
+        }
+
+        var updated = await context.ProjectionLeases
+            .Where(value =>
+                value.TenantId == tenantId &&
+                value.LeaseName == leaseName &&
+                (value.LeaseUntil <= now || value.OwnerId == ownerId))
+            .ExecuteUpdateAsync(
+                setters => setters
+                    .SetProperty(value => value.OwnerId, ownerId)
+                    .SetProperty(value => value.FencingToken, value => value.FencingToken + 1)
+                    .SetProperty(value => value.LeaseUntil, leaseUntil),
+                cancellationToken);
+        if (updated == 0)
+        {
+            return null;
+        }
+
+        var renewed = await context.ProjectionLeases.AsNoTracking().SingleAsync(
+            value => value.TenantId == tenantId && value.LeaseName == leaseName,
+            cancellationToken);
+        return new WorkerLease(tenantId, leaseName, ownerId, renewed.FencingToken, renewed.LeaseUntil);
     }
 
     /// <summary>Releases a lease only when its owner and fencing token still match.</summary>

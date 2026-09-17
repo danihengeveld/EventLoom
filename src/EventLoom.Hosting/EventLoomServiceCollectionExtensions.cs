@@ -193,6 +193,34 @@ public sealed class EventLoomBuilder
     }
 
     /// <summary>
+    /// Registers a repository that snapshots configured aggregates at the supplied policy interval.
+    /// </summary>
+    public EventLoomBuilder AddAggregateRepository<TAggregate, TId>(
+        Func<TId, TAggregate> factory,
+        string aggregateType,
+        Func<TId, string> streamId,
+        IAggregateSnapshotAdapter<TAggregate> snapshotAdapter,
+        ISnapshotPolicy? snapshotPolicy = null)
+        where TAggregate : Aggregate<TId>
+    {
+        ArgumentNullException.ThrowIfNull(factory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
+        ArgumentNullException.ThrowIfNull(streamId);
+        ArgumentNullException.ThrowIfNull(snapshotAdapter);
+
+        services.AddScoped(serviceProvider => new AggregateRepository<TAggregate, TId>(
+            serviceProvider.GetRequiredService<EventStore>(),
+            factory,
+            aggregateType,
+            streamId,
+            serviceProvider.GetService<ITenantAccessor>(),
+            serviceProvider.GetRequiredService<SnapshotStore>(),
+            snapshotAdapter,
+            snapshotPolicy));
+        return this;
+    }
+
+    /// <summary>
     /// Registers a typed aggregate repository using the standard
     /// <see cref="Aggregate{TId}.PendingEvents"/> and
     /// <see cref="Aggregate{TId}.Version"/> members.
@@ -285,6 +313,7 @@ public sealed class EventLoomBuilder
             configureDbContext(serviceProvider, options);
         });
         services.AddScoped<EventStore>();
+        services.AddScoped<SnapshotStore>();
         services.AddScoped<WorkerLeaseStore>();
     }
 }

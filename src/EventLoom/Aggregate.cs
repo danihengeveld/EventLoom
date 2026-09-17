@@ -72,6 +72,17 @@ public abstract class Aggregate<TId>
     /// <summary>Removes all pending events after they have been persisted.</summary>
     public void ClearPendingEvents() => pendingEvents.Clear();
 
+    internal void RestoreSnapshotVersion(long streamVersion)
+    {
+        if (streamVersion < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(streamVersion));
+        }
+
+        Version = streamVersion;
+        pendingEvents.Clear();
+    }
+
     private void ApplyEvent(IDomainEvent @event)
     {
         var dispatcher = Dispatchers.GetOrAdd(GetType(), static type => AggregateDispatcher.Create(type));

@@ -65,6 +65,6 @@ workaround only when Docker lifecycle cleanup is otherwise guaranteed.
 | Idempotency | The same append ID returns the original envelopes. |
 | Position consumer | Checkpoint advances only after a handler succeeds. |
 
-Snapshots, projection runners, and outbox delivery are not available yet, so
-test any application-owned implementation independently until their EventLoom
-APIs ship.
+Snapshot replay is covered by SQLite integration tests. Projection runners and
+outbox delivery are not available yet, so test any application-owned
+implementation independently until their EventLoom APIs ship.

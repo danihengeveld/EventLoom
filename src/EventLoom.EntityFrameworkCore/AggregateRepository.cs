@@ -13,6 +13,9 @@ public sealed class AggregateRepository<TAggregate, TId>
     private readonly string? aggregateType;
     private readonly Func<TId, string>? streamId;
     private readonly ITenantAccessor? tenantAccessor;
+    private readonly SnapshotStore? snapshotStore;
+    private readonly IAggregateSnapshotAdapter<TAggregate>? snapshotAdapter;
+    private readonly ISnapshotPolicy? snapshotPolicy;
 
     /// <summary>Initializes a repository with explicit persistence delegates.</summary>
     public AggregateRepository(
@@ -35,7 +38,10 @@ public sealed class AggregateRepository<TAggregate, TId>
         Func<TId, TAggregate> factory,
         string aggregateType,
         Func<TId, string> streamId,
-        ITenantAccessor? tenantAccessor = null)
+        ITenantAccessor? tenantAccessor = null,
+        SnapshotStore? snapshotStore = null,
+        IAggregateSnapshotAdapter<TAggregate>? snapshotAdapter = null,
+        ISnapshotPolicy? snapshotPolicy = null)
         : this(
             store,
             factory,
@@ -46,6 +52,16 @@ public sealed class AggregateRepository<TAggregate, TId>
         this.aggregateType = aggregateType;
         this.streamId = streamId ?? throw new ArgumentNullException(nameof(streamId));
         this.tenantAccessor = tenantAccessor;
+        if (snapshotAdapter is not null && snapshotStore is null)
+        {
+            throw new ArgumentException("A snapshot store is required when a snapshot adapter is configured.", nameof(snapshotStore));
+        }
+
+        this.snapshotStore = snapshotStore;
+        this.snapshotAdapter = snapshotAdapter;
+        this.snapshotPolicy = snapshotAdapter is null
+            ? null
+            : snapshotPolicy ?? new EveryNEventsSnapshotPolicy(100);
     }
 
     /// <summary>Loads an aggregate from its complete stream history, or creates a new instance when absent.</summary>
@@ -68,10 +84,46 @@ public sealed class AggregateRepository<TAggregate, TId>
     /// <summary>
     /// Loads an aggregate using the configured stream identity and scoped tenant.
     /// </summary>
-    public Task<TAggregate> LoadAsync(TId id, CancellationToken cancellationToken = default)
+    public async Task<TAggregate> LoadAsync(TId id, CancellationToken cancellationToken = default)
     {
         EnsureConfigured();
-        return LoadAsync(ResolveTenant(), streamId!(id), id, cancellationToken);
+        var tenantId = ResolveTenant();
+        var aggregate = factory(id);
+        long? fromVersion = null;
+        if (snapshotStore is not null && snapshotAdapter is not null)
+        {
+            var snapshot = await snapshotStore.ReadLatestAsync(
+                tenantId,
+                streamId!(id),
+                aggregateType!,
+                snapshotAdapter.SnapshotType,
+                cancellationToken);
+            if (snapshot is not null)
+            {
+                try
+                {
+                    snapshotAdapter.Restore(aggregate, snapshot.SchemaVersion, snapshot.Payload);
+                    aggregate.RestoreSnapshotVersion(snapshot.StreamVersion);
+                    fromVersion = snapshot.StreamVersion + 1;
+                }
+                catch (SnapshotDeserializationException)
+                {
+                    aggregate = factory(id);
+                }
+                catch (SnapshotIncompatibleException)
+                {
+                    aggregate = factory(id);
+                }
+            }
+        }
+
+        var history = await store.ReadStreamAsync(
+            tenantId,
+            streamId!(id),
+            fromVersion,
+            cancellationToken: cancellationToken);
+        aggregate.ApplyHistory(history.Select(value => value.Event));
+        return aggregate;
     }
 
     /// <summary>Saves pending aggregate events using the aggregate's current version as the expectation.</summary>
@@ -113,7 +165,7 @@ public sealed class AggregateRepository<TAggregate, TId>
     /// <summary>
     /// Saves pending events using configured identity, scoped tenant, and empty metadata by default.
     /// </summary>
-    public Task<AppendResult> SaveAsync(
+    public async Task<AppendResult> SaveAsync(
         TAggregate aggregate,
         EventMetadata? metadata = null,
         string? appendId = null,
@@ -121,7 +173,7 @@ public sealed class AggregateRepository<TAggregate, TId>
     {
         EnsureConfigured();
         ArgumentNullException.ThrowIfNull(aggregate);
-        return SaveAsync(
+        var result = await SaveAsync(
             ResolveTenant(),
             streamId!(aggregate.Id),
             aggregateType!,
@@ -129,6 +181,24 @@ public sealed class AggregateRepository<TAggregate, TId>
             metadata ?? new EventMetadata(),
             appendId,
             cancellationToken);
+        if (!result.WasIdempotentReplay &&
+            snapshotStore is not null &&
+            snapshotAdapter is not null &&
+            snapshotPolicy!.ShouldSnapshot(aggregate.Version))
+        {
+            await snapshotStore.WriteAsync(
+                new SnapshotWriteRequest(
+                    ResolveTenant(),
+                    streamId!(aggregate.Id),
+                    aggregateType!,
+                    aggregate.Version,
+                    snapshotAdapter.SnapshotType,
+                    snapshotAdapter.SchemaVersion,
+                    snapshotAdapter.Capture(aggregate)),
+                cancellationToken);
+        }
+
+        return result;
     }
 
     private void EnsureConfigured()

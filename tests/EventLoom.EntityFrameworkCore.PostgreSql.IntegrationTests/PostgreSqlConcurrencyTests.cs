@@ -33,6 +33,38 @@ public sealed class PostgreSqlConcurrencyTests
     }
 
     [Test]
+    public async Task Concurrent_first_appends_with_the_same_append_id_replay_one_result()
+    {
+        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
+        await container.StartAsync();
+        var options = new EventStoreOptions { UseSchema = true, Schema = "eventloom_idempotency", TablePrefix = "eventloom_" };
+        await using var firstContext = CreateContext(container.GetConnectionString(), options);
+        await using var secondContext = CreateContext(container.GetConnectionString(), options);
+        await firstContext.Database.EnsureCreatedAsync();
+
+        var registry = new EventRegistry().RegisterEvent<Created>();
+        var retryOptions = new EventStoreWorkerOptions { MaxRetryAttempts = 20 };
+        var first = CreateStore(firstContext, registry, new PostgreSqlRetryPolicy(retryOptions, TimeProvider.System));
+        var second = CreateStore(secondContext, registry, new PostgreSqlRetryPolicy(retryOptions, TimeProvider.System));
+        var streamId = Guid.NewGuid().ToString("D");
+        var request = new AppendRequest(
+            "tenant-a",
+            streamId,
+            "test",
+            ExpectedVersion.NoStream,
+            [new Created()],
+            new EventMetadata(),
+            AppendId: "first-write-command");
+
+        var results = await Task.WhenAll(first.AppendAsync(request), second.AppendAsync(request));
+        var history = await first.ReadStreamAsync("tenant-a", streamId);
+
+        await Assert.That(results.Count(value => value.WasIdempotentReplay)).IsEqualTo(1);
+        await Assert.That(results.Count(value => !value.WasIdempotentReplay)).IsEqualTo(1);
+        await Assert.That(history.Count).IsEqualTo(1);
+    }
+
+    [Test]
     public async Task Concurrent_instances_assign_contiguous_committed_tenant_offsets()
     {
         await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
