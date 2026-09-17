@@ -113,6 +113,19 @@ curl -H 'X-Tenant-ID: acme' \
   http://localhost:5000/projections/order-summary
 ```
 
+The sample also exposes explicit tenant-scoped recovery routes:
+
+```text
+POST /projections/order-summary/resume
+POST /projections/order-summary/replay
+POST /projections/order-summary/failures/{eventId}/skip
+```
+
+They illustrate the `ProjectionAdministration` API only. A production service
+must protect them with an administrator authorization policy. Replay resets
+the checkpoint but does not clear the read model; use a new projection version
+and shadow table for a production rebuild.
+
 Each event is also written to the outbox. Replace `<event-id>` with the
 event's `eventId` from the event-history response to inspect the logging
 publisher's durable delivery record and attempts:

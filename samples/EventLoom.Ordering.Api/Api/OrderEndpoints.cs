@@ -16,6 +16,9 @@ internal static class OrderEndpoints
         app.MapGet("/orders/{id:guid}/events", GetEventsAsync);
         app.MapGet("/orders/{id:guid}/summary", GetSummaryAsync);
         app.MapGet("/projections/order-summary", GetProjectionStatusAsync);
+        app.MapPost("/projections/order-summary/resume", ResumeProjectionAsync);
+        app.MapPost("/projections/order-summary/replay", ReplayProjectionAsync);
+        app.MapPost("/projections/order-summary/failures/{eventId:guid}/skip", SkipProjectionFailureAsync);
         app.MapGet("/outbox/{messageId:guid}", GetOutboxMessageAsync);
     }
 
@@ -182,6 +185,27 @@ internal static class OrderEndpoints
             attempts
         });
     }
+
+    private static async Task<IResult> ResumeProjectionAsync(
+        ProjectionAdministration administration, ITenantAccessor tenantAccessor, CancellationToken cancellationToken) =>
+        (await administration.ResumeAsync(tenantAccessor.TenantId!.Value.Value, OrderSummaryKey, cancellationToken))
+            ? Results.NoContent()
+            : Results.Conflict(new { error = "The projection is not paused." });
+
+    private static async Task<IResult> ReplayProjectionAsync(
+        ProjectionAdministration administration, ITenantAccessor tenantAccessor, CancellationToken cancellationToken)
+    {
+        await administration.ReplayAsync(tenantAccessor.TenantId!.Value.Value, OrderSummaryKey, cancellationToken);
+        return Results.Accepted();
+    }
+
+    private static async Task<IResult> SkipProjectionFailureAsync(
+        Guid eventId, ProjectionAdministration administration, ITenantAccessor tenantAccessor, CancellationToken cancellationToken) =>
+        (await administration.SkipAsync(tenantAccessor.TenantId!.Value.Value, OrderSummaryKey, eventId, cancellationToken))
+            ? Results.NoContent()
+            : Results.NotFound();
+
+    private static ProjectionKey OrderSummaryKey => new(OrderSummaryProjection.Name, 1);
 
     private static EventMetadata RequestMetadata(HttpContext context) =>
         new(
