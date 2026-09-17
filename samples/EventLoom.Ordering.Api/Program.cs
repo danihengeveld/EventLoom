@@ -5,11 +5,13 @@ using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
 using EventLoom.Ordering.Api;
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull);
+builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantAccessor, RequestTenantAccessor>();
 
@@ -46,7 +48,17 @@ await using (var scope = app.Services.CreateAsyncScope())
     await scope.ServiceProvider.GetRequiredService<EventStoreDbContext>().Database.EnsureCreatedAsync();
 }
 
-app.Use(TenantRequirementMiddleware.InvokeAsync);
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+    app.MapScalarApiReference();
+}
+
+app.UseWhen(
+    context => !app.Environment.IsDevelopment() ||
+        (!context.Request.Path.StartsWithSegments("/openapi") &&
+         !context.Request.Path.StartsWithSegments("/scalar")),
+    branch => branch.Use(TenantRequirementMiddleware.InvokeAsync));
 app.MapHealthChecks("/health");
 app.MapOrderEndpoints();
 app.Run();

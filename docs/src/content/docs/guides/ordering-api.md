@@ -23,6 +23,7 @@ is a compact, production-shaped ASP.NET Core application. It demonstrates:
 ## Run with SQLite
 
 ```bash
+ASPNETCORE_ENVIRONMENT=Development \
 EVENTLOOM_DATABASE_PROVIDER=sqlite \
   dotnet run --project samples/EventLoom.Ordering.Api
 ```
@@ -38,12 +39,23 @@ docker compose -f samples/EventLoom.Ordering.Api/compose.yaml up -d
 Then start the API:
 
 ```bash
+ASPNETCORE_ENVIRONMENT=Development \
 ConnectionStrings__EventStore='Host=localhost;Database=eventloom;Username=eventloom;Password=eventloom' \
   dotnet run --project samples/EventLoom.Ordering.Api
 ```
 
 The sample uses `EnsureCreatedAsync` for a new database. Use reviewed EF Core
 migrations before starting production application instances.
+
+## Explore the API
+
+In the Development environment configured in the commands above, the sample
+generates an OpenAPI document with `Microsoft.AspNetCore.OpenApi` and exposes
+the Scalar
+interactive reference at <http://localhost:5000/scalar/v1>. The generated
+document is available at <http://localhost:5000/openapi/v1.json>. These
+development-only endpoints are not mapped in production and do not require the
+sample's `X-Tenant-ID` header.
 
 ## Exercise the API
 
