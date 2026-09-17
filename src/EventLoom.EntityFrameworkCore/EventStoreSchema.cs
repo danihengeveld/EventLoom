@@ -4,6 +4,8 @@ namespace EventLoom.EntityFrameworkCore;
 
 public static class EventStoreSchema
 {
+    public const string MigrationsAssemblyName = "EventLoom.EntityFrameworkCore";
+
     public static Task MigrateAsync(
         EventStoreDbContext context,
         CancellationToken cancellationToken = default)

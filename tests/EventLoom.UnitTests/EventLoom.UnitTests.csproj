@@ -1,10 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="SQLitePCLRaw.provider.sqlite3" />
     <ProjectReference Include="..\..\src\EventLoom\EventLoom.csproj" />
     <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore\EventLoom.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore.Sqlite\EventLoom.EntityFrameworkCore.Sqlite.csproj" />
     <PackageReference Include="TUnit" />
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" />
   </ItemGroup>
 
   <PropertyGroup>
