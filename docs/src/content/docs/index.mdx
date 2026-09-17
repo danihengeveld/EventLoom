@@ -16,7 +16,7 @@ and safe PostgreSQL and SQLite persistence paths.
   [Append and read events](/guides/append-and-read).
 - **Building a service?** The [Ordering API sample](/guides/ordering-api)
   demonstrates scoped tenancy, aggregate commands, metadata, idempotency keys,
-  and stream inspection.
+  snapshots, and an asynchronous order-summary projection.
 - **Preparing a PostgreSQL deployment?** Follow
   [Production deployment](/guides/production-deployment).
 
@@ -34,12 +34,14 @@ and safe PostgreSQL and SQLite persistence paths.
 - Optional required tenancy with a scoped `ITenantAccessor`.
 - A configured `AggregateRepository<TAggregate, TId>` path that keeps tenant,
   aggregate type, and stream-ID plumbing out of normal command handlers.
+- Checkpointed asynchronous projections, atomic EF projection handlers, and
+  explicitly registered inline projections.
 
 ## Current scope
 
 EventLoom is pre-release software and NuGet packages are not published yet.
 The current source tree and sample are the supported way to evaluate it.
-Snapshot capture and replay are available; projections, outbox publishing, and
+Snapshot capture/replay and projections are available; outbox publishing and
 public package-release automation are not yet available. See the
 [implementation roadmap](/reference/roadmap)
 for the staged plan.

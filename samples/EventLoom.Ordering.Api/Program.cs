@@ -3,6 +3,7 @@ using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,12 +26,23 @@ builder.Services.AddEventLoom(eventLoom =>
     eventLoom.RegisterEvent<OrderPlaced>();
     eventLoom.RegisterEvent<OrderItemAdded>();
     eventLoom.RegisterEvent<OrderCancelled>();
+    eventLoom.ConfigureProjectionModel(modelBuilder =>
+    {
+        modelBuilder.Entity<OrderSummary>(entity =>
+        {
+            entity.ToTable("ordering_order_summaries");
+            entity.HasKey(value => new { value.TenantId, value.OrderId });
+        });
+    });
     eventLoom.AddAggregateRepository<Order, Guid>(
         id => new Order(id),
         "order",
         id => id.ToString("D"),
         orderSnapshots,
         new EveryNEventsSnapshotPolicy(2));
+    eventLoom.AddEfProjection<OrderSummaryProjection, OrderPlaced>("ordering.order-summary");
+    eventLoom.AddEfProjection<OrderSummaryProjection, OrderItemAdded>("ordering.order-summary");
+    eventLoom.AddEfProjection<OrderSummaryProjection, OrderCancelled>("ordering.order-summary");
 
     if (provider == "sqlite")
     {
@@ -190,6 +202,32 @@ app.MapGet("/orders/{id:guid}/events", async (
     }));
 });
 
+app.MapGet("/orders/{id:guid}/summary", async (
+    Guid id,
+    EventStoreDbContext context,
+    ITenantAccessor tenantAccessor,
+    CancellationToken cancellationToken) =>
+{
+    var summary = await context.Set<OrderSummary>().SingleOrDefaultAsync(
+        value => value.TenantId == tenantAccessor.TenantId!.Value.Value && value.OrderId == id,
+        cancellationToken);
+    return summary is null
+        ? Results.NotFound()
+        : Results.Ok(summary);
+});
+
+app.MapGet("/projections/order-summary", async (
+    ProjectionAdministration administration,
+    ITenantAccessor tenantAccessor,
+    CancellationToken cancellationToken) =>
+{
+    var key = new ProjectionKey("ordering.order-summary", 1);
+    var tenantId = tenantAccessor.TenantId!.Value.Value;
+    var checkpoint = await administration.GetCheckpointAsync(tenantId, key, cancellationToken);
+    var failures = await administration.ReadFailuresAsync(tenantId, key, cancellationToken: cancellationToken);
+    return Results.Ok(new { checkpoint, failures });
+});
+
 app.Run();
 
 static EventMetadata RequestMetadata(HttpContext context) =>
@@ -228,6 +266,80 @@ internal sealed record OrderItem(string Sku, int Quantity);
 
 [SnapshotType("ordering.order", Version = 1)]
 internal sealed record OrderSnapshot(string Status, IReadOnlyList<OrderItem> Items) : IAggregateSnapshot;
+
+internal sealed class OrderSummary
+{
+    public required string TenantId { get; set; }
+    public Guid OrderId { get; set; }
+    public required string Status { get; set; }
+    public int ItemCount { get; set; }
+    public int TotalQuantity { get; set; }
+    public long TenantOffset { get; set; }
+}
+
+internal sealed class OrderSummaryProjection :
+    IEfProjectionHandler<OrderPlaced>,
+    IEfProjectionHandler<OrderItemAdded>,
+    IEfProjectionHandler<OrderCancelled>
+{
+    public Task HandleAsync(
+        EventEnvelope<OrderPlaced> envelope,
+        EventStoreDbContext context,
+        CancellationToken cancellationToken)
+    {
+        context.Set<OrderSummary>().Add(new OrderSummary
+        {
+            TenantId = Tenant(envelope),
+            OrderId = Guid.Parse(envelope.StreamId),
+            Status = "active",
+            ItemCount = 1,
+            TotalQuantity = envelope.Event.Quantity,
+            TenantOffset = envelope.TenantOffset
+        });
+        return Task.CompletedTask;
+    }
+
+    public async Task HandleAsync(
+        EventEnvelope<OrderItemAdded> envelope,
+        EventStoreDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var summary = await FindAsync(context, envelope, cancellationToken);
+        summary.ItemCount++;
+        summary.TotalQuantity += envelope.Event.Quantity;
+        summary.TenantOffset = envelope.TenantOffset;
+    }
+
+    public async Task HandleAsync(
+        EventEnvelope<OrderCancelled> envelope,
+        EventStoreDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var summary = await FindAsync(context, envelope, cancellationToken);
+        summary.Status = "cancelled";
+        summary.TenantOffset = envelope.TenantOffset;
+    }
+
+    private static async Task<OrderSummary> FindAsync<TEvent>(
+        EventStoreDbContext context,
+        EventEnvelope<TEvent> envelope,
+        CancellationToken cancellationToken)
+        where TEvent : IDomainEvent
+    {
+        var tenantId = Tenant(envelope);
+        var orderId = Guid.Parse(envelope.StreamId);
+        return await context.Set<OrderSummary>().SingleAsync(
+            value =>
+                value.TenantId == tenantId &&
+                value.OrderId == orderId,
+            cancellationToken);
+    }
+
+    private static string Tenant<TEvent>(EventEnvelope<TEvent> envelope)
+        where TEvent : IDomainEvent =>
+        envelope.TenantId?.Value
+        ?? throw new InvalidOperationException("Projected events must have a tenant.");
+}
 
 internal sealed class Order(Guid id) : Aggregate<Guid>(id)
 {

@@ -63,8 +63,9 @@ workaround only when Docker lifecycle cleanup is otherwise guaranteed.
 | Concurrency | One command succeeds; the other is a visible conflict or reevaluated retry. |
 | Tenant access | A tenant never reads another tenant's stream or offsets. |
 | Idempotency | The same append ID returns the original envelopes. |
-| Position consumer | Checkpoint advances only after a handler succeeds. |
+| Projection | Checkpoint advances only after a handler succeeds; EF read-model effects are atomic with it. |
 
-Snapshot replay is covered by SQLite integration tests. Projection runners and
-outbox delivery are not available yet, so test any application-owned
-implementation independently until their EventLoom APIs ship.
+Snapshot replay and projection storage are covered by SQLite integration tests.
+The hosted projection worker has restart, retry, pause, and inline-transaction
+coverage; PostgreSQL integration tests cover stale lease fencing. Outbox
+delivery is not available yet.

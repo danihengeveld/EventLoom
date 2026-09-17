@@ -4,6 +4,8 @@ using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 
 namespace EventLoom.Hosting;
 
@@ -43,6 +45,8 @@ public sealed class EventLoomBuilder
     private readonly EventRegistry registry = new();
     private readonly List<JsonSerializerContext> serializerContexts = [];
     private readonly List<IEventUpcaster> upcasters = [];
+    private readonly List<ProjectionHandlerRegistration> projectionRegistrations = [];
+    private readonly List<Action<ModelBuilder>> projectionModelConfigurations = [];
     private EventStoreOptions eventStoreOptions = new();
     private EventStoreWorkerOptions workerOptions = new();
     private ISnapshotRetentionPolicy snapshotRetentionPolicy = new KeepLatestSnapshotsPolicy(1);
@@ -148,6 +152,68 @@ public sealed class EventLoomBuilder
     public EventLoomBuilder ConfigureSnapshotRetention(ISnapshotRetentionPolicy retentionPolicy)
     {
         snapshotRetentionPolicy = retentionPolicy ?? throw new ArgumentNullException(nameof(retentionPolicy));
+        return this;
+    }
+
+    /// <summary>Adds read-model mappings to the EventLoom context used by transactional projections.</summary>
+    /// <param name="configure">Configures one or more EF Core read-model entity mappings.</param>
+    /// <returns>This builder.</returns>
+    public EventLoomBuilder ConfigureProjectionModel(Action<ModelBuilder> configure)
+    {
+        projectionModelConfigurations.Add(configure ?? throw new ArgumentNullException(nameof(configure)));
+        return this;
+    }
+
+    /// <summary>Registers an asynchronous, at-least-once typed projection handler.</summary>
+    /// <typeparam name="TProjection">The projection handler type.</typeparam>
+    /// <typeparam name="TEvent">The event type handled by the projection.</typeparam>
+    /// <param name="name">The stable projection name.</param>
+    /// <param name="version">The positive projection version and checkpoint namespace.</param>
+    /// <returns>This builder.</returns>
+    public EventLoomBuilder AddProjection<TProjection, TEvent>(string name, int version = 1)
+        where TProjection : class, IProjectionHandler<TEvent>
+        where TEvent : IDomainEvent
+    {
+        var key = new ProjectionKey(name, version);
+        key.Validate();
+        services.TryAddScoped<TProjection>();
+        projectionRegistrations.Add(ProjectionHandlerRegistration.CreateAsynchronous<TProjection, TEvent>(key));
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a typed projection handler whose read-model changes and checkpoint commit in one EF Core transaction.
+    /// </summary>
+    /// <typeparam name="TProjection">The projection handler type.</typeparam>
+    /// <typeparam name="TEvent">The event type handled by the projection.</typeparam>
+    /// <param name="name">The stable projection name.</param>
+    /// <param name="version">The positive projection version and checkpoint namespace.</param>
+    /// <returns>This builder.</returns>
+    public EventLoomBuilder AddEfProjection<TProjection, TEvent>(string name, int version = 1)
+        where TProjection : class, IEfProjectionHandler<TEvent>
+        where TEvent : IDomainEvent
+    {
+        var key = new ProjectionKey(name, version);
+        key.Validate();
+        services.TryAddScoped<TProjection>();
+        projectionRegistrations.Add(ProjectionHandlerRegistration.CreateEf<TProjection, TEvent>(key));
+        return this;
+    }
+
+    /// <summary>Registers a typed projection handler that executes inside the event append transaction.</summary>
+    /// <typeparam name="TProjection">The inline projection handler type.</typeparam>
+    /// <typeparam name="TEvent">The event type handled by the projection.</typeparam>
+    /// <param name="name">The stable inline projection name.</param>
+    /// <param name="version">The positive inline projection version.</param>
+    /// <returns>This builder.</returns>
+    public EventLoomBuilder AddInlineProjection<TProjection, TEvent>(string name, int version = 1)
+        where TProjection : class, IInlineProjectionHandler<TEvent>
+        where TEvent : IDomainEvent
+    {
+        var key = new ProjectionKey(name, version);
+        key.Validate();
+        services.TryAddScoped<TProjection>();
+        projectionRegistrations.Add(ProjectionHandlerRegistration.CreateInline<TProjection, TEvent>(key));
         return this;
     }
 
@@ -312,6 +378,14 @@ public sealed class EventLoomBuilder
             .GroupBy(upcaster => upcaster.EventName, StringComparer.Ordinal)
             .Select(group => new EventUpcasterChain(group.Key, group))
             .ToArray();
+        var projectionRegistry = new ProjectionRegistry(projectionRegistrations);
+        Action<ModelBuilder> configureProjectionModel = modelBuilder =>
+        {
+            foreach (var configure in projectionModelConfigurations)
+            {
+                configure(modelBuilder);
+            }
+        };
 
         services.AddSingleton(registry);
         services.AddSingleton(new EventSerializer(registry, serializerContexts, upcasterChains: upcasterChains));
@@ -321,12 +395,29 @@ public sealed class EventLoomBuilder
         services.AddSingleton(eventStoreOptions);
         services.AddSingleton(workerOptions);
         services.AddSingleton(snapshotRetentionPolicy);
+        services.AddSingleton(configureProjectionModel);
+        services.AddSingleton(projectionRegistry);
         services.AddDbContext<EventStoreDbContext>((serviceProvider, options) =>
         {
             configureDbContext(serviceProvider, options);
         });
+        services.AddScoped(serviceProvider => new EventStoreDbContext(
+            serviceProvider.GetRequiredService<DbContextOptions<EventStoreDbContext>>(),
+            serviceProvider.GetRequiredService<EventStoreOptions>(),
+            serviceProvider.GetRequiredService<Action<ModelBuilder>>()));
         services.AddScoped<EventStore>();
         services.AddScoped<SnapshotStore>();
+        services.AddScoped<ProjectionStore>();
+        services.AddScoped<ProjectionAdministration>();
         services.AddScoped<WorkerLeaseStore>();
+        if (projectionRegistry.AsynchronousProjections.Count > 0)
+        {
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ProjectionWorker>());
+        }
+
+        if (projectionRegistrations.Any(value => value.Mode == ProjectionMode.Inline))
+        {
+            services.AddScoped<IInlineProjectionDispatcher, InlineProjectionDispatcher>();
+        }
     }
 }

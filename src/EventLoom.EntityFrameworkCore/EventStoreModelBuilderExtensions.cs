@@ -68,7 +68,13 @@ public static class EventStoreModelBuilderExtensions
             entity.Property(value => value.Payload).IsRequired();
             entity.HasIndex(value => new { value.TenantId, value.StreamId, value.AggregateType, value.StreamVersion });
         });
-        ConfigureSimpleTable<ProjectionCheckpointEntity>(modelBuilder, $"{prefix}projection_checkpoints", schema);
+        modelBuilder.Entity<ProjectionCheckpointEntity>(entity =>
+        {
+            entity.ToTable($"{prefix}projection_checkpoints", schema);
+            entity.HasKey(value => new { value.TenantId, value.ProjectionName, value.ProjectionVersion });
+            entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.ProjectionName).HasMaxLength(256).IsRequired();
+        });
         modelBuilder.Entity<ProjectionLeaseEntity>(entity =>
         {
             entity.ToTable($"{prefix}projection_leases", schema);
@@ -77,7 +83,31 @@ public static class EventStoreModelBuilderExtensions
             entity.Property(value => value.LeaseName).HasMaxLength(256).IsRequired();
             entity.Property(value => value.OwnerId).HasMaxLength(256).IsRequired();
         });
-        ConfigureSimpleTable<ProjectionFailureEntity>(modelBuilder, $"{prefix}projection_failures", schema);
+        modelBuilder.Entity<ProjectionFailureEntity>(entity =>
+        {
+            entity.ToTable($"{prefix}projection_failures", schema);
+            entity.HasKey(value => value.Id);
+            entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.ProjectionName).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.EventType).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.ExceptionType).HasMaxLength(512).IsRequired();
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.ProjectionName,
+                value.ProjectionVersion,
+                value.ResolvedAt,
+                value.TenantOffset
+            });
+            entity.HasIndex(value => new
+            {
+                value.TenantId,
+                value.ProjectionName,
+                value.ProjectionVersion,
+                value.EventId,
+                value.ResolvedAt
+            }).IsUnique();
+        });
         ConfigureSimpleTable<OutboxEntity>(modelBuilder, $"{prefix}outbox", schema);
         return modelBuilder;
     }

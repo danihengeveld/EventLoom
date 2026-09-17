@@ -258,6 +258,10 @@ Snapshots improve replay without becoming a correctness dependency.
 
 ## Phase 7: Projection Engine
 
+### Status
+
+Complete locally.
+
 ### Ownership
 
 `src/EventLoom.Hosting`, `src/EventLoom.EntityFrameworkCore`, and PostgreSQL integration tests.

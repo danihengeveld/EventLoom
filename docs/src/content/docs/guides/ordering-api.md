@@ -1,6 +1,6 @@
 ---
 title: Ordering API sample
-description: Run an ASP.NET Core sample using scoped tenants, aggregate commands, idempotency keys, and event history.
+description: Run an ASP.NET Core sample using scoped tenants, aggregate commands, snapshots, and an asynchronous read-model projection.
 ---
 
 [`samples/EventLoom.Ordering.Api`](https://github.com/danihengeveld/EventLoom/tree/main/samples/EventLoom.Ordering.Api)
@@ -14,6 +14,8 @@ is a compact, production-shaped ASP.NET Core application. It demonstrates:
 - scoped, required tenancy;
 - request correlation metadata and caller-provided idempotency keys;
 - adding items, cancellation, and inspecting persisted envelope metadata;
+- an EF order-summary projection with atomic checkpoint/read-model updates and
+  an endpoint for projection health;
 - PostgreSQL as the default provider and SQLite as a local alternative.
 
 ## Run with SQLite
@@ -92,6 +94,21 @@ curl -X POST "http://localhost:5000/orders/${order_id}/cancel" \
   -H 'content-type: application/json' \
   -H 'X-Tenant-ID: acme' \
   -d '{"reason":"customer-request"}'
+```
+
+The asynchronous order summary is intentionally eventually consistent. Poll it
+after sending commands:
+
+```bash
+curl -H 'X-Tenant-ID: acme' \
+  "http://localhost:5000/orders/${order_id}/summary"
+```
+
+Inspect the summary projection's tenant checkpoint and any persisted failures:
+
+```bash
+curl -H 'X-Tenant-ID: acme' \
+  http://localhost:5000/projections/order-summary
 ```
 
 Run the complete command sequence in a single tenant. Repeating it with a

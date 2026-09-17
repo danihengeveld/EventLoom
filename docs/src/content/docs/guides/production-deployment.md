@@ -4,8 +4,8 @@ description: Operate the current EventLoom event store safely in a PostgreSQL ap
 ---
 
 This guide describes the production boundary supported by the current
-pre-release. It does not imply that snapshots, projection runners, outbox
-delivery, or public package-release tooling are available.
+pre-release. It does not imply that outbox delivery or public package-release
+tooling is available.
 
 ## Use PostgreSQL and one provider configuration
 
@@ -81,6 +81,7 @@ with ad hoc SQL. Monitor database availability, append latency, lock waits,
 retry rates, failed command responses, and storage growth.
 
 `EventStoreSchema.GetTableNames(options)` can support diagnostics and health
-checks. The current release exposes worker lease primitives only; application
-code owns worker execution, checkpointing, projection failure handling, and
-outbox delivery until their dedicated APIs are released.
+checks. EventLoom runs registered projections and persists their checkpoints
+and failures; inspect and repair them through `ProjectionAdministration`.
+Application code still owns outbox delivery until EventLoom's dedicated outbox
+APIs are released.

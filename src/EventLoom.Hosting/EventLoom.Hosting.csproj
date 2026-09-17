@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\EventLoom.EntityFrameworkCore\EventLoom.EntityFrameworkCore.csproj" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
   </ItemGroup>
 
   <PropertyGroup>

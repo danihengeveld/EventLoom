@@ -99,8 +99,11 @@ eventLoom.ConfigureWorkers(options =>
 });
 ```
 
-EventLoom validates these values during registration. It supplies lease
-primitives, not a projection or outbox runner yet.
+EventLoom validates these values during registration. Registering an
+asynchronous projection adds its checkpointed hosted worker automatically.
+PostgreSQL safely supports multiple worker instances; SQLite is limited to one
+controlled application instance. EventLoom does not provide an outbox publisher
+yet.
 
 ## Schema creation and migrations
 

@@ -51,9 +51,14 @@ internal sealed class SnapshotEntity : IEntityWithId
     public DateTimeOffset CreatedAt { get; set; }
 }
 
-internal sealed class ProjectionCheckpointEntity : IEntityWithId
+internal sealed class ProjectionCheckpointEntity
 {
-    public long Id { get; set; }
+    public required string TenantId { get; set; }
+    public required string ProjectionName { get; set; }
+    public int ProjectionVersion { get; set; }
+    public long TenantOffset { get; set; }
+    public ProjectionStatus Status { get; set; }
+    public DateTimeOffset UpdatedAt { get; set; }
 }
 
 internal sealed class ProjectionLeaseEntity
@@ -68,6 +73,17 @@ internal sealed class ProjectionLeaseEntity
 internal sealed class ProjectionFailureEntity : IEntityWithId
 {
     public long Id { get; set; }
+    public required string TenantId { get; set; }
+    public required string ProjectionName { get; set; }
+    public int ProjectionVersion { get; set; }
+    public Guid EventId { get; set; }
+    public required string EventType { get; set; }
+    public long TenantOffset { get; set; }
+    public int AttemptCount { get; set; }
+    public required string ExceptionType { get; set; }
+    public DateTimeOffset FailedAt { get; set; }
+    public DateTimeOffset? ResolvedAt { get; set; }
+    public bool WasSkipped { get; set; }
 }
 
 internal sealed class OutboxEntity : IEntityWithId

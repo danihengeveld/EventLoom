@@ -1,3 +1,4 @@
+using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
@@ -47,6 +48,54 @@ public sealed class PostgreSqlLeaseTests
         await Assert.That(acquisitions.Count(value => value is null)).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task Stale_postgresql_lease_cannot_commit_a_projection_checkpoint()
+    {
+        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
+        await container.StartAsync();
+        var options = new EventStoreOptions { UseSchema = true, Schema = "eventloom_test", TablePrefix = "eventloom_" };
+        await using var context = CreateContext(container.GetConnectionString(), options);
+        await context.Database.EnsureCreatedAsync();
+        var eventStore = new EventStore(
+            context,
+            new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
+            new UuidV7EventIdGenerator(),
+            TimeProvider.System);
+        var envelope = (await eventStore.AppendAsync(new AppendRequest(
+            "tenant-a",
+            "order-1",
+            "order",
+            ExpectedVersion.NoStream,
+            [new ItemAdded()],
+            new EventMetadata()))).Events.Single();
+        var key = new ProjectionKey("tests.orders", 1);
+        var leases = new WorkerLeaseStore(context, TimeProvider.System);
+        var stale = (await leases.TryAcquireAsync(
+            "tenant-a",
+            ProjectionStore.GetLeaseName(key),
+            "node-a",
+            TimeSpan.FromMinutes(1)))!;
+        await leases.TryAcquireAsync(
+            "tenant-a",
+            ProjectionStore.GetLeaseName(key),
+            "node-a",
+            TimeSpan.FromMinutes(1));
+        var projections = new ProjectionStore(context, TimeProvider.System);
+
+        await Assert.That(async () => await projections.ProcessAsync(
+                "tenant-a",
+                key,
+                envelope,
+                stale,
+                (_, _) => Task.CompletedTask))
+            .Throws<ProjectionLeaseLostException>();
+
+        await Assert.That(await projections.GetCheckpointAsync("tenant-a", key)).IsNull();
+    }
+
     private static EventStoreDbContext CreateContext(string connectionString, EventStoreOptions options) =>
         new(new DbContextOptionsBuilder<EventStoreDbContext>().UseNpgsql(connectionString).Options, options);
+
+    [EventType("tests.projection-item-added")]
+    private sealed record ItemAdded : IDomainEvent;
 }

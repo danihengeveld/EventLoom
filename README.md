@@ -5,8 +5,9 @@ EventLoom is an opinionated event-sourcing library for .NET 10 and EF Core.
 It provides a dedicated EF Core event-store context for PostgreSQL and SQLite,
 typed aggregates, versioned events, transactional append/read APIs, configured
 aggregate repositories, optional required tenancy, PostgreSQL retry handling,
-worker-lease primitives, and optional snapshots. Projection runners, outbox
-publishing, and public package-release automation remain on the roadmap.
+checkpointed asynchronous and inline projections, worker leases, and optional
+snapshots. Outbox publishing and public package-release automation remain on
+the roadmap.
 
 ## Status
 

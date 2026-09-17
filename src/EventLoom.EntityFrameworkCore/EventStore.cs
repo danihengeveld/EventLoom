@@ -16,7 +16,8 @@ public sealed class EventStore(
     TimeProvider timeProvider,
     EventStoreOptions? eventStoreOptions = null,
     ITenantAccessor? tenantAccessor = null,
-    IEventStoreRetryPolicy? retryPolicy = null)
+    IEventStoreRetryPolicy? retryPolicy = null,
+    IInlineProjectionDispatcher? inlineProjectionDispatcher = null)
 {
     private readonly EventStoreDbContext context = context ?? throw new ArgumentNullException(nameof(context));
     private readonly EventSerializer serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
@@ -26,6 +27,7 @@ public sealed class EventStore(
     private readonly EventStoreOptions eventStoreOptions = eventStoreOptions ?? new();
     private readonly ITenantAccessor? tenantAccessor = tenantAccessor;
     private readonly IEventStoreRetryPolicy retryPolicy = retryPolicy ?? new NoopEventStoreRetryPolicy();
+    private readonly IInlineProjectionDispatcher? inlineProjectionDispatcher = inlineProjectionDispatcher;
 
     /// <summary>
     /// Appends a batch atomically and returns the persisted envelopes.
@@ -132,7 +134,12 @@ public sealed class EventStore(
                 AppendId = request.AppendId
             };
             context.Events.Add(eventEntity);
-            envelopes.Add(ToEnvelope(eventEntity, @event, request.Metadata));
+            var envelope = ToEnvelope(eventEntity, @event, request.Metadata);
+            envelopes.Add(envelope);
+            if (inlineProjectionDispatcher is not null)
+            {
+                await inlineProjectionDispatcher.DispatchAsync(envelope, cancellationToken);
+            }
         }
 
         try
@@ -226,6 +233,29 @@ public sealed class EventStore(
         CancellationToken cancellationToken = default)
     {
         tenantId = ResolveTenant(tenantId);
+        return await ReadTenantOffsetsCoreAsync(tenantId, afterOffset, limit, cancellationToken);
+    }
+
+    /// <summary>
+    /// Reads committed events for a tenant from an explicit background-worker tenant scope.
+    /// </summary>
+    /// <remarks>
+    /// This method is intended for registered EventLoom workers and administrative
+    /// operations that do not execute in an application request scope.
+    /// </remarks>
+    public Task<IReadOnlyList<EventEnvelope>> ReadTenantOffsetsForBackgroundAsync(
+        string tenantId,
+        long afterOffset = 0,
+        int limit = 100,
+        CancellationToken cancellationToken = default) =>
+        ReadTenantOffsetsCoreAsync(new TenantId(tenantId).Value, afterOffset, limit, cancellationToken);
+
+    private async Task<IReadOnlyList<EventEnvelope>> ReadTenantOffsetsCoreAsync(
+        string tenantId,
+        long afterOffset,
+        int limit,
+        CancellationToken cancellationToken)
+    {
         if (afterOffset < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(afterOffset));

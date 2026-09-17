@@ -91,7 +91,7 @@ For a consumer that maintains a checkpoint:
 ```csharp
 var batch = await store.ReadTenantOffsetsAsync(
     tenantId: "acme",
-    afterPosition: checkpoint,
+    afterOffset: checkpoint,
     limit: 100,
     cancellationToken: cancellationToken);
 
@@ -104,7 +104,8 @@ foreach (var envelope in batch)
 
 Tenant offsets are authoritative only inside one tenant. Keep checkpoints
 tenant-scoped, process in order, and make handlers idempotent. Projection
-runner infrastructure is not yet included in EventLoom.
+workers provide this checkpoint infrastructure for registered projections; use
+this lower-level reader for explicit background or administrative processing.
 
 ## Handle failures correctly
 

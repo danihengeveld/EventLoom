@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace EventLoom.EntityFrameworkCore;
 
@@ -7,11 +8,17 @@ namespace EventLoom.EntityFrameworkCore;
 /// </summary>
 /// <param name="options">The EF Core options configured for this context.</param>
 /// <param name="eventStoreOptions">Optional event-store naming and schema settings.</param>
+/// <param name="configureModel">Optional application read-model mappings for transactional projections.</param>
 public sealed class EventStoreDbContext(
     DbContextOptions<EventStoreDbContext> options,
-    EventStoreOptions? eventStoreOptions = null) : DbContext(options)
+    EventStoreOptions? eventStoreOptions = null,
+    Action<ModelBuilder>? configureModel = null) : DbContext(options)
 {
     private readonly EventStoreOptions configuration = eventStoreOptions ?? new();
+    private readonly Action<ModelBuilder>? configureModel = configureModel;
+
+    internal EventStoreOptions Configuration => configuration;
+    internal Action<ModelBuilder>? ModelConfiguration => configureModel;
 
     internal DbSet<StreamEntity> Streams => Set<StreamEntity>();
     internal DbSet<EventEntity> Events => Set<EventEntity>();
@@ -25,5 +32,11 @@ public sealed class EventStoreDbContext(
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyEventStoreConfiguration(configuration);
+        configureModel?.Invoke(modelBuilder);
+    }
+
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
+        optionsBuilder.ReplaceService<IModelCacheKeyFactory, EventStoreModelCacheKeyFactory>();
     }
 }
