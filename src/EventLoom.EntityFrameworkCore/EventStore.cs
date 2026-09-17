@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using EventLoom;
 
 namespace EventLoom.EntityFrameworkCore;
@@ -55,7 +57,10 @@ public sealed class EventStore(
         string tenantId,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        context.ChangeTracker.Clear();
+        await using var transaction = await context.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
         var stream = await context.Streams
             .SingleOrDefaultAsync(
                 value => value.TenantId == tenantId && value.StreamId == request.StreamId,
@@ -91,8 +96,10 @@ public sealed class EventStore(
             context.Streams.Add(stream);
         }
 
-        var position = await context.TenantPositions
-            .SingleOrDefaultAsync(value => value.TenantId == tenantId, cancellationToken);
+        var position = context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true
+            ? await EnsurePostgreSqlPositionAsync(tenantId, cancellationToken)
+            : await context.TenantPositions
+                .SingleOrDefaultAsync(value => value.TenantId == tenantId, cancellationToken);
         position ??= new TenantPositionEntity { TenantId = tenantId, NextPosition = 0 };
         if (context.Entry(position).State == EntityState.Detached)
         {
@@ -136,6 +143,40 @@ public sealed class EventStore(
         await transaction.CommitAsync(cancellationToken);
         return new AppendResult(envelopes, false);
     }
+
+    [SuppressMessage(
+        "Usage",
+        "EF1003:Interpolated SQL queries should use the interpolated form",
+        Justification = "The table identifier comes from EF's mapped model and is quoted; tenant values remain parameters.")]
+    private async Task<TenantPositionEntity?> EnsurePostgreSqlPositionAsync(
+        string tenantId,
+        CancellationToken cancellationToken)
+    {
+        var entityType = context.Model.FindEntityType(typeof(TenantPositionEntity))
+            ?? throw new InvalidOperationException("The tenant position entity is not mapped.");
+        var table = QuoteIdentifier(entityType.GetTableName()
+            ?? throw new InvalidOperationException("The tenant position table is not mapped."));
+        var schema = entityType.GetSchema();
+        var qualifiedTable = schema is null ? table : $"{QuoteIdentifier(schema)}.{table}";
+
+        var sql = "INSERT INTO " + qualifiedTable +
+            " (\"TenantId\", \"NextPosition\") VALUES ({0}, 0) ON CONFLICT (\"TenantId\") DO NOTHING";
+        await context.Database.ExecuteSqlRawAsync(
+            sql,
+            [tenantId],
+            cancellationToken);
+        await context.Database.ExecuteSqlRawAsync(
+            "UPDATE " + qualifiedTable + " SET \"NextPosition\" = \"NextPosition\" WHERE \"TenantId\" = {0}",
+            [tenantId],
+            cancellationToken);
+
+        return await context.TenantPositions
+            .SingleAsync(value => value.TenantId == tenantId, cancellationToken);
+    }
+
+    private static string QuoteIdentifier(string identifier) =>
+        $@"""{identifier.Replace("\"", "\"\"", StringComparison.Ordinal)}""";
+
 
     /// <summary>
     /// Reads all events in a stream in stream-version order.
