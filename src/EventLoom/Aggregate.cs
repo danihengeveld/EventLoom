@@ -41,6 +41,11 @@ public abstract class Aggregate<TId>
         }
     }
 
+    /// <summary>
+    /// Applies persisted history without adding events to the pending collection.
+    /// </summary>
+    public void ApplyHistory(IEnumerable<IDomainEvent> history) => Replay(history);
+
     public IReadOnlyList<PendingEvent> GetPendingEvents() => PendingEvents;
 
     public void ClearPendingEvents() => pendingEvents.Clear();

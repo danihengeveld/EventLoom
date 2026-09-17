@@ -73,6 +73,26 @@ public sealed class EventStoreAppendTests
         await Assert.That((await store.ReadStreamAsync("tenant-a", "cart-1")).Count).IsEqualTo(1);
     }
 
+    [Test]
+    public async Task Stream_and_position_reads_are_bounded()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        var registry = new EventRegistry().RegisterEvent<Added>();
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        await store.AppendAsync(new AppendRequest(
+            "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream,
+            [new Added(1), new Added(2), new Added(3)], new EventMetadata()));
+
+        var streamRange = await store.ReadStreamAsync("tenant-a", "cart-1", 2, 3);
+        var positions = await store.ReadPositionsAsync("tenant-a", 1, 2);
+
+        await Assert.That(streamRange.Select(value => value.StreamVersion)).IsEquivalentTo(new long[] { 2, 3 });
+        await Assert.That(positions.Select(value => value.GlobalPosition)).IsEquivalentTo(new long[] { 2, 3 });
+    }
+
     private static EventStoreDbContext CreateContext(SqliteConnection connection) =>
         new(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,

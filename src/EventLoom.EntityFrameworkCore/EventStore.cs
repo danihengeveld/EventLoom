@@ -111,13 +111,58 @@ public sealed class EventStore(
     public async Task<IReadOnlyList<EventEnvelope>> ReadStreamAsync(
         string tenantId,
         string streamId,
+        long? fromVersion = null,
+        long? toVersion = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
-        var entities = await context.Events
+        if (fromVersion is < 1 || toVersion is < 1 || (fromVersion.HasValue && toVersion.HasValue && fromVersion > toVersion))
+        {
+            throw new ArgumentOutOfRangeException(nameof(fromVersion), "Stream version bounds must be positive and ordered.");
+        }
+
+        var query = context.Events
             .Where(value => value.TenantId == tenantId && value.StreamId == streamId)
-            .OrderBy(value => value.StreamVersion)
+            .AsQueryable();
+        if (fromVersion.HasValue)
+        {
+            query = query.Where(value => value.StreamVersion >= fromVersion.Value);
+        }
+
+        if (toVersion.HasValue)
+        {
+            query = query.Where(value => value.StreamVersion <= toVersion.Value);
+        }
+
+        var entities = await query.OrderBy(value => value.StreamVersion).ToListAsync(cancellationToken);
+        return entities.Select(ToEnvelope).ToArray();
+    }
+
+    /// <summary>
+    /// Reads committed events for a tenant by global position.
+    /// </summary>
+    public async Task<IReadOnlyList<EventEnvelope>> ReadPositionsAsync(
+        string tenantId,
+        long afterPosition = 0,
+        int limit = 100,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        if (afterPosition < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(afterPosition));
+        }
+
+        if (limit is < 1 or > 10_000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(limit), "Position read limits must be between 1 and 10,000.");
+        }
+
+        var entities = await context.Events
+            .Where(value => value.TenantId == tenantId && value.GlobalPosition > afterPosition)
+            .OrderBy(value => value.GlobalPosition)
+            .Take(limit)
             .ToListAsync(cancellationToken);
         return entities.Select(ToEnvelope).ToArray();
     }
