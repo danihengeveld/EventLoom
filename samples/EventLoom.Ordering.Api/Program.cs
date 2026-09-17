@@ -34,6 +34,11 @@ builder.Services.AddEventLoom(eventLoom =>
             throw new InvalidOperationException("EVENTLOOM_DATABASE_PROVIDER must be 'postgres' or 'sqlite'.");
     }
 });
+builder.Services.AddEventLoomHealthChecks(options =>
+{
+    options.MaximumProjectionLag = 500;
+    options.MaximumOutboxBacklog = 500;
+});
 
 var app = builder.Build();
 await using (var scope = app.Services.CreateAsyncScope())
@@ -42,5 +47,6 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 
 app.Use(TenantRequirementMiddleware.InvokeAsync);
+app.MapHealthChecks("/health");
 app.MapOrderEndpoints();
 app.Run();

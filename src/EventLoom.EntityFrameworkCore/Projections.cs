@@ -63,6 +63,12 @@ public sealed record ProjectionFailure(
     DateTimeOffset? ResolvedAt,
     bool WasSkipped);
 
+/// <summary>Summarizes asynchronous projection state for operational health checks.</summary>
+public sealed record ProjectionHealthSummary(
+    int ProjectionCount,
+    int UnresolvedFailureCount,
+    long MaximumLag);
+
 /// <summary>Describes the outcome of attempting one projection delivery.</summary>
 public enum ProjectionDeliveryResult
 {
@@ -134,6 +140,65 @@ public sealed class ProjectionStore(EventStoreDbContext context, TimeProvider ti
             .ThenBy(value => value.Id)
             .Select(value => ToFailure(value))
             .ToArrayAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Summarizes unresolved failures and event-offset lag for the supplied asynchronous projections.
+    /// </summary>
+    /// <remarks>
+    /// The result contains counts and offsets only; it never includes event payloads or tenant identities.
+    /// </remarks>
+    /// <param name="keys">The registered projection versions to inspect.</param>
+    /// <param name="cancellationToken">A token used to cancel the query.</param>
+    /// <returns>An aggregate projection health summary.</returns>
+    public async Task<ProjectionHealthSummary> GetHealthSummaryAsync(
+        IEnumerable<ProjectionKey> keys,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(keys);
+        var projections = keys.Distinct().ToArray();
+        foreach (var key in projections)
+        {
+            key.Validate();
+        }
+
+        if (projections.Length == 0)
+        {
+            return new ProjectionHealthSummary(0, 0, 0);
+        }
+
+        var projectionSet = projections.ToHashSet();
+        var tenantOffsets = await context.Events.AsNoTracking()
+            .GroupBy(value => value.TenantId)
+            .Select(group => new { TenantId = group.Key, Offset = group.Max(value => value.TenantOffset) })
+            .ToArrayAsync(cancellationToken);
+        var checkpoints = await context.ProjectionCheckpoints.AsNoTracking()
+            .Select(value => new
+            {
+                value.TenantId,
+                value.ProjectionName,
+                value.ProjectionVersion,
+                value.TenantOffset
+            })
+            .ToArrayAsync(cancellationToken);
+        var failures = await context.ProjectionFailures.AsNoTracking()
+            .Where(value => value.ResolvedAt == null)
+            .Select(value => new { value.ProjectionName, value.ProjectionVersion })
+            .ToArrayAsync(cancellationToken);
+        var checkpointOffsets = checkpoints
+            .Where(value => projectionSet.Contains(new ProjectionKey(value.ProjectionName, value.ProjectionVersion)))
+            .ToDictionary(
+                value => (value.TenantId, new ProjectionKey(value.ProjectionName, value.ProjectionVersion)),
+                value => value.TenantOffset);
+        var maximumLag = tenantOffsets
+            .SelectMany(tenant => projections, (tenant, key) =>
+                Math.Max(0, tenant.Offset - checkpointOffsets.GetValueOrDefault((tenant.TenantId, key))))
+            .DefaultIfEmpty(0)
+            .Max();
+        var unresolvedFailureCount = failures.Count(value =>
+            projectionSet.Contains(new ProjectionKey(value.ProjectionName, value.ProjectionVersion)));
+
+        return new ProjectionHealthSummary(projections.Length, unresolvedFailureCount, maximumLag);
     }
 
     /// <summary>

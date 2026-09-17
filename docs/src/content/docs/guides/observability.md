@@ -57,3 +57,35 @@ payloads, stream IDs, tenant IDs, event IDs, correlation and causation IDs,
 and application headers from default span and metric attributes. Add
 application-specific enrichment only after evaluating its cardinality and
 sensitivity.
+
+## Health checks
+
+After configuring EventLoom, register its readiness checks and expose the
+endpoint from an ASP.NET Core host:
+
+```csharp
+builder.Services.AddEventLoom(eventLoom => eventLoom
+    .RegisterEvent<OrderPlaced>()
+    .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!));
+builder.Services.AddEventLoomHealthChecks(options =>
+{
+    options.MaximumProjectionLag = 500;
+    options.MaximumOutboxBacklog = 500;
+});
+
+var app = builder.Build();
+app.MapHealthChecks("/health");
+```
+
+The `eventloom.event-store` check verifies database connectivity and runs the
+read-only `EventStoreSchema.ValidateAsync` compatibility check. It reports
+missing EventLoom tables or mapped columns without application event data.
+`eventloom.projections` is unhealthy for unresolved projection failures and
+degraded when event-offset lag exceeds `MaximumProjectionLag`.
+`eventloom.outbox` is degraded when unpublished message count exceeds
+`MaximumOutboxBacklog`. Diagnostics contain only aggregate counts and offsets,
+never payloads, tenant IDs, stream IDs, event IDs, or headers.
+
+Call `EventStoreSchema.ValidateAsync(context)` directly in deployment tooling
+when an explicit schema gate is needed. It is validation only: it neither
+creates a database nor applies migrations.

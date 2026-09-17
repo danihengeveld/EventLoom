@@ -29,6 +29,9 @@ public sealed record OutboxAttempt(
     bool Succeeded,
     string? ExceptionType);
 
+/// <summary>Summarizes unpublished outbox work for operational health checks.</summary>
+public sealed record OutboxHealthSummary(int PendingMessageCount);
+
 /// <summary>Indicates that an outbox worker lost ownership before recording delivery.</summary>
 public sealed class OutboxLeaseLostException(string tenantId)
     : InvalidOperationException($"The outbox publisher lost its lease for tenant '{tenantId}'.");
@@ -47,6 +50,15 @@ public sealed class OutboxStore(EventStoreDbContext context, TimeProvider timePr
             .Distinct()
             .OrderBy(value => value)
             .ToArrayAsync(cancellationToken);
+
+    /// <summary>
+    /// Gets the number of messages awaiting publication without returning message or event data.
+    /// </summary>
+    /// <param name="cancellationToken">A token used to cancel the query.</param>
+    /// <returns>A payload-safe outbox health summary.</returns>
+    public async Task<OutboxHealthSummary> GetHealthSummaryAsync(CancellationToken cancellationToken = default) =>
+        new(await context.Outbox.AsNoTracking()
+            .CountAsync(value => value.PublishedAt == null, cancellationToken));
 
     /// <summary>Reads unpublished messages for a tenant in committed tenant-offset order.</summary>
     public async Task<IReadOnlyList<OutboxMessage>> ReadPendingAsync(

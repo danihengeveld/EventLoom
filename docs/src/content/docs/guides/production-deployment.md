@@ -80,9 +80,12 @@ depends on it. Event rows are immutable facts; do not update or delete them
 with ad hoc SQL. Monitor database availability, append latency, lock waits,
 retry rates, failed command responses, and storage growth.
 
-`EventStoreSchema.GetTableNames(options)` can support diagnostics and health
-checks. EventLoom runs registered projections and persists their checkpoints
-and failures; inspect and repair them through `ProjectionAdministration`.
+Use `EventStoreSchema.ValidateAsync(context)` as a read-only deployment gate
+for the EventLoom tables and mapped columns. `AddEventLoomHealthChecks()`
+registers connectivity, schema compatibility, projection, and outbox readiness
+checks; see [Observability](./observability/). EventLoom runs registered
+projections and persists their checkpoints and failures; inspect and repair
+them through `ProjectionAdministration`.
 Register an `IOutboxPublisher` for external integration and use its stable
 message ID as the transport idempotency key. See
 [Outbox and application integration](./outbox/) for the delivery and
