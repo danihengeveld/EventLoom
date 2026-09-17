@@ -154,6 +154,31 @@ public sealed class AggregateRepositoryTests
         await Assert.That(loaded.Version).IsEqualTo(2);
     }
 
+    [Test]
+    public async Task Snapshot_retention_keeps_the_latest_snapshot_per_tenant_and_stream()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = new EventStoreDbContext(
+            new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
+            new EventStoreOptions { TablePrefix = "test_" });
+        await context.Database.EnsureCreatedAsync();
+        var snapshots = new SnapshotStore(context, TimeProvider.System);
+
+        await snapshots.WriteAsync(new SnapshotWriteRequest(
+            "tenant-a", "counter-1", "counter", 1, "tests.counter", 1, """{"value":1}"""));
+        await snapshots.WriteAsync(new SnapshotWriteRequest(
+            "tenant-a", "counter-1", "counter", 2, "tests.counter", 1, """{"value":2}"""));
+        await snapshots.WriteAsync(new SnapshotWriteRequest(
+            "tenant-b", "counter-1", "counter", 1, "tests.counter", 1, """{"value":3}"""));
+
+        var firstTenant = await snapshots.ReadLatestAsync("tenant-a", "counter-1", "counter", "tests.counter");
+        var secondTenant = await snapshots.ReadLatestAsync("tenant-b", "counter-1", "counter", "tests.counter");
+
+        await Assert.That(firstTenant!.StreamVersion).IsEqualTo(2);
+        await Assert.That(secondTenant!.StreamVersion).IsEqualTo(1);
+    }
+
     [EventType("tests.incremented")]
     private sealed record Incremented(int Amount) : IDomainEvent;
 
