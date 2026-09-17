@@ -112,6 +112,43 @@ public sealed class EventStoreAppendTests
         await Assert.That(otherTenant.Count).IsEqualTo(0);
     }
 
+    [Test]
+    public async Task Existing_stream_supports_exact_and_stream_exists_expectations()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        var registry = new EventRegistry().RegisterEvent<Added>();
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        await store.AppendAsync(new AppendRequest(
+            "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream, [new Added(1)], new EventMetadata()));
+
+        await store.AppendAsync(new AppendRequest(
+            "tenant-a", "cart-1", "cart", ExpectedVersion.Exact(1), [new Added(2)], new EventMetadata()));
+        await store.AppendAsync(new AppendRequest(
+            "tenant-a", "cart-1", "cart", ExpectedVersion.StreamExists, [new Added(3)], new EventMetadata()));
+
+        await Assert.That((await store.ReadStreamAsync("tenant-a", "cart-1")).Count).IsEqualTo(3);
+    }
+
+    [Test]
+    public async Task Cancellation_is_forwarded_to_append()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        var registry = new EventRegistry().RegisterEvent<Added>();
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.That(async () => await store.AppendAsync(new AppendRequest(
+                "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream, [new Added(1)], new EventMetadata()),
+            cancellation.Token)).Throws<OperationCanceledException>();
+    }
+
     private static EventStoreDbContext CreateContext(SqliteConnection connection) =>
         new(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,

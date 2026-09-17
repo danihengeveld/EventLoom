@@ -21,6 +21,13 @@ services.AddSingleton(TimeProvider.System);
 services.AddScoped<EventStore>();
 ```
 
+The event type must be registered and carry stable metadata:
+
+```csharp
+[EventType("shopping-cart.product-added")]
+public sealed record ProductAdded(string ProductId, int Quantity) : IDomainEvent;
+```
+
 The event store context is configured separately from the application context.
 See [Configure the EF Core event store](/guides/configure-ef-core) for provider
 configuration and migrations.
