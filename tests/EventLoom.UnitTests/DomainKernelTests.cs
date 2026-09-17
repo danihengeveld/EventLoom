@@ -1,0 +1,100 @@
+using EventLoom;
+
+namespace EventLoom.UnitTests;
+
+public sealed class DomainKernelTests
+{
+    [Test]
+    public async Task Raise_applies_event_and_tracks_pending_event()
+    {
+        var aggregate = new CounterAggregate(Guid.NewGuid());
+
+        aggregate.Increment(3);
+
+        await Assert.That(aggregate.Value).IsEqualTo(3);
+        await Assert.That(aggregate.Version).IsEqualTo(1);
+        await Assert.That(aggregate.PendingEvents.Count).IsEqualTo(1);
+        await Assert.That(aggregate.PendingEvents[0].StreamVersion).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Replay_applies_history_without_pending_events()
+    {
+        var aggregate = new CounterAggregate(Guid.NewGuid());
+
+        aggregate.ReplayHistory([new Incremented(2), new Incremented(4)]);
+
+        await Assert.That(aggregate.Value).IsEqualTo(6);
+        await Assert.That(aggregate.Version).IsEqualTo(2);
+        await Assert.That(aggregate.PendingEvents).IsEmpty();
+    }
+
+    [Test]
+    public async Task Missing_handler_is_reported()
+    {
+        var aggregate = new MissingHandlerAggregate(Guid.NewGuid());
+
+        await Assert.That(() => aggregate.RaiseUnknown(new Incremented(1)))
+            .Throws<MissingApplyHandlerException>();
+    }
+
+    [Test]
+    public async Task Expected_version_semantics_are_explicit()
+    {
+        await Assert.That(ExpectedVersion.Exact(3).IsMatch(3)).IsTrue();
+        await Assert.That(ExpectedVersion.NoStream.IsMatch(null)).IsTrue();
+        await Assert.That(ExpectedVersion.StreamExists.IsMatch(0)).IsTrue();
+        await Assert.That(ExpectedVersion.Any.IsMatch(null)).IsTrue();
+        await Assert.That(ExpectedVersion.Exact(3)).IsNotEqualTo(ExpectedVersion.Exact(4));
+    }
+
+    [Test]
+    public async Task Tenant_ids_are_normalized()
+    {
+        var tenant = new TenantId("  Acme  ");
+
+        await Assert.That(tenant.Value).IsEqualTo("acme");
+        await Assert.That(() => new TenantId(" \t ")).Throws<ArgumentException>();
+    }
+
+    [Test]
+    public async Task Canonical_guid_conversion_round_trips_and_rejects_noncanonical_values()
+    {
+        var value = Guid.NewGuid();
+        var converter = new GuidIdConverter();
+
+        await Assert.That(converter.ConvertFromCanonicalString(converter.ConvertToCanonicalString(value)))
+            .IsEqualTo(value);
+        await Assert.That(() => converter.ConvertFromCanonicalString(value.ToString()))
+            .Throws<FormatException>();
+    }
+
+    [Test]
+    public async Task Event_metadata_copies_headers()
+    {
+        var headers = new Dictionary<string, string> { ["key"] = "value" };
+        var metadata = new EventMetadata(Headers: headers);
+        headers["key"] = "changed";
+
+        await Assert.That(metadata.Headers["key"]).IsEqualTo("value");
+    }
+
+    [EventType("counter.incremented")]
+    private sealed record Incremented(int Amount) : IDomainEvent;
+
+    private sealed class CounterAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        public int Value { get; private set; }
+
+        public void Increment(int amount) => Raise(new Incremented(amount));
+
+        public void ReplayHistory(IEnumerable<IDomainEvent> history) => Replay(history);
+
+        private void Apply(Incremented @event) => Value += @event.Amount;
+    }
+
+    private sealed class MissingHandlerAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        public void RaiseUnknown(Incremented @event) => Raise(@event);
+    }
+}
