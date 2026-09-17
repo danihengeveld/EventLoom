@@ -33,3 +33,7 @@ Phase 5 storage primitives are tenant-aware. Configure
 `ITenantAccessor`; background and administrative code should pass an explicit
 tenant ID. `WorkerLeaseStore` uses tenant-scoped ownership and fencing tokens,
 so stale owners cannot release a newer lease.
+
+Configure distributed worker timing through `ConfigureWorkers(...)`. EventLoom
+validates the instance identity, batch size, retry limit, lease duration, and
+renewal interval at startup.

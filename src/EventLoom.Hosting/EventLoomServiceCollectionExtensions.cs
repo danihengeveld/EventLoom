@@ -44,6 +44,7 @@ public sealed class EventLoomBuilder
     private readonly List<JsonSerializerContext> serializerContexts = [];
     private readonly List<IEventUpcaster> upcasters = [];
     private EventStoreOptions eventStoreOptions = new();
+    private EventStoreWorkerOptions workerOptions = new();
     private TimeProvider timeProvider = TimeProvider.System;
     private Action<IServiceProvider, DbContextOptionsBuilder>? configureDbContext;
 
@@ -128,6 +129,15 @@ public sealed class EventLoomBuilder
         }
 
         eventStoreOptions.TenancyMode = mode;
+        return this;
+    }
+
+    /// <summary>Configures distributed worker identity, polling, lease, and retry settings.</summary>
+    public EventLoomBuilder ConfigureWorkers(Action<EventStoreWorkerOptions> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        configure(workerOptions);
+        workerOptions.Validate();
         return this;
     }
 
@@ -228,6 +238,7 @@ public sealed class EventLoomBuilder
         services.AddSingleton(timeProvider);
         services.AddSingleton<TimeProviderClock>();
         services.AddSingleton(eventStoreOptions);
+        services.AddSingleton(workerOptions);
         services.AddDbContext<EventStoreDbContext>((serviceProvider, options) =>
         {
             configureDbContext(serviceProvider, options);
