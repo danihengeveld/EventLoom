@@ -18,44 +18,39 @@ is a compact, production-shaped ASP.NET Core application. It demonstrates:
   an endpoint for projection health;
 - a transport-neutral logging outbox publisher and tenant-scoped delivery
   inspection;
-- PostgreSQL as the default provider and SQLite as a local alternative.
+- PostgreSQL composed by .NET Aspire.
 
-## Run with SQLite
-
-```bash
-ASPNETCORE_ENVIRONMENT=Development \
-EVENTLOOM_DATABASE_PROVIDER=sqlite \
-  dotnet run --project samples/EventLoom.Ordering.Api
-```
-
-## Run with PostgreSQL
-
-Start the included local database:
+## Run with Aspire
 
 ```bash
-docker compose -f samples/EventLoom.Ordering.Api/compose.yaml up -d
+dotnet run --project samples/EventLoom.Ordering.AppHost
 ```
 
-Then start the API:
-
-```bash
-ASPNETCORE_ENVIRONMENT=Development \
-ConnectionStrings__EventStore='Host=localhost;Database=eventloom;Username=eventloom;Password=eventloom' \
-  dotnet run --project samples/EventLoom.Ordering.Api
-```
+The AppHost starts PostgreSQL, injects the `EventStore` connection string into
+the API, waits for the database before it starts the API, and launches the
+Aspire dashboard. Open the dashboard URL printed by the AppHost. Its
+**Resources** page provides the AppHost-managed URL for the API.
 
 The sample uses `EnsureCreatedAsync` for a new database. Use reviewed EF Core
 migrations before starting production application instances.
 
+The sample intentionally uses only PostgreSQL. That lets it demonstrate
+EventLoom's distributed production provider and makes its telemetry available
+in the Aspire dashboard through OpenTelemetry.
+
 ## Explore the API
 
-In the Development environment configured in the commands above, the sample
-generates an OpenAPI document with `Microsoft.AspNetCore.OpenApi` and exposes
-the Scalar
-interactive reference at <http://localhost:5000/scalar/v1>. The generated
-document is available at <http://localhost:5000/openapi/v1.json>. These
+In Development, the API resource generates an OpenAPI document with
+`Microsoft.AspNetCore.OpenApi` and exposes the Scalar interactive reference at
+`/scalar/v1`. The generated document is at `/openapi/v1.json`. Use the API URL
+from the Aspire dashboard rather than assuming a fixed local port. These
 development-only endpoints are not mapped in production and do not require the
 sample's `X-Tenant-ID` header.
+
+The dashboard shows API logs plus ASP.NET Core and EventLoom traces and metrics.
+The API also exposes `/health` for its readiness checks and `/alive` for its
+process liveness check; both are intentionally available without a tenant
+header so Aspire can probe the service.
 
 ## Exercise the API
 
@@ -67,9 +62,10 @@ Create an order. Supplying `orderId` and `Idempotency-Key` lets a client repeat
 the same command after an ambiguous response:
 
 ```bash
+api_url=http://localhost:5080 # Copy the URL from the Aspire dashboard.
 order_id=$(uuidgen | tr '[:upper:]' '[:lower:]')
 
-curl -X POST http://localhost:5000/orders \
+curl -X POST "${api_url}/orders" \
   -H 'content-type: application/json' \
   -H 'X-Tenant-ID: acme' \
   -H 'X-Correlation-ID: checkout-42' \
@@ -80,7 +76,7 @@ curl -X POST http://localhost:5000/orders \
 Add an item:
 
 ```bash
-curl -X POST "http://localhost:5000/orders/${order_id}/items" \
+curl -X POST "${api_url}/orders/${order_id}/items" \
   -H 'content-type: application/json' \
   -H 'X-Tenant-ID: acme' \
   -d '{"sku":"filter","quantity":1}'
@@ -90,7 +86,7 @@ Read the rehydrated aggregate:
 
 ```bash
 curl -H 'X-Tenant-ID: acme' \
-  "http://localhost:5000/orders/${order_id}"
+  "${api_url}/orders/${order_id}"
 ```
 
 Inspect persisted envelope metadata, including stream version and tenant
@@ -98,13 +94,13 @@ offset:
 
 ```bash
 curl -H 'X-Tenant-ID: acme' \
-  "http://localhost:5000/orders/${order_id}/events"
+  "${api_url}/orders/${order_id}/events"
 ```
 
 Cancel the order:
 
 ```bash
-curl -X POST "http://localhost:5000/orders/${order_id}/cancel" \
+curl -X POST "${api_url}/orders/${order_id}/cancel" \
   -H 'content-type: application/json' \
   -H 'X-Tenant-ID: acme' \
   -d '{"reason":"customer-request"}'
@@ -115,14 +111,14 @@ after sending commands:
 
 ```bash
 curl -H 'X-Tenant-ID: acme' \
-  "http://localhost:5000/orders/${order_id}/summary"
+  "${api_url}/orders/${order_id}/summary"
 ```
 
 Inspect the summary projection's tenant checkpoint and any persisted failures:
 
 ```bash
 curl -H 'X-Tenant-ID: acme' \
-  http://localhost:5000/projections/order-summary
+  "${api_url}/projections/order-summary"
 ```
 
 The sample also exposes explicit tenant-scoped recovery routes:
@@ -144,7 +140,7 @@ publisher's durable delivery record and attempts:
 
 ```bash
 curl -H 'X-Tenant-ID: acme' \
-  "http://localhost:5000/outbox/<event-id>"
+  "${api_url}/outbox/<event-id>"
 ```
 
 Run the complete command sequence in a single tenant. Repeating it with a

@@ -1,42 +1,36 @@
 using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.PostgreSql;
-using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
 using EventLoom.Ordering.Api;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
 using Scalar.AspNetCore;
 using System.Text.Json.Serialization;
 using EventLoom.Ordering.Api.Api;
 using EventLoom.Ordering.Api.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddServiceDefaults();
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(metrics => metrics.AddEventLoomInstrumentation())
+    .WithTracing(tracing => tracing.AddEventLoomInstrumentation());
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull);
 builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ITenantAccessor, RequestTenantAccessor>();
 
-var provider = builder.Configuration["EVENTLOOM_DATABASE_PROVIDER"]?.Trim().ToLowerInvariant() ?? "postgres";
 var connectionString = builder.Configuration.GetConnectionString("EventStore")
-    ?? (provider == "sqlite"
-        ? "Data Source=eventloom-ordering.db"
-        : "Host=localhost;Database=eventloom;Username=eventloom;******");
+    ?? throw new InvalidOperationException(
+        "ConnectionStrings:EventStore is required. Run the sample through EventLoom.Ordering.AppHost.");
 
 builder.Services.AddEventLoom(eventLoom =>
 {
     eventLoom.AddOrdering();
-    switch (provider)
-    {
-        case "sqlite":
-            eventLoom.UseSqlite(connectionString);
-            break;
-        case "postgres":
-            eventLoom.UsePostgreSql(connectionString);
-            break;
-        default:
-            throw new InvalidOperationException("EVENTLOOM_DATABASE_PROVIDER must be 'postgres' or 'sqlite'.");
-    }
+    eventLoom.UsePostgreSql(connectionString);
 });
 builder.Services.AddEventLoomHealthChecks(options =>
 {
@@ -57,10 +51,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseWhen(
-    context => !app.Environment.IsDevelopment() ||
-        (!context.Request.Path.StartsWithSegments("/openapi") &&
-         !context.Request.Path.StartsWithSegments("/scalar")),
+    context =>
+        !context.Request.Path.StartsWithSegments("/health") &&
+        !context.Request.Path.StartsWithSegments("/alive") &&
+        (!app.Environment.IsDevelopment() ||
+         (!context.Request.Path.StartsWithSegments("/openapi") &&
+          !context.Request.Path.StartsWithSegments("/scalar"))),
     branch => branch.Use(TenantRequirementMiddleware.InvokeAsync));
-app.MapHealthChecks("/health");
+app.MapDefaultEndpoints();
 app.MapOrderEndpoints();
 app.Run();

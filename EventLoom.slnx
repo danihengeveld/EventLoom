@@ -8,7 +8,9 @@
     <Project Path="src/EventLoom/EventLoom.csproj" />
   </Folder>
   <Folder Name="/samples/">
+    <Project Path="samples/EventLoom.Ordering.AppHost/EventLoom.Ordering.AppHost.csproj" />
     <Project Path="samples/EventLoom.Ordering.Api/EventLoom.Ordering.Api.csproj" />
+    <Project Path="samples/EventLoom.ServiceDefaults/EventLoom.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests.csproj" />

@@ -14,8 +14,8 @@ You need:
 - the .NET SDK specified by the repository's `global.json`;
 - PostgreSQL 17+ for distributed and multi-instance scenarios, or SQLite for
   local and controlled single-node scenarios;
-- Docker when running PostgreSQL Testcontainers tests or the sample's local
-  PostgreSQL service;
+- Docker when running PostgreSQL Testcontainers tests or the Aspire-hosted
+  Ordering API sample;
 - pnpm only when building the documentation site.
 
 ## Add EventLoom from this checkout
@@ -36,9 +36,9 @@ For SQLite instead, reference:
 <ProjectReference Include="../EventLoom/src/EventLoom.EntityFrameworkCore.Sqlite/EventLoom.EntityFrameworkCore.Sqlite.csproj" />
 ```
 
-The provider projects bring in the provider-neutral EF Core event store. Do not
-reference both providers in a production application unless it deliberately
-selects a provider at runtime, as the [sample](/guides/ordering-api) does.
+The provider projects bring in the provider-neutral EF Core event store. Choose
+one provider for an application. The [Ordering API sample](/guides/ordering-api)
+uses PostgreSQL through .NET Aspire to demonstrate the production path.
 
 When EventLoom packages are published, use the corresponding
 `EventLoom.Hosting` and one provider package from NuGet instead of project

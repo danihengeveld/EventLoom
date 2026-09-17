@@ -39,10 +39,10 @@ guides. Architecture decisions are in
 Try the sample:
 
 ```bash
-ASPNETCORE_ENVIRONMENT=Development \
-EVENTLOOM_DATABASE_PROVIDER=sqlite \
-  dotnet run --project samples/EventLoom.Ordering.Api
+dotnet run --project samples/EventLoom.Ordering.AppHost
 ```
 
-Explore its generated OpenAPI document at `/openapi/v1.json` and the Scalar
-reference UI at `/scalar/v1`.
+Aspire starts PostgreSQL and the Ordering API, then prints the dashboard URL.
+Use its Resources page to open the API, inspect logs, and view ASP.NET Core and
+EventLoom OpenTelemetry signals. The API provides its generated OpenAPI
+document at `/openapi/v1.json` and Scalar reference UI at `/scalar/v1`.

@@ -9,22 +9,22 @@ This ASP.NET Core sample shows the standard EventLoom application path:
 - required request-scoped tenancy;
 - correlation metadata and caller-owned idempotency keys;
 - stream reconstruction and envelope inspection;
-- PostgreSQL by default and SQLite for local use.
+- PostgreSQL composed by .NET Aspire.
 
-## Run locally with SQLite
-
-```bash
-EVENTLOOM_DATABASE_PROVIDER=sqlite \
-  dotnet run --project samples/EventLoom.Ordering.Api
-```
-
-## Run against PostgreSQL
+## Run with Aspire
 
 ```bash
-docker compose -f samples/EventLoom.Ordering.Api/compose.yaml up -d
-ConnectionStrings__EventStore='Host=localhost;Database=eventloom;Username=eventloom;Password=eventloom' \
-  dotnet run --project samples/EventLoom.Ordering.Api
+dotnet run --project samples/EventLoom.Ordering.AppHost
 ```
+
+The AppHost starts the PostgreSQL event-store database, injects its connection
+string into the API, waits for the database before starting the API, and opens
+the Aspire dashboard. Use the dashboard's **Resources** page to open the API
+endpoint and view its AppHost-managed URL.
+
+The dashboard receives the API's logs, ASP.NET Core telemetry, and EventLoom
+traces and metrics through OpenTelemetry. The API remains PostgreSQL-only so
+the sample exercises EventLoom's distributed production provider.
 
 The sample calls `EnsureCreatedAsync` to make an empty local database usable.
 Production applications should create and apply reviewed migrations for the
@@ -47,13 +47,16 @@ service, resolve it from trusted authentication or routing data instead.
 Create an order with a stable request ID and idempotency key:
 
 ```bash
+api_url=http://localhost:5080 # Copy the URL from the Aspire dashboard.
 order_id=$(uuidgen | tr '[:upper:]' '[:lower:]')
-curl -X POST http://localhost:5000/orders \
+curl -X POST "${api_url}/orders" \
   -H 'content-type: application/json' \
   -H 'X-Tenant-ID: acme' \
   -H 'Idempotency-Key: place-order-42' \
   -d "{\"orderId\":\"${order_id}\",\"sku\":\"coffee\",\"quantity\":2}"
 ```
 
-See the [Ordering API guide](../../docs/src/content/docs/guides/ordering-api.md)
+In the Development environment, open the API resource's `/scalar/v1` endpoint
+for the Scalar API reference and `/openapi/v1.json` for the generated OpenAPI
+document. See the [Ordering API guide](../../docs/src/content/docs/guides/ordering-api.md)
 for the complete command sequence and design explanation.

@@ -8,6 +8,7 @@ artifacts/
 *.db-wal
 *.user
 *.suo
+aspire.config.json
 
 # Node and Astro
 docs/node_modules/
