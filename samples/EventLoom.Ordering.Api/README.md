@@ -18,6 +18,7 @@ EVENTLOOM_DATABASE_PROVIDER=sqlite \
 Run with PostgreSQL:
 
 ```bash
+docker compose -f samples/EventLoom.Ordering.Api/compose.yaml up -d
 ConnectionStrings__EventStore='Host=localhost;Database=eventloom;Username=eventloom;Password=eventloom' \
   dotnet run --project samples/EventLoom.Ordering.Api
 ```

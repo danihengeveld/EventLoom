@@ -22,7 +22,13 @@ EVENTLOOM_DATABASE_PROVIDER=sqlite \
 
 ## PostgreSQL
 
-Start PostgreSQL and provide a normal EF Core connection string:
+The sample includes a local PostgreSQL compose file:
+
+```bash
+docker compose -f samples/EventLoom.Ordering.Api/compose.yaml up -d
+```
+
+Then provide a normal EF Core connection string:
 
 ```bash
 ConnectionStrings__EventStore='Host=localhost;Database=eventloom;Username=eventloom;Password=eventloom' \
