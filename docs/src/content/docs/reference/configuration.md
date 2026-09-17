@@ -15,6 +15,7 @@ description: Reference for EventLoom hosting, storage, tenancy, worker, and repo
 | `ConfigureTenancy(mode)` | Chooses disabled or required tenancy enforcement. |
 | `ConfigureEventStore(configure)` | Sets schema and table-prefix options. |
 | `ConfigureWorkers(configure)` | Sets worker lease and retry values. |
+| `ConfigureSnapshotRetention(policy)` | Retains the requested number of recent snapshots per aggregate stream. |
 | `UseTimeProvider(provider)` | Replaces the system clock for deterministic behavior. |
 | `UsePostgreSql(connectionString)` | Selects PostgreSQL, schemas, and retry policy. |
 | `UseSqlite(connectionString)` | Selects SQLite and disables schemas. |
@@ -61,5 +62,7 @@ or administrative operation must own all identity inputs.
 - Event schema version defaults to `1`.
 - Reflection JSON serialization is enabled unless advanced composition
   constructs `EventSerializer` in strict source-generated mode.
+- Snapshot-enabled repositories capture every 100 events by default, and the
+  store retains the latest snapshot unless `ConfigureSnapshotRetention` changes it.
 - PostgreSQL retries only classified transient conditions.
 - SQLite is not a distributed-worker provider.

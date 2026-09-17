@@ -1,15 +1,21 @@
 using Microsoft.EntityFrameworkCore;
 using EventLoom;
 
+using System.Data;
+
 namespace EventLoom.EntityFrameworkCore;
 
 /// <summary>Persists and retrieves versioned aggregate snapshots independently of immutable event history.</summary>
-public sealed class SnapshotStore(EventStoreDbContext context, TimeProvider timeProvider)
+public sealed class SnapshotStore(
+    EventStoreDbContext context,
+    TimeProvider timeProvider,
+    ISnapshotRetentionPolicy? retentionPolicy = null)
 {
     private readonly EventStoreDbContext context = context ?? throw new ArgumentNullException(nameof(context));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+    private readonly ISnapshotRetentionPolicy retentionPolicy = retentionPolicy ?? new KeepLatestSnapshotsPolicy(1);
 
-    /// <summary>Writes a snapshot and retains only the latest snapshot for the aggregate stream.</summary>
+    /// <summary>Writes a snapshot and applies the configured retention policy for the aggregate stream.</summary>
     public async Task WriteAsync(SnapshotWriteRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -23,7 +29,9 @@ public sealed class SnapshotStore(EventStoreDbContext context, TimeProvider time
             throw new ArgumentOutOfRangeException(nameof(request));
         }
 
-        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await context.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
         var snapshot = new SnapshotEntity
         {
             TenantId = tenantId,
@@ -37,13 +45,22 @@ public sealed class SnapshotStore(EventStoreDbContext context, TimeProvider time
         };
         context.Snapshots.Add(snapshot);
         await context.SaveChangesAsync(cancellationToken);
-        await context.Snapshots
+        var expiredSnapshotIds = await context.Snapshots
             .Where(value =>
                 value.TenantId == tenantId &&
                 value.StreamId == request.StreamId &&
-                value.AggregateType == request.AggregateType &&
-                value.Id != snapshot.Id)
-            .ExecuteDeleteAsync(cancellationToken);
+                value.AggregateType == request.AggregateType)
+            .OrderByDescending(value => value.StreamVersion)
+            .ThenByDescending(value => value.Id)
+            .Skip(retentionPolicy.SnapshotsToRetain)
+            .Select(value => value.Id)
+            .ToArrayAsync(cancellationToken);
+        if (expiredSnapshotIds.Length > 0)
+        {
+            await context.Snapshots
+                .Where(value => expiredSnapshotIds.Contains(value.Id))
+                .ExecuteDeleteAsync(cancellationToken);
+        }
         await transaction.CommitAsync(cancellationToken);
     }
 
@@ -73,6 +90,25 @@ public sealed class SnapshotStore(EventStoreDbContext context, TimeProvider time
             snapshot.SchemaVersion,
             snapshot.Payload,
             snapshot.CreatedAt);
+    }
+
+    /// <summary>Removes a specific unusable snapshot without modifying the aggregate's event history.</summary>
+    /// <param name="snapshot">The snapshot to remove.</param>
+    /// <param name="cancellationToken">Cancels the database operation.</param>
+    public async Task InvalidateAsync(SnapshotEnvelope snapshot, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+        await context.Snapshots
+            .Where(value =>
+                value.TenantId == snapshot.TenantId &&
+                value.StreamId == snapshot.StreamId &&
+                value.AggregateType == snapshot.AggregateType &&
+                value.StreamVersion == snapshot.StreamVersion &&
+                value.SnapshotType == snapshot.SnapshotType &&
+                value.SchemaVersion == snapshot.SchemaVersion &&
+                value.Payload == snapshot.Payload &&
+                value.CreatedAt == snapshot.CreatedAt)
+            .ExecuteDeleteAsync(cancellationToken);
     }
 }
 

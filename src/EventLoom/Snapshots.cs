@@ -112,7 +112,20 @@ public sealed class SnapshotUpcasterChain
                 ?? throw new SnapshotUpcastException(
                     SnapshotType,
                     $"No upcaster exists from version {version} to {version + 1}.");
-            current = upcaster.Upcast(current);
+            try
+            {
+                current = upcaster.Upcast(current);
+            }
+            catch (SnapshotUpcastException)
+            {
+                throw;
+            }
+            catch (Exception exception)
+            {
+                throw new SnapshotUpcastException(
+                    SnapshotType,
+                    $"The upcaster from version {version} to {version + 1} failed: {exception.GetType().Name}.");
+            }
         }
 
         return current;
@@ -216,6 +229,49 @@ public sealed class EveryNEventsSnapshotPolicy(int interval) : ISnapshotPolicy
 
     /// <inheritdoc />
     public bool ShouldSnapshot(long streamVersion) => streamVersion > 0 && streamVersion % interval == 0;
+}
+
+/// <summary>Determines how many of an aggregate stream's most recent snapshots to retain.</summary>
+public interface ISnapshotRetentionPolicy
+{
+    /// <summary>Gets the positive number of most recent snapshots to retain.</summary>
+    int SnapshotsToRetain { get; }
+}
+
+/// <summary>Retains a fixed positive number of the most recent snapshots for each aggregate stream.</summary>
+public sealed class KeepLatestSnapshotsPolicy(int snapshotsToRetain) : ISnapshotRetentionPolicy
+{
+    /// <inheritdoc />
+    public int SnapshotsToRetain { get; } = snapshotsToRetain > 0
+        ? snapshotsToRetain
+        : throw new ArgumentOutOfRangeException(
+            nameof(snapshotsToRetain),
+            "At least one snapshot must be retained.");
+}
+
+/// <summary>Describes why EventLoom could not restore a persisted snapshot.</summary>
+public enum SnapshotInvalidationReason
+{
+    /// <summary>The snapshot JSON payload could not be deserialized.</summary>
+    Corrupt,
+
+    /// <summary>The persisted snapshot schema version is not supported by the configured adapter.</summary>
+    Incompatible,
+
+    /// <summary>A required snapshot payload transformation could not complete.</summary>
+    UpcastFailed
+}
+
+/// <summary>
+/// Optionally chooses whether an unusable snapshot should be removed after EventLoom safely falls back to full replay.
+/// </summary>
+public interface ISnapshotInvalidator
+{
+    /// <summary>Returns whether the unusable snapshot should be removed.</summary>
+    /// <param name="snapshotType">The stable persisted snapshot type.</param>
+    /// <param name="schemaVersion">The persisted snapshot schema version.</param>
+    /// <param name="reason">Why the snapshot could not be restored.</param>
+    bool ShouldInvalidate(string snapshotType, int schemaVersion, SnapshotInvalidationReason reason);
 }
 
 /// <summary>Indicates that a snapshot payload cannot be read.</summary>

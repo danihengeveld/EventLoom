@@ -62,8 +62,54 @@ public sealed class EventLoomHostingTests
             .IsTypeOf<PostgreSqlRetryPolicy>();
     }
 
+    [Test]
+    public async Task Snapshot_repository_registration_uses_configured_retention()
+    {
+        var services = new ServiceCollection();
+
+        services.AddEventLoom(eventLoom => eventLoom
+            .RegisterEvent<CounterIncremented>()
+            .UseSqlite("Data Source=:memory:")
+            .ConfigureSnapshotRetention(new KeepLatestSnapshotsPolicy(2))
+            .AddAggregateRepository<Counter, Guid>(
+                id => new Counter(id),
+                aggregateType: "counter",
+                streamId: id => id.ToString("D"),
+                snapshotAdapter: new CounterSnapshotAdapter(),
+                snapshotInvalidator: new AlwaysInvalidateSnapshots()));
+
+        using var serviceProvider = services.BuildServiceProvider();
+        using var scope = serviceProvider.CreateScope();
+
+        await Assert.That(scope.ServiceProvider.GetRequiredService<ISnapshotRetentionPolicy>().SnapshotsToRetain)
+            .IsEqualTo(2);
+        await Assert.That(scope.ServiceProvider.GetRequiredService<SnapshotStore>()).IsNotNull();
+        await Assert.That(scope.ServiceProvider.GetRequiredService<AggregateRepository<Counter, Guid>>()).IsNotNull();
+    }
+
     [EventType("tests.counter-incremented", Version = 1)]
     private sealed record CounterIncremented : IDomainEvent;
 
     private sealed class Counter(Guid id) : Aggregate<Guid>(id);
+
+    [SnapshotType("tests.counter", Version = 1)]
+    private sealed record CounterSnapshot : IAggregateSnapshot;
+
+    private sealed class CounterSnapshotAdapter : IAggregateSnapshotAdapter<Counter>
+    {
+        public string SnapshotType => "tests.counter";
+        public int SchemaVersion => 1;
+        public string Capture(Counter aggregate) => "{}";
+        public void Restore(Counter aggregate, int schemaVersion, string payload)
+        {
+        }
+    }
+
+    private sealed class AlwaysInvalidateSnapshots : ISnapshotInvalidator
+    {
+        public bool ShouldInvalidate(
+            string snapshotType,
+            int schemaVersion,
+            SnapshotInvalidationReason reason) => true;
+    }
 }

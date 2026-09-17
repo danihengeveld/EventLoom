@@ -16,6 +16,7 @@ public sealed class AggregateRepository<TAggregate, TId>
     private readonly SnapshotStore? snapshotStore;
     private readonly IAggregateSnapshotAdapter<TAggregate>? snapshotAdapter;
     private readonly ISnapshotPolicy? snapshotPolicy;
+    private readonly ISnapshotInvalidator? snapshotInvalidator;
 
     /// <summary>Initializes a repository with explicit persistence delegates.</summary>
     public AggregateRepository(
@@ -41,7 +42,8 @@ public sealed class AggregateRepository<TAggregate, TId>
         ITenantAccessor? tenantAccessor = null,
         SnapshotStore? snapshotStore = null,
         IAggregateSnapshotAdapter<TAggregate>? snapshotAdapter = null,
-        ISnapshotPolicy? snapshotPolicy = null)
+        ISnapshotPolicy? snapshotPolicy = null,
+        ISnapshotInvalidator? snapshotInvalidator = null)
         : this(
             store,
             factory,
@@ -62,6 +64,7 @@ public sealed class AggregateRepository<TAggregate, TId>
         this.snapshotPolicy = snapshotAdapter is null
             ? null
             : snapshotPolicy ?? new EveryNEventsSnapshotPolicy(100);
+        this.snapshotInvalidator = snapshotInvalidator;
     }
 
     /// <summary>Loads an aggregate from its complete stream history, or creates a new instance when absent.</summary>
@@ -108,14 +111,17 @@ public sealed class AggregateRepository<TAggregate, TId>
                 }
                 catch (SnapshotDeserializationException)
                 {
+                    await InvalidateSnapshotAsync(snapshot, SnapshotInvalidationReason.Corrupt, cancellationToken);
                     aggregate = factory(id);
                 }
                 catch (SnapshotIncompatibleException)
                 {
+                    await InvalidateSnapshotAsync(snapshot, SnapshotInvalidationReason.Incompatible, cancellationToken);
                     aggregate = factory(id);
                 }
                 catch (SnapshotUpcastException)
                 {
+                    await InvalidateSnapshotAsync(snapshot, SnapshotInvalidationReason.UpcastFailed, cancellationToken);
                     aggregate = factory(id);
                 }
             }
@@ -213,6 +219,14 @@ public sealed class AggregateRepository<TAggregate, TId>
                 "This repository was created with explicit persistence delegates. Register aggregate and stream identity to use the short operations.");
         }
     }
+
+    private Task InvalidateSnapshotAsync(
+        SnapshotEnvelope snapshot,
+        SnapshotInvalidationReason reason,
+        CancellationToken cancellationToken) =>
+        snapshotInvalidator?.ShouldInvalidate(snapshot.SnapshotType, snapshot.SchemaVersion, reason) == true
+            ? snapshotStore!.InvalidateAsync(snapshot, cancellationToken)
+            : Task.CompletedTask;
 
     private string ResolveTenant() =>
         tenantAccessor?.TenantId?.Value

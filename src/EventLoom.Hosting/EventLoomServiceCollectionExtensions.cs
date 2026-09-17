@@ -45,6 +45,7 @@ public sealed class EventLoomBuilder
     private readonly List<IEventUpcaster> upcasters = [];
     private EventStoreOptions eventStoreOptions = new();
     private EventStoreWorkerOptions workerOptions = new();
+    private ISnapshotRetentionPolicy snapshotRetentionPolicy = new KeepLatestSnapshotsPolicy(1);
     private TimeProvider timeProvider = TimeProvider.System;
     private Action<IServiceProvider, DbContextOptionsBuilder>? configureDbContext;
 
@@ -141,6 +142,15 @@ public sealed class EventLoomBuilder
         return this;
     }
 
+    /// <summary>Configures how many recent snapshots are retained for each aggregate stream.</summary>
+    /// <param name="retentionPolicy">The policy to apply whenever EventLoom persists a snapshot.</param>
+    /// <returns>This builder.</returns>
+    public EventLoomBuilder ConfigureSnapshotRetention(ISnapshotRetentionPolicy retentionPolicy)
+    {
+        snapshotRetentionPolicy = retentionPolicy ?? throw new ArgumentNullException(nameof(retentionPolicy));
+        return this;
+    }
+
     /// <summary>
     /// Registers the provider-specific retry policy used by event-store appends.
     /// </summary>
@@ -200,7 +210,8 @@ public sealed class EventLoomBuilder
         string aggregateType,
         Func<TId, string> streamId,
         IAggregateSnapshotAdapter<TAggregate> snapshotAdapter,
-        ISnapshotPolicy? snapshotPolicy = null)
+        ISnapshotPolicy? snapshotPolicy = null,
+        ISnapshotInvalidator? snapshotInvalidator = null)
         where TAggregate : Aggregate<TId>
     {
         ArgumentNullException.ThrowIfNull(factory);
@@ -216,7 +227,8 @@ public sealed class EventLoomBuilder
             serviceProvider.GetService<ITenantAccessor>(),
             serviceProvider.GetRequiredService<SnapshotStore>(),
             snapshotAdapter,
-            snapshotPolicy));
+            snapshotPolicy,
+            snapshotInvalidator));
         return this;
     }
 
@@ -308,6 +320,7 @@ public sealed class EventLoomBuilder
         services.AddSingleton<TimeProviderClock>();
         services.AddSingleton(eventStoreOptions);
         services.AddSingleton(workerOptions);
+        services.AddSingleton(snapshotRetentionPolicy);
         services.AddDbContext<EventStoreDbContext>((serviceProvider, options) =>
         {
             configureDbContext(serviceProvider, options);
