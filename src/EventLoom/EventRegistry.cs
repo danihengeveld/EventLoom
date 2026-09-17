@@ -30,7 +30,16 @@ public sealed class EventRegistry
     public EventRegistration Get<TEvent>()
         where TEvent : IDomainEvent
     {
-        return Get(typeof(TEvent));
+        return GetRegistration(typeof(TEvent));
+    }
+
+    /// <summary>
+    /// Gets the registration for a runtime event type.
+    /// </summary>
+    public EventRegistration Get(Type eventType)
+    {
+        ArgumentNullException.ThrowIfNull(eventType);
+        return GetRegistration(eventType);
     }
 
     public EventRegistration Get(string eventName, int version)
@@ -90,7 +99,7 @@ public sealed class EventRegistry
         return this;
     }
 
-    private EventRegistration Get(Type eventType) =>
+    private EventRegistration GetRegistration(Type eventType) =>
         registrationsByType.TryGetValue(eventType, out var registration)
             ? registration
             : throw new EventNotRegisteredException(eventType);

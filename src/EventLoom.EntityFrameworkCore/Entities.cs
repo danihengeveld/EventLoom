@@ -25,6 +25,10 @@ internal sealed class EventEntity
     public int EventTypeVersion { get; set; }
     public required string Payload { get; set; }
     public DateTimeOffset OccurredAt { get; set; }
+    public string? CorrelationId { get; set; }
+    public string? CausationId { get; set; }
+    public string? Actor { get; set; }
+    public string? AppendId { get; set; }
 }
 
 internal sealed class TenantPositionEntity

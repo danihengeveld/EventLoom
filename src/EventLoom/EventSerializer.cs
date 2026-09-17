@@ -88,6 +88,19 @@ public sealed class EventSerializer
             Serialize(@event));
     }
 
+    /// <summary>
+    /// Serializes a domain event using its runtime registered type.
+    /// </summary>
+    public SerializedEventPayload SerializePayload(IDomainEvent @event)
+    {
+        ArgumentNullException.ThrowIfNull(@event);
+        var registration = registry.Get(@event.GetType());
+        return new SerializedEventPayload(
+            registration.Name,
+            registration.Version,
+            JsonSerializer.Serialize(@event, registration.ClrType, options));
+    }
+
     public sealed record SerializedEventPayload(string EventName, int Version, string Payload);
 
     private sealed class EmptyJsonTypeInfoResolver : IJsonTypeInfoResolver

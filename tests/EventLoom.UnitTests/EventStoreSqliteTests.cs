@@ -9,7 +9,6 @@ public sealed class EventStoreSqliteTests
     [Test]
     public async Task Sqlite_can_create_event_store_schema_and_enforce_event_uniqueness()
     {
-        SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_sqlite3());
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
         var options = new DbContextOptionsBuilder<EventStoreDbContext>()
