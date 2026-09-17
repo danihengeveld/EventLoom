@@ -80,6 +80,16 @@ public sealed class DomainKernelTests
     }
 
     [Test]
+    public async Task Pending_events_are_read_only()
+    {
+        var aggregate = new CounterAggregate(Guid.NewGuid());
+        aggregate.Increment(1);
+
+        await Assert.That(() => ((IList<Aggregate<Guid>.PendingEvent>)aggregate.PendingEvents).Clear())
+            .Throws<NotSupportedException>();
+    }
+
+    [Test]
     public async Task Apply_handler_can_be_declared_on_a_base_aggregate()
     {
         var aggregate = new DerivedCounterAggregate(Guid.NewGuid());

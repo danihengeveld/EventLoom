@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -8,17 +9,19 @@ public abstract class Aggregate<TId>
 {
     private static readonly ConcurrentDictionary<Type, AggregateDispatcher> Dispatchers = new();
     private readonly List<PendingEvent> pendingEvents = [];
+    private readonly ReadOnlyCollection<PendingEvent> readOnlyPendingEvents;
 
     protected Aggregate(TId id)
     {
         Id = id;
+        readOnlyPendingEvents = pendingEvents.AsReadOnly();
     }
 
     public TId Id { get; }
 
     public long Version { get; private set; }
 
-    public IReadOnlyList<PendingEvent> PendingEvents => pendingEvents;
+    public IReadOnlyList<PendingEvent> PendingEvents => readOnlyPendingEvents;
 
     protected void Raise<TEvent>(TEvent @event)
         where TEvent : IDomainEvent

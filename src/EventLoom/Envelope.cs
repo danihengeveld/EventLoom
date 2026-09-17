@@ -1,3 +1,5 @@
+using System.Collections.ObjectModel;
+
 namespace EventLoom;
 
 public sealed record EventMetadata(
@@ -8,8 +10,8 @@ public sealed record EventMetadata(
 {
     public IReadOnlyDictionary<string, string> Headers { get; } =
         Headers is null
-            ? new Dictionary<string, string>()
-            : new Dictionary<string, string>(Headers, StringComparer.Ordinal);
+            ? new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(StringComparer.Ordinal))
+            : new ReadOnlyDictionary<string, string>(new Dictionary<string, string>(Headers, StringComparer.Ordinal));
 }
 
 public sealed record EventEnvelope(
