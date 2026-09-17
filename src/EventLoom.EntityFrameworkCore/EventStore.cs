@@ -30,15 +30,16 @@ public sealed class EventStore(
             throw new ArgumentException("At least one event is required.", nameof(request));
         }
 
+        var tenantId = new TenantId(request.TenantId).Value;
         await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
         var stream = await context.Streams
             .SingleOrDefaultAsync(
-                value => value.TenantId == request.TenantId && value.StreamId == request.StreamId,
+                value => value.TenantId == tenantId && value.StreamId == request.StreamId,
                 cancellationToken);
         if (request.AppendId is not null)
         {
             var existing = await context.Events
-                .Where(value => value.TenantId == request.TenantId && value.AppendId == request.AppendId)
+                .Where(value => value.TenantId == tenantId && value.AppendId == request.AppendId)
                 .OrderBy(value => value.StreamVersion)
                 .ToListAsync(cancellationToken);
             if (existing.Count > 0)
@@ -56,7 +57,7 @@ public sealed class EventStore(
 
         stream ??= new StreamEntity
         {
-            TenantId = request.TenantId,
+            TenantId = tenantId,
             StreamId = request.StreamId,
             AggregateType = request.AggregateType,
             Version = 0
@@ -67,8 +68,8 @@ public sealed class EventStore(
         }
 
         var position = await context.TenantPositions
-            .SingleOrDefaultAsync(value => value.TenantId == request.TenantId, cancellationToken);
-        position ??= new TenantPositionEntity { TenantId = request.TenantId, NextPosition = 0 };
+            .SingleOrDefaultAsync(value => value.TenantId == tenantId, cancellationToken);
+        position ??= new TenantPositionEntity { TenantId = tenantId, NextPosition = 0 };
         if (context.Entry(position).State == EntityState.Detached)
         {
             context.TenantPositions.Add(position);
@@ -82,7 +83,7 @@ public sealed class EventStore(
             var eventEntity = new EventEntity
             {
                 EventId = eventIdGenerator.Create(),
-                TenantId = request.TenantId,
+                TenantId = tenantId,
                 StreamId = request.StreamId,
                 AggregateType = request.AggregateType,
                 StreamVersion = ++stream.Version,
@@ -115,7 +116,7 @@ public sealed class EventStore(
         long? toVersion = null,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        tenantId = new TenantId(tenantId).Value;
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         if (fromVersion is < 1 || toVersion is < 1 || (fromVersion.HasValue && toVersion.HasValue && fromVersion > toVersion))
         {
@@ -148,7 +149,7 @@ public sealed class EventStore(
         int limit = 100,
         CancellationToken cancellationToken = default)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        tenantId = new TenantId(tenantId).Value;
         if (afterPosition < 0)
         {
             throw new ArgumentOutOfRangeException(nameof(afterPosition));
