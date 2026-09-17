@@ -1,5 +1,6 @@
 namespace EventLoom;
 
+/// <summary>Represents a normalized tenant identifier.</summary>
 public readonly record struct TenantId
 {
     public TenantId(string value)
@@ -14,16 +15,19 @@ public readonly record struct TenantId
         Value = normalized;
     }
 
+    /// <summary>Gets the normalized tenant value.</summary>
     public string Value { get; }
 
     public override string ToString() => Value;
 }
 
+/// <summary>Resolves the tenant associated with the current scoped operation.</summary>
 public interface ITenantAccessor
 {
     TenantId? TenantId { get; }
 }
 
+/// <summary>Controls whether tenant context is disabled or required.</summary>
 public enum TenancyMode
 {
     Disabled,

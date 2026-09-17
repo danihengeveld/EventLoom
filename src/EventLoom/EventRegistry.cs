@@ -3,6 +3,7 @@ using System.Reflection;
 
 namespace EventLoom;
 
+/// <summary>Registers domain events by stable persisted name and schema version.</summary>
 public sealed class EventRegistry
 {
     private readonly Dictionary<Type, EventRegistration> registrationsByType = [];
@@ -107,6 +108,7 @@ public sealed class EventRegistry
     private readonly record struct EventTypeKey(string Name, int Version);
 }
 
+/// <summary>Describes a registered event type.</summary>
 public sealed record EventRegistration(Type ClrType, string Name, int Version);
 
 public sealed class EventTypeMetadataMissingException(Type eventType)
