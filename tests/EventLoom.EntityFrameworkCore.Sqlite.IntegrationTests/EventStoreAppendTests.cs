@@ -2,11 +2,50 @@ using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace EventLoom.UnitTests;
 
 public sealed class EventStoreAppendTests
 {
+    [Test]
+    public async Task Append_activity_uses_payload_safe_attributes()
+    {
+        var activities = new ConcurrentQueue<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == EventLoomTelemetry.ActivitySourceName,
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
+            ActivityStopped = activities.Enqueue
+        };
+        ActivitySource.AddActivityListener(listener);
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        var store = new EventStore(context, new EventSerializer(new EventRegistry().RegisterEvent<Added>()),
+            new UuidV7EventIdGenerator(), TimeProvider.System);
+
+        await store.AppendAsync(new AppendRequest(
+            "tenant-sensitive", "stream-sensitive", "cart", ExpectedVersion.NoStream, [new Added(1)],
+            new EventMetadata(CorrelationId: "correlation-sensitive",
+                Headers: new Dictionary<string, string> { ["secret"] = "value" })));
+
+        var appendTags = activities.Where(activity => activity.OperationName == "eventloom.append")
+            .Select(activity => activity.TagObjects.ToDictionary(tag => tag.Key, tag => tag.Value))
+            .ToArray();
+        await Assert.That(appendTags.Any(tags =>
+            Equals(tags.GetValueOrDefault("eventloom.aggregate.type"), "cart") &&
+            tags.ContainsKey("eventloom.event.count"))).IsTrue();
+        await Assert.That(appendTags.All(tags =>
+            !tags.ContainsKey("tenant.id") &&
+            !tags.ContainsKey("stream.id") &&
+            !tags.ContainsKey("event.id") &&
+            !tags.ContainsKey("payload") &&
+            !tags.ContainsKey("headers"))).IsTrue();
+    }
+
     [Test]
     public async Task Append_assigns_consecutive_versions_and_reads_history()
     {

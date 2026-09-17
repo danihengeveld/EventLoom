@@ -90,3 +90,22 @@ Register an `IOutboxPublisher` for external integration and use its stable
 message ID as the transport idempotency key. See
 [Outbox and application integration](./outbox/) for the delivery and
 shared-transaction boundaries.
+
+## Recover workers deliberately
+
+Treat an unhealthy projection check as an operational incident: inspect its
+explicit tenant-scoped failure records, correct the handler or dependency,
+then resume the paused projection. Skipping an event intentionally creates a
+read-model gap and must be an authorized, audited decision. Replay resets only
+the checkpoint, so production rebuilds should normally use a new projection
+version and a new or shadow read-model table.
+
+For a degraded outbox check, inspect the tenant-scoped backlog and delivery
+attempt history. Fix publisher connectivity or destination behavior before
+allowing retries to drain the backlog. Downstream consumers must deduplicate
+using the stable outbox message ID because delivery is at least once.
+
+Expose projection resume, skip, replay, outbox inspection, and health details
+only to authorized operational administrators. Never expose event payloads,
+metadata headers, or tenant-scoped operational records through an unauthenticated
+endpoint.

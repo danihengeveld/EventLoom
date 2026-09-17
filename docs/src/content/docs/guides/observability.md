@@ -60,6 +60,13 @@ and application headers from default span and metric attributes. Add
 application-specific enrichment only after evaluating its cardinality and
 sensitivity.
 
+The projection and outbox workers log lease loss at debug level and bounded
+delivery failures at warning level. Failure records include only the
+projection name/version or outbox message ID, retry attempt, and exception
+type. They never add exception messages, payloads, headers, tenants, stream
+IDs, or correlation identifiers as log properties. Configure log providers
+with the same application-data safeguards.
+
 ## Health checks
 
 After configuring EventLoom, register its readiness checks and expose the

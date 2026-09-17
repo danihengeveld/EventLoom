@@ -1,6 +1,7 @@
 using EventLoom.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace EventLoom.Hosting;
 
@@ -15,11 +16,13 @@ public interface IOutboxPublisher
 internal sealed class OutboxPublisherWorker(
     IServiceScopeFactory scopeFactory,
     EventStoreWorkerOptions options,
-    TimeProvider timeProvider) : BackgroundService
+    TimeProvider timeProvider,
+    ILogger<OutboxPublisherWorker> logger) : BackgroundService
 {
     private readonly IServiceScopeFactory scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
     private readonly EventStoreWorkerOptions options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+    private readonly ILogger<OutboxPublisherWorker> logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -82,6 +85,7 @@ internal sealed class OutboxPublisherWorker(
         }
         catch (OutboxLeaseLostException)
         {
+            logger.LogDebug("Outbox publisher lost its lease before finishing a batch.");
             return false;
         }
         finally
@@ -114,6 +118,11 @@ internal sealed class OutboxPublisherWorker(
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
                 EventLoomTelemetry.OutboxFailures.Add(1);
+                logger.LogWarning(
+                    "Outbox publication failed for message {MessageId} on attempt {Attempt} with {ExceptionType}.",
+                    message.MessageId,
+                    attempt + 1,
+                    exception.GetType().FullName);
                 await store.RecordAttemptAsync(message, lease, exception, cancellationToken);
                 if (attempt < options.MaxRetryAttempts)
                 {

@@ -2,6 +2,7 @@ using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace EventLoom.Hosting;
 
@@ -10,12 +11,14 @@ internal sealed class ProjectionWorker(
     IServiceScopeFactory scopeFactory,
     ProjectionRegistry registry,
     EventStoreWorkerOptions options,
-    TimeProvider timeProvider) : BackgroundService
+    TimeProvider timeProvider,
+    ILogger<ProjectionWorker> logger) : BackgroundService
 {
     private readonly IServiceScopeFactory scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
     private readonly ProjectionRegistry registry = registry ?? throw new ArgumentNullException(nameof(registry));
     private readonly EventStoreWorkerOptions options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+    private readonly ILogger<ProjectionWorker> logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -113,6 +116,7 @@ internal sealed class ProjectionWorker(
         }
         catch (ProjectionLeaseLostException)
         {
+            logger.LogDebug("Projection worker lost its lease before finishing a batch.");
             return false;
         }
         finally
@@ -157,6 +161,13 @@ internal sealed class ProjectionWorker(
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
                 EventLoomTelemetry.ProjectionFailures.Add(1);
+                logger.LogWarning(
+                    "Projection {ProjectionName} v{ProjectionVersion} failed to process event {EventId} on attempt {Attempt} with {ExceptionType}.",
+                    key.Name,
+                    key.Version,
+                    envelope.EventId,
+                    attempt,
+                    exception.GetType().FullName);
                 failure = exception;
                 if (attempt <= options.MaxRetryAttempts)
                 {
