@@ -108,19 +108,21 @@ public sealed class OutboxPublisherWorkerTests
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
         var recorder = new SuccessfulPublisherRecorder();
+        var timeProvider = new AdjustableTimeProvider(DateTimeOffset.UtcNow);
         var services = new ServiceCollection();
         services.AddSingleton(recorder);
         services.AddEventLoom(eventLoom => eventLoom
             .AddEvent<ItemAdded>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
+            .UseTimeProvider(timeProvider)
             .AddOutboxPublisher<SuccessfulPublisher>(options =>
             {
                 options.InstanceId = Guid.NewGuid().ToString("N");
                 options.PollInterval = TimeSpan.FromMilliseconds(10);
                 options.LeaseDuration = TimeSpan.FromSeconds(1);
                 options.LeaseRenewalInterval = TimeSpan.FromMilliseconds(100);
-                options.SuccessfulDeliveryRetention = TimeSpan.FromMilliseconds(250);
+                options.SuccessfulDeliveryRetention = TimeSpan.FromMinutes(1);
             }));
         var provider = services.BuildServiceProvider();
         var worker = provider.GetServices<IHostedService>().Single();
@@ -131,7 +133,8 @@ public sealed class OutboxPublisherWorkerTests
             await worker.StartAsync(CancellationToken.None);
             var eventId = await AppendAsync(provider);
             await recorder.Delivered.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            await WaitForMessageAsync(provider, eventId, expectedToExist: true);
+            await WaitForPublishedAsync(provider, eventId);
+            timeProvider.Advance(TimeSpan.FromMinutes(1));
             await WaitForMessageAsync(provider, eventId, expectedToExist: false);
 
             await using var scope = provider.CreateAsyncScope();
@@ -357,5 +360,23 @@ public sealed class OutboxPublisherWorkerTests
     {
         public TaskCompletionSource Failed { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    private sealed class AdjustableTimeProvider(DateTimeOffset initialUtcNow) : TimeProvider
+    {
+        private long utcTicks = initialUtcNow.UtcDateTime.Ticks;
+
+        public override DateTimeOffset GetUtcNow() =>
+            new(Interlocked.Read(ref utcTicks), TimeSpan.Zero);
+
+        public void Advance(TimeSpan duration)
+        {
+            if (duration < TimeSpan.Zero)
+            {
+                throw new ArgumentOutOfRangeException(nameof(duration));
+            }
+
+            Interlocked.Add(ref utcTicks, duration.Ticks);
+        }
     }
 }
