@@ -1,11 +1,11 @@
 EventLoom.Testing.AggregateScenario
 EventLoom.Testing.AggregateScenario<TAggregate, TId>
 EventLoom.Testing.AggregateScenario<TAggregate, TId>.Aggregate.get -> TAggregate!
-EventLoom.Testing.AggregateScenario<TAggregate, TId>.Given(TId id, params EventLoom.IDomainEvent![]! history) -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
-EventLoom.Testing.AggregateScenario<TAggregate, TId>.Given(TId id, System.Collections.Generic.IEnumerable<EventLoom.IDomainEvent!>! history) -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
-EventLoom.Testing.AggregateScenario<TAggregate, TId>.RaisedEvents.get -> System.Collections.Generic.IReadOnlyList<EventLoom.IDomainEvent!>!
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.Given(TId id, params object![]! history) -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.Given(TId id, System.Collections.Generic.IEnumerable<object!>! history) -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.RaisedEvents.get -> System.Collections.Generic.IReadOnlyList<object!>!
 EventLoom.Testing.AggregateScenario<TAggregate, TId>.Then(System.Action<TAggregate!>! assertion) -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
-EventLoom.Testing.AggregateScenario<TAggregate, TId>.ThenEvents(System.Action<System.Collections.Generic.IReadOnlyList<EventLoom.IDomainEvent!>!>! assertion) -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.ThenEvents(System.Action<System.Collections.Generic.IReadOnlyList<object!>!>! assertion) -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
 EventLoom.Testing.AggregateScenario<TAggregate, TId>.ThenNoEventsRaised() -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
 EventLoom.Testing.AggregateScenario<TAggregate, TId>.ThenThrows<TException>() -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
 EventLoom.Testing.AggregateScenario<TAggregate, TId>.ThrownException.get -> System.Exception?

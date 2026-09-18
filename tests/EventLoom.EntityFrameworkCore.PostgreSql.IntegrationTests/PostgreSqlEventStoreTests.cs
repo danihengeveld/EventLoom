@@ -40,5 +40,10 @@ public sealed class PostgreSqlEventStoreTests
     }
 
     [EventType("integration.order-placed")]
-    private sealed record OrderPlaced(string Sku, int Quantity) : IDomainEvent;
+    private sealed record OrderPlaced(string Sku, int Quantity) : IDomainEvent<TestAggregate>;
+
+    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        private void Apply(OrderPlaced @event) { }
+    }
 }

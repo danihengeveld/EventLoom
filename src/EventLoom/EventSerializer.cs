@@ -59,7 +59,6 @@ public sealed class EventSerializer
     /// <param name="event">The event to serialize.</param>
     /// <returns>The serialized JSON payload.</returns>
     public string Serialize<TEvent>(TEvent @event)
-        where TEvent : IDomainEvent
     {
         ArgumentNullException.ThrowIfNull(@event);
         var registration = registry.Get<TEvent>();
@@ -71,7 +70,7 @@ public sealed class EventSerializer
     /// <param name="version">The persisted event schema version.</param>
     /// <param name="payload">The stored JSON payload.</param>
     /// <returns>The current registered domain-event instance.</returns>
-    public IDomainEvent Deserialize(string eventName, int version, string payload)
+    public object Deserialize(string eventName, int version, string payload)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(payload);
         _ = registry.Get(eventName, version);
@@ -92,11 +91,11 @@ public sealed class EventSerializer
 
         try
         {
-            return (IDomainEvent)(JsonSerializer.Deserialize(
+            return JsonSerializer.Deserialize(
                     normalizedPayload,
                     currentRegistration.ClrType,
                     options)
-                ?? throw new EventDeserializationException(eventName, version));
+                ?? throw new EventDeserializationException(eventName, version);
         }
         catch (JsonException exception)
         {
@@ -109,7 +108,6 @@ public sealed class EventSerializer
     /// <param name="event">The event to serialize.</param>
     /// <returns>The persisted payload description.</returns>
     public SerializedEventPayload SerializePayload<TEvent>(TEvent @event)
-        where TEvent : IDomainEvent
     {
         var registration = registry.Get<TEvent>();
         return new SerializedEventPayload(
@@ -121,7 +119,7 @@ public sealed class EventSerializer
     /// <summary>
     /// Serializes a domain event using its runtime registered type.
     /// </summary>
-    public SerializedEventPayload SerializePayload(IDomainEvent @event)
+    public SerializedEventPayload SerializePayload(object @event)
     {
         ArgumentNullException.ThrowIfNull(@event);
         var registration = registry.Get(@event.GetType());

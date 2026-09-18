@@ -48,10 +48,17 @@ public sealed class EventRegistryTests
     }
 
     [EventType("tests.registered", Version = 2)]
-    private sealed record RegisteredEvent : IDomainEvent;
+    private sealed record RegisteredEvent : IDomainEvent<TestAggregate>;
 
     [EventType("tests.registered", Version = 2)]
-    private sealed record DuplicateNamedEvent : IDomainEvent;
+    private sealed record DuplicateNamedEvent : IDomainEvent<TestAggregate>;
 
-    private sealed record MissingMetadataEvent : IDomainEvent;
+    private sealed record MissingMetadataEvent : IDomainEvent<TestAggregate>;
+
+    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        private void Apply(RegisteredEvent @event) { }
+        private void Apply(DuplicateNamedEvent @event) { }
+        private void Apply(MissingMetadataEvent @event) { }
+    }
 }

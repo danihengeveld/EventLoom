@@ -5,7 +5,6 @@ namespace EventLoom;
 /// </summary>
 /// <typeparam name="TEvent">The domain event handled by the projection.</typeparam>
 public interface IProjectionHandler<TEvent>
-    where TEvent : IDomainEvent
 {
     /// <summary>Handles a persisted event envelope.</summary>
     /// <param name="envelope">The typed event and its immutable persistence metadata.</param>
@@ -22,7 +21,6 @@ public interface IProjectionHandler<TEvent>
 /// </remarks>
 /// <typeparam name="TEvent">The domain event handled by the projection.</typeparam>
 public interface IInlineProjectionHandler<TEvent>
-    where TEvent : IDomainEvent
 {
     /// <summary>Handles a persisted event envelope before its append transaction commits.</summary>
     /// <param name="envelope">The typed event and its immutable persistence metadata.</param>

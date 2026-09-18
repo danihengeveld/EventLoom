@@ -49,9 +49,6 @@ state exclusively by applying them:
 ```csharp
 using EventLoom;
 
-[EventType("counter.incremented", Version = 1)]
-public sealed record CounterIncremented(int Amount) : IDomainEvent;
-
 public sealed class Counter(Guid id) : Aggregate<Guid>(id)
 {
     public int Value { get; private set; }
@@ -60,6 +57,9 @@ public sealed class Counter(Guid id) : Aggregate<Guid>(id)
 
     private void Apply(CounterIncremented @event) => Value += @event.Amount;
 }
+
+[EventType("counter.incremented", Version = 1)]
+public sealed record CounterIncremented(int Amount) : IDomainEvent<Counter>;
 ```
 
 Register the event, configured repository, and PostgreSQL provider:

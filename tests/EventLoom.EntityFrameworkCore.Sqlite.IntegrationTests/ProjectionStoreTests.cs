@@ -292,7 +292,12 @@ public sealed class ProjectionStoreTests
             TimeSpan.FromMinutes(1)))!;
 
     [EventType("tests.item-added")]
-    private sealed record ItemAdded(int Quantity) : IDomainEvent;
+    private sealed record ItemAdded(int Quantity) : IDomainEvent<TestAggregate>;
+
+    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        private void Apply(ItemAdded @event) { }
+    }
 
     private sealed class OrderReadModel
     {

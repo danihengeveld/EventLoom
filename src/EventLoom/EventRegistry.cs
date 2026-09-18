@@ -13,7 +13,6 @@ public sealed class EventRegistry
     /// <typeparam name="TEvent">The concrete event type to register.</typeparam>
     /// <returns>This registry.</returns>
     public EventRegistry RegisterEvent<TEvent>()
-        where TEvent : IDomainEvent
     {
         return RegisterEvent(typeof(TEvent));
     }
@@ -26,7 +25,7 @@ public sealed class EventRegistry
         ArgumentNullException.ThrowIfNull(assembly);
 
         foreach (var type in assembly.GetTypes()
-                     .Where(static type => !type.IsAbstract && typeof(IDomainEvent).IsAssignableFrom(type)))
+                     .Where(static type => !type.IsAbstract && DomainEventContract.IsEvent(type)))
         {
             RegisterEvent(type);
         }
@@ -38,7 +37,6 @@ public sealed class EventRegistry
     /// <typeparam name="TEvent">The registered event type.</typeparam>
     /// <returns>The event registration.</returns>
     public EventRegistration Get<TEvent>()
-        where TEvent : IDomainEvent
     {
         return GetRegistration(typeof(TEvent));
     }
@@ -92,9 +90,11 @@ public sealed class EventRegistry
 
     private EventRegistry RegisterEvent(Type eventType)
     {
-        if (!typeof(IDomainEvent).IsAssignableFrom(eventType) || eventType.IsAbstract)
+        if (!DomainEventContract.IsEvent(eventType) || eventType.IsAbstract)
         {
-            throw new ArgumentException($"Type '{eventType.FullName}' must be a concrete IDomainEvent.", nameof(eventType));
+            throw new ArgumentException(
+                $"Type '{eventType.FullName}' must implement IDomainEvent<TAggregate> and be concrete.",
+                nameof(eventType));
         }
 
         var attribute = eventType.GetCustomAttribute<EventTypeAttribute>()

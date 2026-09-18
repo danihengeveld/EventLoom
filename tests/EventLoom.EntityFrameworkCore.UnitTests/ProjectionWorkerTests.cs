@@ -234,7 +234,12 @@ public sealed class ProjectionWorkerTests
     }
 
     [EventType("tests.projection-item-added")]
-    private sealed record ItemAdded(int Quantity) : IDomainEvent;
+    private sealed record ItemAdded(int Quantity) : IDomainEvent<TestAggregate>;
+
+    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        private void Apply(ItemAdded @event) { }
+    }
 
     private sealed class RecordingProjection(ProjectionRecorder recorder) : IProjectionHandler<ItemAdded>
     {

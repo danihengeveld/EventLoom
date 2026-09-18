@@ -250,7 +250,12 @@ public sealed class OutboxPublisherWorkerTests
     }
 
     [EventType("tests.outbox-worker-item-added")]
-    private sealed record ItemAdded : IDomainEvent;
+    private sealed record ItemAdded : IDomainEvent<TestAggregate>;
+
+    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        private void Apply(ItemAdded @event) { }
+    }
 
     private sealed class IdempotentPublisher(IdempotentPublisherRecorder recorder) : IOutboxPublisher
     {

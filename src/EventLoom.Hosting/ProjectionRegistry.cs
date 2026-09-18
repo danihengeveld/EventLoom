@@ -88,8 +88,7 @@ internal sealed record ProjectionHandlerRegistration(
     Func<IServiceProvider?, EventEnvelope, EventStoreDbContext?, CancellationToken, Task> DispatchAsync)
 {
     public static ProjectionHandlerRegistration CreateAsynchronous<THandler, TEvent>(ProjectionKey key)
-        where THandler : class, IProjectionHandler<TEvent>
-        where TEvent : IDomainEvent =>
+        where THandler : class, IProjectionHandler<TEvent> =>
         new(
             key,
             ProjectionMode.Asynchronous,
@@ -103,8 +102,7 @@ internal sealed record ProjectionHandlerRegistration(
             });
 
     public static ProjectionHandlerRegistration CreateEf<THandler, TEvent>(ProjectionKey key)
-        where THandler : class, IEfProjectionHandler<TEvent>
-        where TEvent : IDomainEvent =>
+        where THandler : class, IEfProjectionHandler<TEvent> =>
         new(
             key,
             ProjectionMode.Asynchronous,
@@ -121,8 +119,7 @@ internal sealed record ProjectionHandlerRegistration(
             });
 
     public static ProjectionHandlerRegistration CreateInline<THandler, TEvent>(ProjectionKey key)
-        where THandler : class, IInlineProjectionHandler<TEvent>
-        where TEvent : IDomainEvent =>
+        where THandler : class, IInlineProjectionHandler<TEvent> =>
         new(
             key,
             ProjectionMode.Inline,
@@ -135,8 +132,7 @@ internal sealed record ProjectionHandlerRegistration(
                 await handler.HandleAsync(ToTyped<TEvent>(envelope), cancellationToken);
             });
 
-    private static EventEnvelope<TEvent> ToTyped<TEvent>(EventEnvelope envelope)
-        where TEvent : IDomainEvent =>
+    private static EventEnvelope<TEvent> ToTyped<TEvent>(EventEnvelope envelope) =>
         envelope.Event is TEvent @event
             ? new EventEnvelope<TEvent>(
                 envelope.EventId,

@@ -111,7 +111,12 @@ public sealed class EventLoomHealthCheckTests
     }
 
     [EventType("tests.health-item-added")]
-    private sealed record ItemAdded : IDomainEvent;
+    private sealed record ItemAdded : IDomainEvent<TestAggregate>;
+
+    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        private void Apply(ItemAdded @event) { }
+    }
 
     private sealed class RecordingProjection : IProjectionHandler<ItemAdded>
     {

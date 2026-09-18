@@ -50,14 +50,14 @@ Use a dedicated `EventStoreDbContext`.
 ### Events
 
 - Events are immutable application-owned records.
-- Events implement a lightweight `IDomainEvent` marker interface.
+- Events implement `IDomainEvent<TAggregate>` to declare their owning aggregate.
 - Aggregate or stream identity does not appear in the event payload.
 - Persisted envelope metadata owns stream identity, tenant, event ID, event type, schema version, stream version, position, timestamps, correlation, causation, actor, and headers.
 - Stable event identity and schema version live on the event type:
 
 ```csharp
 [EventType("shopping-cart.product-added", Version = 1)]
-public sealed record ProductAdded(ProductId ProductId, int Quantity) : IDomainEvent;
+public sealed record ProductAdded(ProductId ProductId, int Quantity) : IDomainEvent<Cart>;
 ```
 
 - Registration is explicit by default with `RegisterEvent<T>()`; assembly scanning is optional.
@@ -254,4 +254,4 @@ pnpm --dir docs build
 
 ## Next Step
 
-Phase 1: implement the domain kernel in `EventLoom`: `IDomainEvent`, `EventTypeAttribute`, the aggregate base class, pending events, reflection-based typed `Apply` dispatch, expected versions, event envelopes, ID converters, and focused TUnit coverage.
+Phase 1: implement the domain kernel in `EventLoom`: `IDomainEvent<TAggregate>`, `EventTypeAttribute`, the aggregate base class, pending events, reflection-based typed `Apply` dispatch, expected versions, event envelopes, ID converters, and focused TUnit coverage.

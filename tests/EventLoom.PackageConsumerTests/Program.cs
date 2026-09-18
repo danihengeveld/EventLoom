@@ -42,4 +42,9 @@ finally
 }
 
 [EventType("package-consumer.item-added", Version = 1)]
-internal sealed record ItemAdded(string Sku) : IDomainEvent;
+internal sealed record ItemAdded(string Sku) : IDomainEvent<Cart>;
+
+internal sealed class Cart(string id) : Aggregate<string>(id)
+{
+    private void Apply(ItemAdded @event) { }
+}

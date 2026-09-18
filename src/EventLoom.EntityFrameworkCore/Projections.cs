@@ -6,7 +6,6 @@ namespace EventLoom.EntityFrameworkCore;
 /// <summary>Handles a typed event in the EventLoom context transaction.</summary>
 /// <typeparam name="TEvent">The domain event handled by the projection.</typeparam>
 public interface IEfProjectionHandler<TEvent>
-    where TEvent : IDomainEvent
 {
     /// <summary>Updates the read model for the typed event.</summary>
     /// <param name="envelope">The typed event and immutable persistence metadata.</param>

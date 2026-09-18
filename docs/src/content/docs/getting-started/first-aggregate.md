@@ -14,9 +14,6 @@ stable name that is independent of its CLR type and a positive schema version.
 ```csharp
 using EventLoom;
 
-[EventType("counter.incremented", Version = 1)]
-public sealed record CounterIncremented(int Amount) : IDomainEvent;
-
 public sealed class Counter(Guid id) : Aggregate<Guid>(id)
 {
     public int Value { get; private set; }
@@ -33,9 +30,15 @@ public sealed class Counter(Guid id) : Aggregate<Guid>(id)
 
     private void Apply(CounterIncremented @event) => Value += @event.Amount;
 }
+
+[EventType("counter.incremented", Version = 1)]
+public sealed record CounterIncremented(int Amount) : IDomainEvent<Counter>;
 ```
 
-An aggregate changes state only by raising an event. `Raise` applies the event
+The generic event contract links the event to its owning aggregate. EventLoom's
+analyzer verifies that `Counter` has exactly one correctly shaped
+`Apply(CounterIncremented)` method and that another aggregate cannot raise this
+event. An aggregate changes state only by raising an event. `Raise` applies the event
 immediately and stores it in `PendingEvents`; replay applies persisted history
 without adding pending events. An `Apply` method must be private or protected,
 take exactly one event type, and return `void`.

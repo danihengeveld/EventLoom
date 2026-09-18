@@ -217,5 +217,10 @@ public sealed class EventStoreAppendTests
             new EventStoreOptions { TablePrefix = "test_" });
 
     [EventType("tests.added")]
-    private sealed record Added(int Amount) : IDomainEvent;
+    private sealed record Added(int Amount) : IDomainEvent<TestAggregate>;
+
+    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        private void Apply(Added @event) { }
+    }
 }

@@ -84,13 +84,13 @@ public sealed partial class EventSerializerTests
     }
 
     [EventType("tests.serialized")]
-    private sealed record SerializedEvent(string Name, int Quantity) : IDomainEvent;
+    private sealed record SerializedEvent(string Name, int Quantity) : IDomainEvent<TestAggregate>;
 
     [EventType("tests.evolving", Version = 1)]
-    private sealed record VersionOneEvent(string Name) : IDomainEvent;
+    private sealed record VersionOneEvent(string Name) : IDomainEvent<TestAggregate>;
 
     [EventType("tests.evolving", Version = 2)]
-    private sealed record VersionTwoEvent(string Name, int Quantity) : IDomainEvent;
+    private sealed record VersionTwoEvent(string Name, int Quantity) : IDomainEvent<TestAggregate>;
 
     private sealed class AddQuantityUpcaster : IEventUpcaster
     {
@@ -105,7 +105,15 @@ public sealed partial class EventSerializerTests
     }
 
     [EventType("tests.generated")]
-    public sealed record GeneratedEvent(string Name) : IDomainEvent;
+    public sealed record GeneratedEvent(string Name) : IDomainEvent<TestAggregate>;
+
+    public sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        private void Apply(SerializedEvent @event) { }
+        private void Apply(VersionOneEvent @event) { }
+        private void Apply(VersionTwoEvent @event) { }
+        private void Apply(GeneratedEvent @event) { }
+    }
 
     [JsonSerializable(typeof(GeneratedEvent))]
     private partial class GeneratedEventJsonContext : JsonSerializerContext;

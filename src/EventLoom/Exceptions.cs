@@ -16,3 +16,8 @@ public sealed class AmbiguousApplyHandlerException(Type aggregateType, Type even
 /// <summary>Indicates that a discovered aggregate <c>Apply</c> method violates dispatch requirements.</summary>
 public sealed class InvalidApplyHandlerException(MethodInfo method, string reason)
     : AggregateDispatchException($"Apply handler '{method.DeclaringType?.FullName}.{method.Name}' is invalid: {reason}");
+
+/// <summary>Indicates that an aggregate received an event owned by another aggregate type.</summary>
+public sealed class EventOwnershipException(Type aggregateType, Type eventType)
+    : AggregateDispatchException(
+        $"Event '{eventType.FullName}' is not owned by aggregate '{aggregateType.FullName}'.");

@@ -53,7 +53,7 @@ using System.Text.Json;
 
 [EventType("orders.order-placed", Version = 2)]
 public sealed record OrderPlaced(string Sku, int Quantity, string Currency)
-    : IDomainEvent;
+    : IDomainEvent<Order>;
 
 public sealed class OrderPlacedV1ToV2 : IEventUpcaster
 {

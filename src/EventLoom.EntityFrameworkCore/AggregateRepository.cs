@@ -8,7 +8,7 @@ public sealed class AggregateRepository<TAggregate, TId>
 {
     private readonly EventStore store;
     private readonly Func<TId, TAggregate> factory;
-    private readonly Func<TAggregate, IEnumerable<IDomainEvent>> pendingEvents;
+    private readonly Func<TAggregate, IEnumerable<object>> pendingEvents;
     private readonly Func<TAggregate, long> version;
     private readonly string? aggregateType;
     private readonly Func<TId, string>? streamId;
@@ -23,7 +23,7 @@ public sealed class AggregateRepository<TAggregate, TId>
     public AggregateRepository(
         EventStore store,
         Func<TId, TAggregate> factory,
-        Func<TAggregate, IEnumerable<IDomainEvent>> pendingEvents,
+        Func<TAggregate, IEnumerable<object>> pendingEvents,
         Func<TAggregate, long> version)
     {
         this.store = store ?? throw new ArgumentNullException(nameof(store));

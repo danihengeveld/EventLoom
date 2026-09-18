@@ -123,7 +123,7 @@ public sealed class OutboxStoreTests
             TimeProvider.System,
             context.Configuration);
 
-    private static AppendRequest Request(IReadOnlyList<IDomainEvent> events) =>
+    private static AppendRequest Request(IReadOnlyList<object> events) =>
         new("tenant-a", "order-1", "order", ExpectedVersion.NoStream, events, new EventMetadata());
 
     private static DbContextOptions<EventStoreDbContext> CreateOptions(SqliteConnection connection) =>
@@ -142,7 +142,12 @@ public sealed class OutboxStoreTests
     }
 
     [EventType("tests.outbox-item-added")]
-    private sealed record ItemAdded(int Quantity) : IDomainEvent;
+    private sealed record ItemAdded(int Quantity) : IDomainEvent<TestAggregate>;
+
+    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        private void Apply(ItemAdded @event) { }
+    }
 
     private sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)
     {

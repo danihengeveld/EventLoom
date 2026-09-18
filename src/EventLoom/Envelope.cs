@@ -29,7 +29,7 @@ public sealed record EventEnvelope(
     long TenantOffset,
     TenantId? TenantId,
     DateTimeOffset OccurredAt,
-    IDomainEvent Event,
+    object Event,
     EventMetadata Metadata);
 
 /// <summary>Strongly typed event envelope for projection and application handlers.</summary>
@@ -44,5 +44,4 @@ public sealed record EventEnvelope<TEvent>(
     TenantId? TenantId,
     DateTimeOffset OccurredAt,
     TEvent Event,
-    EventMetadata Metadata)
-    where TEvent : IDomainEvent;
+    EventMetadata Metadata);

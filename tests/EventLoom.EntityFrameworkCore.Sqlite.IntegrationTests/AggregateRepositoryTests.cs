@@ -345,7 +345,7 @@ public sealed class AggregateRepositoryTests
     }
 
     [EventType("tests.incremented")]
-    private sealed record Incremented(int Amount) : IDomainEvent;
+    private sealed record Incremented(int Amount) : IDomainEvent<Counter>;
 
     private sealed class Counter(Guid id) : Aggregate<Guid>(id)
     {

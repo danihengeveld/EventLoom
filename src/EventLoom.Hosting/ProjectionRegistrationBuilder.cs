@@ -26,7 +26,6 @@ public sealed class ProjectionRegistrationBuilder
     /// <returns>This projection registration builder.</returns>
     public ProjectionRegistrationBuilder Asynchronous<TProjection, TEvent>()
         where TProjection : class, IProjectionHandler<TEvent>
-        where TEvent : IDomainEvent
     {
         eventLoom.AddProjection<TProjection, TEvent>(key.Name, key.Version);
         registrationCount++;
@@ -41,7 +40,6 @@ public sealed class ProjectionRegistrationBuilder
     /// <returns>This projection registration builder.</returns>
     public ProjectionRegistrationBuilder Transactional<TProjection, TEvent>()
         where TProjection : class, IEfProjectionHandler<TEvent>
-        where TEvent : IDomainEvent
     {
         eventLoom.AddEfProjection<TProjection, TEvent>(key.Name, key.Version);
         registrationCount++;
@@ -56,7 +54,6 @@ public sealed class ProjectionRegistrationBuilder
     /// <returns>This projection registration builder.</returns>
     public ProjectionRegistrationBuilder Inline<TProjection, TEvent>()
         where TProjection : class, IInlineProjectionHandler<TEvent>
-        where TEvent : IDomainEvent
     {
         eventLoom.AddInlineProjection<TProjection, TEvent>(key.Name, key.Version);
         registrationCount++;

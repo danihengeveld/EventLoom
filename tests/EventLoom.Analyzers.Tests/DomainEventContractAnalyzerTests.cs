@@ -8,38 +8,159 @@ namespace EventLoom.Analyzers.Tests;
 
 public sealed class DomainEventContractAnalyzerTests
 {
+    private const string Framework =
+        """
+        namespace EventLoom
+        {
+            public abstract class Aggregate { }
+            public abstract class Aggregate<TId> : Aggregate
+            {
+                protected Aggregate(TId id) { }
+                protected void Raise<TEvent>(TEvent value) { }
+            }
+
+            public interface IDomainEvent<out TAggregate> where TAggregate : Aggregate { }
+            public sealed class EventTypeAttribute : System.Attribute
+            {
+                public EventTypeAttribute(string name) { }
+            }
+        }
+
+        """;
+
     [Test]
     public async Task ReportsConcreteDomainEventWithoutAttribute()
     {
         var diagnostics = await AnalyzeAsync(
+            Framework +
             """
-            namespace EventLoom
+            public sealed class Counter : EventLoom.Aggregate<int>
             {
-                public interface IDomainEvent { }
-                public sealed class EventTypeAttribute : System.Attribute { public EventTypeAttribute(string name) { } }
+                public Counter(int id) : base(id) { }
+                private void Apply(MissingName value) { }
             }
-            public sealed record MissingName : EventLoom.IDomainEvent;
+
+            public sealed record MissingName : EventLoom.IDomainEvent<Counter>;
             """);
 
-        await Assert.That(diagnostics.Single().Id)
-            .IsEqualTo(DomainEventContractAnalyzer.MissingEventTypeDiagnosticId);
+        await Assert.That(diagnostics.Select(value => value.Id))
+            .IsEquivalentTo([DomainEventContractAnalyzer.MissingEventTypeDiagnosticId]);
     }
 
     [Test]
-    public async Task AcceptsDomainEventWithStableIdentity()
+    public async Task AcceptsOwnedEventWithValidInheritedHandler()
     {
         var diagnostics = await AnalyzeAsync(
+            Framework +
             """
-            namespace EventLoom
+            public abstract class CounterBase : EventLoom.Aggregate<int>
             {
-                public interface IDomainEvent { }
-                public sealed class EventTypeAttribute : System.Attribute { public EventTypeAttribute(string name) { } }
+                protected CounterBase(int id) : base(id) { }
+                protected void Apply(Incremented value) { }
             }
-            [EventLoom.EventType("tests.named")]
-            public sealed record NamedEvent : EventLoom.IDomainEvent;
+
+            public sealed class Counter : CounterBase
+            {
+                public Counter(int id) : base(id) { }
+                public void Increment() => Raise(new Incremented());
+            }
+
+            [EventLoom.EventType("tests.incremented")]
+            public sealed record Incremented : EventLoom.IDomainEvent<CounterBase>;
             """);
 
         await Assert.That(diagnostics).IsEmpty();
+    }
+
+    [Test]
+    public async Task ReportsMissingApplyHandler()
+    {
+        var diagnostics = await AnalyzeAsync(
+            Framework +
+            """
+            public sealed class Counter : EventLoom.Aggregate<int>
+            {
+                public Counter(int id) : base(id) { }
+            }
+
+            [EventLoom.EventType("tests.incremented")]
+            public sealed record Incremented : EventLoom.IDomainEvent<Counter>;
+            """);
+
+        await Assert.That(diagnostics.Select(value => value.Id))
+            .Contains(DomainEventContractAnalyzer.MissingApplyHandlerDiagnosticId);
+    }
+
+    [Test]
+    public async Task ReportsInvalidApplyHandler()
+    {
+        var diagnostics = await AnalyzeAsync(
+            Framework +
+            """
+            public sealed class Counter : EventLoom.Aggregate<int>
+            {
+                public Counter(int id) : base(id) { }
+                public static int Apply(Incremented value) => 0;
+            }
+
+            [EventLoom.EventType("tests.incremented")]
+            public sealed record Incremented : EventLoom.IDomainEvent<Counter>;
+            """);
+
+        await Assert.That(diagnostics.Select(value => value.Id))
+            .Contains(DomainEventContractAnalyzer.InvalidApplyHandlerDiagnosticId);
+    }
+
+    [Test]
+    public async Task ReportsHandlersDuplicatedAcrossAggregateHierarchy()
+    {
+        var diagnostics = await AnalyzeAsync(
+            Framework +
+            """
+            public abstract class CounterBase : EventLoom.Aggregate<int>
+            {
+                protected CounterBase(int id) : base(id) { }
+                protected void Apply(Incremented value) { }
+            }
+
+            public sealed class Counter : CounterBase
+            {
+                public Counter(int id) : base(id) { }
+                private new void Apply(Incremented value) { }
+            }
+
+            [EventLoom.EventType("tests.incremented")]
+            public sealed record Incremented : EventLoom.IDomainEvent<Counter>;
+            """);
+
+        await Assert.That(diagnostics.Select(value => value.Id))
+            .Contains(DomainEventContractAnalyzer.AmbiguousApplyHandlerDiagnosticId);
+    }
+
+    [Test]
+    public async Task ReportsEventRaisedByWrongAggregate()
+    {
+        var diagnostics = await AnalyzeAsync(
+            Framework +
+            """
+            public sealed class Order : EventLoom.Aggregate<int>
+            {
+                public Order(int id) : base(id) { }
+                private void Apply(OrderPlaced value) { }
+            }
+
+            public sealed class Cart : EventLoom.Aggregate<int>
+            {
+                public Cart(int id) : base(id) { }
+                public void PlaceOrder() => Raise(new OrderPlaced());
+            }
+
+            [EventLoom.EventType("tests.order-placed")]
+            public sealed record OrderPlaced : EventLoom.IDomainEvent<Order>;
+            """);
+
+        await Assert.That(diagnostics.Select(value => value.Id))
+            .Contains(DomainEventContractAnalyzer.WrongAggregateOwnerDiagnosticId);
     }
 
     private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source)

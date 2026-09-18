@@ -3,7 +3,6 @@ using System.Text.Json;
 namespace EventLoom.Testing;
 
 public sealed class EventTestBuilder<TEvent>
-    where TEvent : EventLoom.IDomainEvent
 {
     private TEvent? value;
 

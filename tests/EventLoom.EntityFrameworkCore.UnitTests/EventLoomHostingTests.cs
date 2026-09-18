@@ -224,7 +224,7 @@ public sealed class EventLoomHostingTests
     }
 
     [EventType("tests.counter-incremented", Version = 1)]
-    private sealed record CounterIncremented : IDomainEvent;
+    private sealed record CounterIncremented : IDomainEvent<Counter>;
 
     private sealed class CounterProjection : IProjectionHandler<CounterIncremented>
     {

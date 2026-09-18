@@ -40,7 +40,7 @@ public sealed class AggregateScenario<TAggregate, TId>
             $"Call {nameof(Given)}(...) before reading the aggregate.");
 
     /// <summary>Gets the events raised by the most recent command.</summary>
-    public IReadOnlyList<IDomainEvent> RaisedEvents =>
+    public IReadOnlyList<object> RaisedEvents =>
         Aggregate.PendingEvents.Select(pending => pending.Event).ToArray();
 
     /// <summary>Gets the exception thrown by the most recent <see cref="When"/> call, if any.</summary>
@@ -52,7 +52,7 @@ public sealed class AggregateScenario<TAggregate, TId>
     /// <param name="id">The aggregate identifier.</param>
     /// <param name="history">The prior events to replay, in stream order.</param>
     /// <returns>This scenario.</returns>
-    public AggregateScenario<TAggregate, TId> Given(TId id, params IDomainEvent[] history)
+    public AggregateScenario<TAggregate, TId> Given(TId id, params object[] history)
     {
         ArgumentNullException.ThrowIfNull(history);
         aggregate = factory(id);
@@ -66,7 +66,7 @@ public sealed class AggregateScenario<TAggregate, TId>
     /// <param name="id">The aggregate identifier.</param>
     /// <param name="history">The prior events to replay, in stream order.</param>
     /// <returns>This scenario.</returns>
-    public AggregateScenario<TAggregate, TId> Given(TId id, IEnumerable<IDomainEvent> history) =>
+    public AggregateScenario<TAggregate, TId> Given(TId id, IEnumerable<object> history) =>
         Given(id, (history ?? throw new ArgumentNullException(nameof(history))).ToArray());
 
     /// <summary>
@@ -105,7 +105,7 @@ public sealed class AggregateScenario<TAggregate, TId>
     /// <summary>Asserts against the events raised by the most recent <see cref="When"/> call.</summary>
     /// <param name="assertion">Invoked with the raised events.</param>
     /// <returns>This scenario.</returns>
-    public AggregateScenario<TAggregate, TId> ThenEvents(Action<IReadOnlyList<IDomainEvent>> assertion)
+    public AggregateScenario<TAggregate, TId> ThenEvents(Action<IReadOnlyList<object>> assertion)
     {
         ArgumentNullException.ThrowIfNull(assertion);
         assertion(RaisedEvents);

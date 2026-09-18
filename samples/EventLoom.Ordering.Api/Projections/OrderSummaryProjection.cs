@@ -63,7 +63,6 @@ internal sealed class OrderSummaryProjection :
         EventStoreDbContext context,
         EventEnvelope<TEvent> envelope,
         CancellationToken cancellationToken)
-        where TEvent : IDomainEvent
     {
         var tenantId = Tenant(envelope);
         var orderId = Guid.Parse(envelope.StreamId);
@@ -72,8 +71,7 @@ internal sealed class OrderSummaryProjection :
             cancellationToken);
     }
 
-    private static string Tenant<TEvent>(EventEnvelope<TEvent> envelope)
-        where TEvent : IDomainEvent =>
+    private static string Tenant<TEvent>(EventEnvelope<TEvent> envelope) =>
         envelope.TenantId?.Value
         ?? throw new InvalidOperationException("Projected events must have a tenant.");
 }

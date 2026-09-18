@@ -34,7 +34,7 @@ public sealed class DomainKernelTests
     {
         var aggregate = new MissingHandlerAggregate(Guid.NewGuid());
 
-        await Assert.That(() => aggregate.RaiseUnknown(new Incremented(1)))
+        await Assert.That(() => aggregate.RaiseUnknown(new MissingHandlerEvent()))
             .Throws<MissingApplyHandlerException>();
     }
 
@@ -104,8 +104,17 @@ public sealed class DomainKernelTests
     {
         var aggregate = new StaticHandlerAggregate(Guid.NewGuid());
 
-        await Assert.That(() => aggregate.RaiseUnknown(new Incremented(1)))
+        await Assert.That(() => aggregate.RaiseUnknown(new StaticHandlerEvent()))
             .Throws<InvalidApplyHandlerException>();
+    }
+
+    [Test]
+    public async Task Aggregate_cannot_raise_an_event_owned_by_another_aggregate()
+    {
+        var aggregate = new OtherAggregate(Guid.NewGuid());
+
+        await Assert.That(() => aggregate.RaiseForeign(new Incremented(1)))
+            .Throws<EventOwnershipException>();
     }
 
     [Test]
@@ -128,7 +137,16 @@ public sealed class DomainKernelTests
     }
 
     [EventType("counter.incremented")]
-    private sealed record Incremented(int Amount) : IDomainEvent;
+    private sealed record Incremented(int Amount) : IDomainEvent<CounterAggregate>;
+
+    [EventType("counter.derived-incremented")]
+    private sealed record DerivedIncremented(int Amount) : IDomainEvent<BaseCounterAggregate>;
+
+    [EventType("counter.missing-handler")]
+    private sealed record MissingHandlerEvent : IDomainEvent<MissingHandlerAggregate>;
+
+    [EventType("counter.static-handler")]
+    private sealed record StaticHandlerEvent : IDomainEvent<StaticHandlerAggregate>;
 
     private sealed class CounterAggregate(Guid id) : Aggregate<Guid>(id)
     {
@@ -136,35 +154,40 @@ public sealed class DomainKernelTests
 
         public void Increment(int amount) => Raise(new Incremented(amount));
 
-        public void ReplayHistory(IEnumerable<IDomainEvent> history) => Replay(history);
+        public void ReplayHistory(IEnumerable<object> history) => Replay(history);
 
         private void Apply(Incremented @event) => Value += @event.Amount;
     }
 
     private sealed class MissingHandlerAggregate(Guid id) : Aggregate<Guid>(id)
     {
-        public void RaiseUnknown(Incremented @event) => Raise(@event);
+        public void RaiseUnknown(MissingHandlerEvent @event) => Raise(@event);
     }
 
     private abstract class BaseCounterAggregate(Guid id) : Aggregate<Guid>(id)
     {
         public int Value { get; private set; }
 
-        protected void Apply(Incremented @event) => Value += @event.Amount;
+        protected void Apply(DerivedIncremented @event) => Value += @event.Amount;
     }
 
     private sealed class DerivedCounterAggregate(Guid id) : BaseCounterAggregate(id)
     {
-        public void Increment(int amount) => Raise(new Incremented(amount));
+        public void Increment(int amount) => Raise(new DerivedIncremented(amount));
     }
 
     private sealed class StaticHandlerAggregate(Guid id) : Aggregate<Guid>(id)
     {
-        public void RaiseUnknown(Incremented @event) => Raise(@event);
+        public void RaiseUnknown(StaticHandlerEvent @event) => Raise(@event);
 
-        private static void Apply(Incremented @event)
+        private static void Apply(StaticHandlerEvent @event)
         {
         }
+    }
+
+    private sealed class OtherAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        public void RaiseForeign(Incremented @event) => Raise(@event);
     }
 
     private sealed class FrozenTimeProvider(DateTimeOffset now) : TimeProvider

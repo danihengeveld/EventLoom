@@ -16,9 +16,6 @@ Define a stable persisted event and apply it through an aggregate:
 ```csharp
 using EventLoom;
 
-[EventType("inventory.received", Version = 1)]
-public sealed record InventoryReceived(int Quantity) : IDomainEvent;
-
 public sealed class InventoryItem(Guid id) : Aggregate<Guid>(id)
 {
     public int Available { get; private set; }
@@ -27,6 +24,9 @@ public sealed class InventoryItem(Guid id) : Aggregate<Guid>(id)
 
     private void Apply(InventoryReceived @event) => Available += @event.Quantity;
 }
+
+[EventType("inventory.received", Version = 1)]
+public sealed record InventoryReceived(int Quantity) : IDomainEvent<InventoryItem>;
 ```
 
 This package has no application composition or storage provider. Web

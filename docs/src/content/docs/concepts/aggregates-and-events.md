@@ -5,13 +5,17 @@ description: Model state changes as immutable domain events and replay them safe
 
 ## Events are persisted contracts
 
-An EventLoom event implements `IDomainEvent` and carries an `[EventType]`
-attribute:
+An EventLoom event implements `IDomainEvent<TAggregate>` and carries an
+`[EventType]` attribute:
 
 ```csharp
 [EventType("orders.order-placed", Version = 1)]
-public sealed record OrderPlaced(string Sku, int Quantity) : IDomainEvent;
+public sealed record OrderPlaced(string Sku, int Quantity) : IDomainEvent<Order>;
 ```
+
+Every event belongs to one aggregate. This explicit link lets EventLoom's
+analyzer verify its `Apply` handler and reject attempts to raise it from a
+different aggregate.
 
 The name is a permanent storage contract. Choose a business-oriented,
 lowercase, namespaced name; do not derive it from a namespace or CLR type.

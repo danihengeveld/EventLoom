@@ -55,7 +55,7 @@ Complete locally. Choose a license, create the GitHub repository, commit, and pu
 
 ### Deliverables
 
-- `IDomainEvent` marker interface.
+- `IDomainEvent<TAggregate>` aggregate ownership contract.
 - `EventTypeAttribute` with stable event name and positive schema version.
 - `Aggregate<TId>` base class:
   - aggregate identity and persisted version;

@@ -1,5 +1,5 @@
 EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>
-EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.AggregateRepository(EventLoom.EntityFrameworkCore.EventStore! store, System.Func<TId, TAggregate!>! factory, System.Func<TAggregate!, System.Collections.Generic.IEnumerable<EventLoom.IDomainEvent!>!>! pendingEvents, System.Func<TAggregate!, long>! version) -> void
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.AggregateRepository(EventLoom.EntityFrameworkCore.EventStore! store, System.Func<TId, TAggregate!>! factory, System.Func<TAggregate!, System.Collections.Generic.IEnumerable<object!>!>! pendingEvents, System.Func<TAggregate!, long>! version) -> void
 EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.AggregateRepository(EventLoom.EntityFrameworkCore.EventStore! store, System.Func<TId, TAggregate!>! factory, string! aggregateType, System.Func<TId, string!>! streamId, EventLoom.ITenantAccessor? tenantAccessor = null, EventLoom.EntityFrameworkCore.SnapshotStore? snapshotStore = null, EventLoom.IAggregateSnapshotAdapter<TAggregate!>? snapshotAdapter = null, EventLoom.ISnapshotPolicy? snapshotPolicy = null, EventLoom.ISnapshotInvalidator? snapshotInvalidator = null, EventLoom.ISnapshotRetentionPolicy? snapshotRetentionPolicy = null) -> void
 EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.LoadAsync(TId id) -> System.Threading.Tasks.Task<TAggregate!>!
 EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.LoadAsync(TId id, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<TAggregate!>!
@@ -18,10 +18,10 @@ EventLoom.EntityFrameworkCore.AppendRequest.AggregateType.get -> string!
 EventLoom.EntityFrameworkCore.AppendRequest.AggregateType.init -> void
 EventLoom.EntityFrameworkCore.AppendRequest.AppendId.get -> string?
 EventLoom.EntityFrameworkCore.AppendRequest.AppendId.init -> void
-EventLoom.EntityFrameworkCore.AppendRequest.AppendRequest(string! TenantId, string! StreamId, string! AggregateType, EventLoom.ExpectedVersion ExpectedVersion, System.Collections.Generic.IReadOnlyList<EventLoom.IDomainEvent!>! Events, EventLoom.EventMetadata! Metadata, string? AppendId = null) -> void
-EventLoom.EntityFrameworkCore.AppendRequest.Deconstruct(out string! TenantId, out string! StreamId, out string! AggregateType, out EventLoom.ExpectedVersion ExpectedVersion, out System.Collections.Generic.IReadOnlyList<EventLoom.IDomainEvent!>! Events, out EventLoom.EventMetadata! Metadata, out string? AppendId) -> void
+EventLoom.EntityFrameworkCore.AppendRequest.AppendRequest(string! TenantId, string! StreamId, string! AggregateType, EventLoom.ExpectedVersion ExpectedVersion, System.Collections.Generic.IReadOnlyList<object!>! Events, EventLoom.EventMetadata! Metadata, string? AppendId = null) -> void
+EventLoom.EntityFrameworkCore.AppendRequest.Deconstruct(out string! TenantId, out string! StreamId, out string! AggregateType, out EventLoom.ExpectedVersion ExpectedVersion, out System.Collections.Generic.IReadOnlyList<object!>! Events, out EventLoom.EventMetadata! Metadata, out string? AppendId) -> void
 EventLoom.EntityFrameworkCore.AppendRequest.Equals(EventLoom.EntityFrameworkCore.AppendRequest? other) -> bool
-EventLoom.EntityFrameworkCore.AppendRequest.Events.get -> System.Collections.Generic.IReadOnlyList<EventLoom.IDomainEvent!>!
+EventLoom.EntityFrameworkCore.AppendRequest.Events.get -> System.Collections.Generic.IReadOnlyList<object!>!
 EventLoom.EntityFrameworkCore.AppendRequest.Events.init -> void
 EventLoom.EntityFrameworkCore.AppendRequest.ExpectedVersion.get -> EventLoom.ExpectedVersion
 EventLoom.EntityFrameworkCore.AppendRequest.ExpectedVersion.init -> void

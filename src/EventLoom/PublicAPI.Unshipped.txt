@@ -1,21 +1,21 @@
 EventLoom.Aggregate<TId>
 EventLoom.Aggregate<TId>.Aggregate(TId id) -> void
-EventLoom.Aggregate<TId>.ApplyHistory(System.Collections.Generic.IEnumerable<EventLoom.IDomainEvent!>! history) -> void
+EventLoom.Aggregate<TId>.ApplyHistory(System.Collections.Generic.IEnumerable<object!>! history) -> void
 EventLoom.Aggregate<TId>.ClearPendingEvents() -> void
 EventLoom.Aggregate<TId>.GetPendingEvents() -> System.Collections.Generic.IReadOnlyList<EventLoom.Aggregate<TId>.PendingEvent!>!
 EventLoom.Aggregate<TId>.Id.get -> TId
 EventLoom.Aggregate<TId>.PendingEvent
 EventLoom.Aggregate<TId>.PendingEvent.<Clone>$() -> EventLoom.Aggregate<TId>.PendingEvent!
-EventLoom.Aggregate<TId>.PendingEvent.Deconstruct(out EventLoom.IDomainEvent! Event, out long StreamVersion) -> void
+EventLoom.Aggregate<TId>.PendingEvent.Deconstruct(out object! Event, out long StreamVersion) -> void
 EventLoom.Aggregate<TId>.PendingEvent.Equals(EventLoom.Aggregate<TId>.PendingEvent? other) -> bool
-EventLoom.Aggregate<TId>.PendingEvent.Event.get -> EventLoom.IDomainEvent!
+EventLoom.Aggregate<TId>.PendingEvent.Event.get -> object!
 EventLoom.Aggregate<TId>.PendingEvent.Event.init -> void
-EventLoom.Aggregate<TId>.PendingEvent.PendingEvent(EventLoom.IDomainEvent! Event, long StreamVersion) -> void
+EventLoom.Aggregate<TId>.PendingEvent.PendingEvent(object! Event, long StreamVersion) -> void
 EventLoom.Aggregate<TId>.PendingEvent.StreamVersion.get -> long
 EventLoom.Aggregate<TId>.PendingEvent.StreamVersion.init -> void
 EventLoom.Aggregate<TId>.PendingEvents.get -> System.Collections.Generic.IReadOnlyList<EventLoom.Aggregate<TId>.PendingEvent!>!
 EventLoom.Aggregate<TId>.Raise<TEvent>(TEvent event) -> void
-EventLoom.Aggregate<TId>.Replay(System.Collections.Generic.IEnumerable<EventLoom.IDomainEvent!>! history) -> void
+EventLoom.Aggregate<TId>.Replay(System.Collections.Generic.IEnumerable<object!>! history) -> void
 EventLoom.Aggregate<TId>.Version.get -> long
 EventLoom.AggregateDispatchException
 EventLoom.AggregateDispatchException.AggregateDispatchException(string! message) -> void
@@ -37,11 +37,11 @@ EventLoom.EventEnvelope
 EventLoom.EventEnvelope.<Clone>$() -> EventLoom.EventEnvelope!
 EventLoom.EventEnvelope.AggregateType.get -> string!
 EventLoom.EventEnvelope.AggregateType.init -> void
-EventLoom.EventEnvelope.Deconstruct(out System.Guid EventId, out string! EventType, out int EventTypeVersion, out string! StreamId, out string! AggregateType, out long StreamVersion, out long TenantOffset, out EventLoom.TenantId? TenantId, out System.DateTimeOffset OccurredAt, out EventLoom.IDomainEvent! Event, out EventLoom.EventMetadata! Metadata) -> void
+EventLoom.EventEnvelope.Deconstruct(out System.Guid EventId, out string! EventType, out int EventTypeVersion, out string! StreamId, out string! AggregateType, out long StreamVersion, out long TenantOffset, out EventLoom.TenantId? TenantId, out System.DateTimeOffset OccurredAt, out object! Event, out EventLoom.EventMetadata! Metadata) -> void
 EventLoom.EventEnvelope.Equals(EventLoom.EventEnvelope? other) -> bool
-EventLoom.EventEnvelope.Event.get -> EventLoom.IDomainEvent!
+EventLoom.EventEnvelope.Event.get -> object!
 EventLoom.EventEnvelope.Event.init -> void
-EventLoom.EventEnvelope.EventEnvelope(System.Guid EventId, string! EventType, int EventTypeVersion, string! StreamId, string! AggregateType, long StreamVersion, long TenantOffset, EventLoom.TenantId? TenantId, System.DateTimeOffset OccurredAt, EventLoom.IDomainEvent! Event, EventLoom.EventMetadata! Metadata) -> void
+EventLoom.EventEnvelope.EventEnvelope(System.Guid EventId, string! EventType, int EventTypeVersion, string! StreamId, string! AggregateType, long StreamVersion, long TenantOffset, EventLoom.TenantId? TenantId, System.DateTimeOffset OccurredAt, object! Event, EventLoom.EventMetadata! Metadata) -> void
 EventLoom.EventEnvelope.EventId.get -> System.Guid
 EventLoom.EventEnvelope.EventId.init -> void
 EventLoom.EventEnvelope.EventType.get -> string!
@@ -103,6 +103,8 @@ EventLoom.EventMetadata.Headers.get -> System.Collections.Generic.IReadOnlyDicti
 EventLoom.EventNotRegisteredException
 EventLoom.EventNotRegisteredException.EventNotRegisteredException(System.Type! eventType) -> void
 EventLoom.EventNotRegisteredException.EventNotRegisteredException(string! name, int version) -> void
+EventLoom.EventOwnershipException
+EventLoom.EventOwnershipException.EventOwnershipException(System.Type! aggregateType, System.Type! eventType) -> void
 EventLoom.EventRegistration
 EventLoom.EventRegistration.<Clone>$() -> EventLoom.EventRegistration!
 EventLoom.EventRegistration.ClrType.get -> System.Type!
@@ -124,10 +126,10 @@ EventLoom.EventRegistry.RegisterAssembly(System.Reflection.Assembly! assembly) -
 EventLoom.EventRegistry.RegisterEvent<TEvent>() -> EventLoom.EventRegistry!
 EventLoom.EventRegistry.Registrations.get -> System.Collections.Generic.IReadOnlyCollection<EventLoom.EventRegistration!>!
 EventLoom.EventSerializer
-EventLoom.EventSerializer.Deserialize(string! eventName, int version, string! payload) -> EventLoom.IDomainEvent!
+EventLoom.EventSerializer.Deserialize(string! eventName, int version, string! payload) -> object!
 EventLoom.EventSerializer.EventSerializer(EventLoom.EventRegistry! registry, System.Collections.Generic.IEnumerable<System.Text.Json.Serialization.JsonSerializerContext!>? contexts = null, bool reflectionFallback = true, System.Collections.Generic.IEnumerable<EventLoom.EventUpcasterChain!>? upcasterChains = null) -> void
 EventLoom.EventSerializer.Serialize<TEvent>(TEvent event) -> string!
-EventLoom.EventSerializer.SerializePayload(EventLoom.IDomainEvent! event) -> EventLoom.EventSerializer.SerializedEventPayload!
+EventLoom.EventSerializer.SerializePayload(object! event) -> EventLoom.EventSerializer.SerializedEventPayload!
 EventLoom.EventSerializer.SerializePayload<TEvent>(TEvent event) -> EventLoom.EventSerializer.SerializedEventPayload!
 EventLoom.EventSerializer.SerializedEventPayload
 EventLoom.EventSerializer.SerializedEventPayload.<Clone>$() -> EventLoom.EventSerializer.SerializedEventPayload!
@@ -180,7 +182,9 @@ EventLoom.IAggregateSnapshotAdapter<TAggregate>.SnapshotType.get -> string!
 EventLoom.ICanonicalIdConverter<TId>
 EventLoom.ICanonicalIdConverter<TId>.ConvertFromCanonicalString(string! value) -> TId
 EventLoom.ICanonicalIdConverter<TId>.ConvertToCanonicalString(TId value) -> string!
-EventLoom.IDomainEvent
+EventLoom.Aggregate
+EventLoom.Aggregate.Aggregate() -> void
+EventLoom.IDomainEvent<TAggregate>
 EventLoom.IEventIdGenerator
 EventLoom.IEventIdGenerator.Create() -> System.Guid
 EventLoom.IEventUpcaster

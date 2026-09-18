@@ -79,15 +79,13 @@ public sealed partial class EventLoomBuilder
     /// <typeparam name="TEvent">The concrete domain-event type to register.</typeparam>
     /// <returns>This builder.</returns>
     public EventLoomBuilder RegisterEvent<TEvent>()
-        where TEvent : IDomainEvent
     {
         registry.RegisterEvent<TEvent>();
         return this;
     }
 
     /// <summary>Registers a domain-event type for persistence and deserialization.</summary>
-    public EventLoomBuilder AddEvent<TEvent>()
-        where TEvent : IDomainEvent =>
+    public EventLoomBuilder AddEvent<TEvent>() =>
         RegisterEvent<TEvent>();
 
     /// <summary>
@@ -205,7 +203,6 @@ public sealed partial class EventLoomBuilder
     /// <returns>This builder.</returns>
     public EventLoomBuilder AddProjection<TProjection, TEvent>(string name, int version = 1)
         where TProjection : class, IProjectionHandler<TEvent>
-        where TEvent : IDomainEvent
     {
         var key = new ProjectionKey(name, version);
         key.Validate();
@@ -225,7 +222,6 @@ public sealed partial class EventLoomBuilder
     /// <returns>This builder.</returns>
     public EventLoomBuilder AddEfProjection<TProjection, TEvent>(string name, int version = 1)
         where TProjection : class, IEfProjectionHandler<TEvent>
-        where TEvent : IDomainEvent
     {
         var key = new ProjectionKey(name, version);
         key.Validate();
@@ -243,7 +239,6 @@ public sealed partial class EventLoomBuilder
     /// <returns>This builder.</returns>
     public EventLoomBuilder AddInlineProjection<TProjection, TEvent>(string name, int version = 1)
         where TProjection : class, IInlineProjectionHandler<TEvent>
-        where TEvent : IDomainEvent
     {
         var key = new ProjectionKey(name, version);
         key.Validate();

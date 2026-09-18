@@ -1,7 +1,28 @@
 namespace EventLoom;
 
-/// <summary>Marks an immutable event raised by a domain aggregate.</summary>
-public interface IDomainEvent;
+/// <summary>Marks an immutable event raised by a specific domain aggregate.</summary>
+/// <typeparam name="TAggregate">The aggregate that owns and applies the event.</typeparam>
+public interface IDomainEvent<out TAggregate>
+    where TAggregate : Aggregate;
+
+internal static class DomainEventContract
+{
+    private static readonly Type OpenContract = typeof(IDomainEvent<>);
+
+    public static bool IsEvent(Type type) => GetAggregateType(type) is not null;
+
+    public static Type? GetAggregateType(Type type)
+    {
+        var aggregateTypes = type.GetInterfaces()
+            .Where(candidate =>
+                candidate.IsGenericType &&
+                candidate.GetGenericTypeDefinition() == OpenContract)
+            .Select(candidate => candidate.GetGenericArguments()[0])
+            .Distinct()
+            .ToArray();
+        return aggregateTypes.Length == 1 ? aggregateTypes[0] : null;
+    }
+}
 
 /// <summary>Associates a stable persisted name and schema version with a domain event.</summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited = false, AllowMultiple = false)]

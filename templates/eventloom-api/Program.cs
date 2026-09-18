@@ -33,7 +33,7 @@ app.MapPost("/counters/{id:guid}/increment", async (
 app.Run();
 
 [EventType("counter.incremented")]
-public sealed record CounterIncremented : IDomainEvent;
+public sealed record CounterIncremented : IDomainEvent<Counter>;
 
 public sealed class Counter(Guid id) : Aggregate<Guid>(id)
 {

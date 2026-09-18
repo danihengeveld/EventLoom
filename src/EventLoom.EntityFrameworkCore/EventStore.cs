@@ -475,7 +475,7 @@ public sealed class EventStore(
                 JsonSerializer.Deserialize<Dictionary<string, string>>(entity.Headers)
                     ?? throw new InvalidOperationException($"Event '{entity.EventId}' has invalid metadata headers."));
 
-    private static EventEnvelope ToEnvelope(EventEntity entity, IDomainEvent @event, EventMetadata metadata) =>
+    private static EventEnvelope ToEnvelope(EventEntity entity, object @event, EventMetadata metadata) =>
         new(
             entity.EventId,
             entity.EventType,
@@ -496,7 +496,7 @@ public sealed record AppendRequest(
     string StreamId,
     string AggregateType,
     ExpectedVersion ExpectedVersion,
-    IReadOnlyList<IDomainEvent> Events,
+    IReadOnlyList<object> Events,
     EventMetadata Metadata,
     string? AppendId = null);
 

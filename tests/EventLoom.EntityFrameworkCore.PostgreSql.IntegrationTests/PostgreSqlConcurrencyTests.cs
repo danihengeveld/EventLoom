@@ -136,5 +136,10 @@ public sealed class PostgreSqlConcurrencyTests
     }
 
     [EventType("integration.created")]
-    private sealed record Created : IDomainEvent;
+    private sealed record Created : IDomainEvent<TestAggregate>;
+
+    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    {
+        private void Apply(Created @event) { }
+    }
 }

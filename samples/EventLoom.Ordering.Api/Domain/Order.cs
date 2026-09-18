@@ -1,13 +1,13 @@
 namespace EventLoom.Ordering.Api.Domain;
 
 [EventType("ordering.order-placed", Version = 1)]
-internal sealed record OrderPlaced(string Sku, int Quantity) : IDomainEvent;
+internal sealed record OrderPlaced(string Sku, int Quantity) : IDomainEvent<Order>;
 
 [EventType("ordering.order-item-added", Version = 1)]
-internal sealed record OrderItemAdded(string Sku, int Quantity) : IDomainEvent;
+internal sealed record OrderItemAdded(string Sku, int Quantity) : IDomainEvent<Order>;
 
 [EventType("ordering.order-cancelled", Version = 1)]
-internal sealed record OrderCancelled(string Reason) : IDomainEvent;
+internal sealed record OrderCancelled(string Reason) : IDomainEvent<Order>;
 
 internal sealed record OrderItem(string Sku, int Quantity);
 
