@@ -27,7 +27,7 @@ public sealed class OutboxPublisherWorkerTests
                 options.MaxRetryAttempts = 1;
                 options.SuccessfulDeliveryRetention = TimeSpan.FromDays(1);
             }));
-        await using var provider = services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
         var worker = provider.GetServices<IHostedService>().Single();
 
         try
@@ -54,6 +54,7 @@ public sealed class OutboxPublisherWorkerTests
         finally
         {
             await worker.StopAsync(CancellationToken.None);
+            await provider.DisposeAsync();
             File.Delete(databasePath);
         }
     }
@@ -76,7 +77,7 @@ public sealed class OutboxPublisherWorkerTests
                 options.LeaseDuration = TimeSpan.FromSeconds(1);
                 options.LeaseRenewalInterval = TimeSpan.FromMilliseconds(100);
             }));
-        await using var provider = services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
         var worker = provider.GetServices<IHostedService>().Single();
 
         try
@@ -94,6 +95,7 @@ public sealed class OutboxPublisherWorkerTests
         finally
         {
             await worker.StopAsync(CancellationToken.None);
+            await provider.DisposeAsync();
             File.Delete(databasePath);
         }
     }
@@ -117,7 +119,7 @@ public sealed class OutboxPublisherWorkerTests
                 options.LeaseRenewalInterval = TimeSpan.FromMilliseconds(100);
                 options.SuccessfulDeliveryRetention = TimeSpan.FromMilliseconds(250);
             }));
-        await using var provider = services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
         var worker = provider.GetServices<IHostedService>().Single();
 
         try
@@ -136,6 +138,7 @@ public sealed class OutboxPublisherWorkerTests
         finally
         {
             await worker.StopAsync(CancellationToken.None);
+            await provider.DisposeAsync();
             File.Delete(databasePath);
         }
     }
@@ -159,7 +162,7 @@ public sealed class OutboxPublisherWorkerTests
                 options.LeaseRenewalInterval = TimeSpan.FromMilliseconds(100);
                 options.MaxRetryAttempts = 0;
             }));
-        await using var provider = services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
         var worker = provider.GetServices<IHostedService>().Single();
 
         try
@@ -181,6 +184,7 @@ public sealed class OutboxPublisherWorkerTests
         finally
         {
             await worker.StopAsync(CancellationToken.None);
+            await provider.DisposeAsync();
             File.Delete(databasePath);
         }
     }
