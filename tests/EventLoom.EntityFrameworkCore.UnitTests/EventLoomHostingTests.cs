@@ -200,7 +200,7 @@ public sealed class EventLoomHostingTests
             .RegisterEvent<CounterIncremented>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}"));
-        await using var provider = services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
 
         try
         {
@@ -221,6 +221,8 @@ public sealed class EventLoomHostingTests
         }
         finally
         {
+            await provider.DisposeAsync();
+            SqliteConnection.ClearAllPools();
             File.Delete(databasePath);
         }
     }

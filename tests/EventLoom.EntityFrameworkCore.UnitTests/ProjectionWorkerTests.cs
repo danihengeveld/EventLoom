@@ -1,5 +1,6 @@
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -15,7 +16,7 @@ public sealed class ProjectionWorkerTests
         var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
         var recorder = new ProjectionRecorder();
         var services = CreateServices(databasePath, recorder);
-        await using var provider = services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
         var worker = provider.GetServices<IHostedService>().Single();
 
         try
@@ -37,6 +38,8 @@ public sealed class ProjectionWorkerTests
         finally
         {
             await worker.StopAsync(CancellationToken.None);
+            await provider.DisposeAsync();
+            SqliteConnection.ClearAllPools();
             File.Delete(databasePath);
         }
     }
@@ -48,7 +51,7 @@ public sealed class ProjectionWorkerTests
         var recorder = new ProjectionRecorder();
         var failures = new ProjectionFailureRecorder();
         var services = CreateServices(databasePath, recorder, failures);
-        await using var provider = services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
         var worker = provider.GetServices<IHostedService>().Single();
 
         try
@@ -82,6 +85,8 @@ public sealed class ProjectionWorkerTests
         finally
         {
             await worker.StopAsync(CancellationToken.None);
+            await provider.DisposeAsync();
+            SqliteConnection.ClearAllPools();
             File.Delete(databasePath);
         }
     }
@@ -106,7 +111,7 @@ public sealed class ProjectionWorkerTests
             .UseSqlite($"Data Source={databasePath}")
             .AddProjection("tests.inline", projection => projection
                 .Inline<InlineReadModelProjection, ItemAdded>()));
-        await using var provider = services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
 
         try
         {
@@ -121,6 +126,8 @@ public sealed class ProjectionWorkerTests
         }
         finally
         {
+            await provider.DisposeAsync();
+            SqliteConnection.ClearAllPools();
             File.Delete(databasePath);
         }
     }
@@ -137,7 +144,7 @@ public sealed class ProjectionWorkerTests
             .UseSqlite($"Data Source={databasePath}")
             .AddProjection("tests.inline", projection => projection
                 .Inline<FailingInlineProjection, ItemAdded>()));
-        await using var provider = services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
 
         try
         {
@@ -152,6 +159,8 @@ public sealed class ProjectionWorkerTests
         }
         finally
         {
+            await provider.DisposeAsync();
+            SqliteConnection.ClearAllPools();
             File.Delete(databasePath);
         }
     }

@@ -36,6 +36,7 @@ public sealed class OutboxStoreTests
         }
         finally
         {
+            SqliteConnection.ClearAllPools();
             File.Delete(databasePath);
         }
     }

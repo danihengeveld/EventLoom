@@ -2,6 +2,7 @@ using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 
 var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
@@ -36,6 +37,7 @@ try
 }
 finally
 {
+    SqliteConnection.ClearAllPools();
     File.Delete(databasePath);
     File.Delete($"{databasePath}-shm");
     File.Delete($"{databasePath}-wal");

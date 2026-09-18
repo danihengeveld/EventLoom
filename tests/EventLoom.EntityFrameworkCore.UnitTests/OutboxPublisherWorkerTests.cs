@@ -1,5 +1,6 @@
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -36,15 +37,15 @@ public sealed class OutboxPublisherWorkerTests
             await worker.StartAsync(CancellationToken.None);
             var eventId = await AppendAsync(provider);
             var delivered = await recorder.Delivered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var message = await WaitForPublishedAsync(provider, eventId);
 
             await using var scope = provider.CreateAsyncScope();
             var administration = scope.ServiceProvider.GetRequiredService<OutboxAdministration>();
-            var message = await administration.GetAsync("tenant-a", eventId);
             var attempts = await administration.ReadAttemptsAsync("tenant-a", eventId);
 
             await Assert.That(delivered.MessageId).IsEqualTo(eventId);
             await Assert.That(recorder.VisibleMessageIds).IsEquivalentTo(new[] { eventId });
-            await Assert.That(message!.PublishedAt).IsNotNull();
+            await Assert.That(message.PublishedAt).IsNotNull();
             await Assert.That(message.AttemptCount).IsEqualTo(2);
             await Assert.That(attempts.Count).IsEqualTo(2);
             await Assert.That(attempts[0].Succeeded).IsFalse();
@@ -55,6 +56,7 @@ public sealed class OutboxPublisherWorkerTests
         {
             await worker.StopAsync(CancellationToken.None);
             await provider.DisposeAsync();
+            SqliteConnection.ClearAllPools();
             File.Delete(databasePath);
         }
     }
@@ -96,6 +98,7 @@ public sealed class OutboxPublisherWorkerTests
         {
             await worker.StopAsync(CancellationToken.None);
             await provider.DisposeAsync();
+            SqliteConnection.ClearAllPools();
             File.Delete(databasePath);
         }
     }
@@ -139,6 +142,7 @@ public sealed class OutboxPublisherWorkerTests
         {
             await worker.StopAsync(CancellationToken.None);
             await provider.DisposeAsync();
+            SqliteConnection.ClearAllPools();
             File.Delete(databasePath);
         }
     }
@@ -185,6 +189,7 @@ public sealed class OutboxPublisherWorkerTests
         {
             await worker.StopAsync(CancellationToken.None);
             await provider.DisposeAsync();
+            SqliteConnection.ClearAllPools();
             File.Delete(databasePath);
         }
     }
@@ -249,6 +254,27 @@ public sealed class OutboxPublisherWorkerTests
         }
 
         throw new TimeoutException("The outbox publication attempt was not recorded.");
+    }
+
+    private static async Task<OutboxMessage> WaitForPublishedAsync(
+        ServiceProvider provider,
+        Guid messageId)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (!timeout.IsCancellationRequested)
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var message = await scope.ServiceProvider.GetRequiredService<OutboxAdministration>()
+                .GetAsync("tenant-a", messageId, timeout.Token);
+            if (message?.PublishedAt is not null)
+            {
+                return message;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        throw new TimeoutException("The outbox message was not marked as published.");
     }
 
     [EventType("tests.outbox-worker-item-added")]

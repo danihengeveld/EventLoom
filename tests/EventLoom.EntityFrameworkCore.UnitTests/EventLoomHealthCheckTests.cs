@@ -1,5 +1,6 @@
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using SQLitePCL;
@@ -28,7 +29,7 @@ public sealed class EventLoomHealthCheckTests
             options.MaximumProjectionLag = 0;
             options.MaximumOutboxBacklog = 0;
         });
-        await using var provider = services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
 
         try
         {
@@ -87,6 +88,8 @@ public sealed class EventLoomHealthCheckTests
         }
         finally
         {
+            await provider.DisposeAsync();
+            SqliteConnection.ClearAllPools();
             File.Delete(databasePath);
         }
     }
