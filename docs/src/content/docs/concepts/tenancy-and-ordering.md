@@ -5,18 +5,19 @@ description: Configure tenant isolation, idempotent command retries, expected ve
 
 ## Tenancy modes
 
-`TenancyMode.Disabled` is the default. Use it only when the application has no
-tenant boundary. For a tenant-aware application, require a scoped accessor:
+Single-tenancy is the default. EventLoom supplies a stable internal tenant,
+so normal repository operations need no application tenant accessor. For a
+tenant-aware application, explicitly configure a scoped accessor:
 
 ```csharp
-services.AddScoped<ITenantAccessor, RequestTenantAccessor>();
-services.AddEventLoom(eventLoom => eventLoom
-    .ConfigureTenancy(TenancyMode.Required)
-    .RegisterEvent<OrderPlaced>()
-    .UsePostgreSql(connectionString));
+services
+    .AddEventLoom()
+    .UsePostgreSql(connectionString)
+    .UseMultiTenancy<RequestTenantAccessor>()
+    .AddEvent<OrderPlaced>();
 ```
 
-When required, EventLoom normalizes tenant IDs and rejects operations with no
+In multi-tenant mode, EventLoom normalizes tenant IDs and rejects operations with no
 tenant or an explicit tenant that differs from the scoped accessor. Keep tenant
 resolution at the trusted application boundary, such as authentication
 middleware. Never use an unvalidated client header as a production trust

@@ -17,6 +17,10 @@ This ASP.NET Core sample shows the standard EventLoom application path:
 dotnet run --project samples/EventLoom.Ordering.AppHost
 ```
 
+Running `dotnet run --project samples/EventLoom.Ordering.Api` also selects the
+default `Aspire AppHost` launch profile. Use the `API (direct)` profile only
+when supplying `ConnectionStrings__EventStore` yourself.
+
 The AppHost starts the PostgreSQL event-store database, injects its connection
 string into the API, waits for the database before starting the API, and opens
 the Aspire dashboard. Use the dashboard's **Resources** page to open the API
@@ -25,6 +29,9 @@ endpoint and view its AppHost-managed URL.
 The dashboard receives the API's logs, ASP.NET Core telemetry, and EventLoom
 traces and metrics through OpenTelemetry. The API remains PostgreSQL-only so
 the sample exercises EventLoom's distributed production provider.
+
+The sample retains successfully published outbox messages and their attempt
+history for one day so the outbox inspection endpoint remains useful.
 
 The sample calls `EnsureCreatedAsync` to make an empty local database usable.
 Production applications should create and apply reviewed migrations for the
@@ -58,5 +65,8 @@ curl -X POST "${api_url}/orders" \
 
 In the Development environment, open the API resource's `/scalar/v1` endpoint
 for the Scalar API reference and `/openapi/v1.json` for the generated OpenAPI
-document. See the [Ordering API guide](../../docs/src/content/docs/guides/ordering-api.md)
-for the complete command sequence and design explanation.
+document. Scalar preconfigures the required `X-Tenant-ID` header with the sample
+tenant `acme`; change it once in Scalar's authentication section to use another
+tenant for all requests. See the
+[Ordering API guide](../../docs/src/content/docs/guides/ordering-api.md) for the
+complete command sequence and design explanation.

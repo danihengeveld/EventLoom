@@ -46,35 +46,34 @@ Register each event explicitly, configure repository identity once, and select
 SQLite:
 
 ```csharp
-services.AddScoped<ITenantAccessor>(_ => new FixedTenantAccessor("demo"));
-services.AddEventLoom(eventLoom => eventLoom
-    .ConfigureTenancy(TenancyMode.Required)
-    .RegisterEvent<CounterIncremented>()
-    .AddAggregateRepository<Counter, Guid>(
-        id => new Counter(id),
-        "counter",
-        id => id.ToString("D"))
-    .UseSqlite("Data Source=eventloom.db"));
+services
+    .AddEventLoom()
+    .UseSqlite("Data Source=eventloom.db")
+    .AddEvent<CounterIncremented>()
+    .AddAggregate<Counter, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Counter(id))
+        .UseStream("counter", id => id.ToString("D")));
 ```
 
-`FixedTenantAccessor` is appropriate only for a single-tenant application. In
-an HTTP service, resolve the tenant from validated authentication or request
-context; see [Tenancy and ordering](/concepts/tenancy-and-ordering).
+Single-tenancy is the default and uses the stable internal tenant ID `default`.
+Applications that need tenant isolation opt in with
+`UseMultiTenancy<TAccessor>()`; see
+[Tenancy and ordering](/concepts/tenancy-and-ordering).
 
 ## Create the schema for local development
 
-For a local prototype, create the EventLoom schema once:
+For a local ASP.NET Core prototype, explicitly initialize a new database:
 
 ```csharp
-await using var scope = services.BuildServiceProvider().CreateAsyncScope();
-var context = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
-await context.Database.EnsureCreatedAsync();
+if (app.Environment.IsDevelopment())
+{
+    await app.InitializeEventLoomDevelopmentDatabaseAsync();
+}
 ```
 
-`EnsureCreatedAsync` is convenient for the current pre-release and sample. Do
-not use it for a database that will be managed with EF Core migrations. See
-[Production deployment](/guides/production-deployment) for the current schema
-deployment boundary.
+The helper refuses to run outside Development and does not migrate an existing
+schema. Use reviewed, host-owned EF Core migrations in production. See
+[Production deployment](/guides/production-deployment).
 
 ## Save and reload
 
@@ -98,10 +97,3 @@ Console.WriteLine(reloaded.Value); // 3
 retrying after an ambiguous transport failure; do not generate a new value for
 each retry. See [Append and read events](/guides/append-and-read) for expected
 versions, metadata, and explicit administrative operations.
-
-```csharp
-internal sealed class FixedTenantAccessor(string tenant) : ITenantAccessor
-{
-    public TenantId? TenantId { get; } = new TenantId(tenant);
-}
-```

@@ -98,14 +98,21 @@ public sealed class PostgreSqlLeaseTests
     {
         await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
         await container.StartAsync();
-        var options = new EventStoreOptions { UseSchema = true, Schema = "eventloom_test", TablePrefix = "eventloom_" };
+        var options = new EventStoreOptions
+        {
+            UseSchema = true,
+            Schema = "eventloom_test",
+            TablePrefix = "eventloom_",
+            OutboxEnabled = true
+        };
         await using var context = CreateContext(container.GetConnectionString(), options);
         await context.Database.EnsureCreatedAsync();
         var eventStore = new EventStore(
             context,
             new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
             new UuidV7EventIdGenerator(),
-            TimeProvider.System);
+            TimeProvider.System,
+            options);
         var eventId = (await eventStore.AppendAsync(new AppendRequest(
             "tenant-a",
             "order-1",
@@ -130,6 +137,49 @@ public sealed class PostgreSqlLeaseTests
         await Assert.That(async () => await outbox.RecordAttemptAsync(message, stale, exception: null))
             .Throws<OutboxLeaseLostException>();
         await Assert.That((await outbox.GetAsync("tenant-a", eventId))!.PublishedAt).IsNull();
+    }
+
+    [Test]
+    public async Task PostgreSql_purges_successful_outbox_messages_and_attempts()
+    {
+        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
+        await container.StartAsync();
+        var options = new EventStoreOptions
+        {
+            UseSchema = true,
+            Schema = "eventloom_test",
+            TablePrefix = "eventloom_",
+            OutboxEnabled = true
+        };
+        await using var context = CreateContext(container.GetConnectionString(), options);
+        await context.Database.EnsureCreatedAsync();
+        var eventStore = new EventStore(
+            context,
+            new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
+            new UuidV7EventIdGenerator(),
+            TimeProvider.System,
+            options);
+        var eventId = (await eventStore.AppendAsync(new AppendRequest(
+            "tenant-a",
+            "order-1",
+            "order",
+            ExpectedVersion.NoStream,
+            [new ItemAdded()],
+            new EventMetadata()))).Events.Single().EventId;
+        var outbox = new OutboxStore(context, TimeProvider.System);
+        var message = (await outbox.ReadPendingAsync("tenant-a")).Single();
+        var lease = (await new WorkerLeaseStore(context, TimeProvider.System).TryAcquireAsync(
+            "tenant-a",
+            OutboxStore.GetLeaseName(),
+            "node-a",
+            TimeSpan.FromMinutes(1)))!;
+
+        await outbox.RecordAttemptAsync(message, lease, exception: null, TimeSpan.FromDays(1));
+        await Assert.That((await outbox.GetAsync("tenant-a", eventId))!.PublishedAt).IsNotNull();
+
+        await Assert.That(await outbox.PurgePublishedAsync(TimeSpan.Zero, 100)).IsEqualTo(1);
+        await Assert.That(await outbox.GetAsync("tenant-a", eventId)).IsNull();
+        await Assert.That(await outbox.ReadAttemptsAsync("tenant-a", eventId)).IsEmpty();
     }
 
     private static EventStoreDbContext CreateContext(string connectionString, EventStoreOptions options) =>

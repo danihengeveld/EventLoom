@@ -21,10 +21,9 @@ public sealed class EventLoomHostingTests
         services.AddEventLoom(eventLoom => eventLoom
             .RegisterEvent<CounterIncremented>()
             .UseSqlite("Data Source=:memory:")
-            .AddAggregateRepository<Counter, Guid>(
-                id => new Counter(id),
-                counter => counter.PendingEvents.Select(value => value.Event),
-                counter => counter.Version));
+            .AddAggregate<Counter, Guid>(aggregate => aggregate
+                .ConstructWith(id => new Counter(id))
+                .UseStream("counter", id => id.ToString("D"))));
 
         using var serviceProvider = services.BuildServiceProvider();
         using var scope = serviceProvider.CreateScope();
@@ -38,6 +37,65 @@ public sealed class EventLoomHostingTests
         await Assert.That(scope.ServiceProvider.GetRequiredService<IEventIdGenerator>()).IsTypeOf<UuidV7EventIdGenerator>();
         await Assert.That(scope.ServiceProvider.GetRequiredService<TimeProviderClock>().Provider).IsEqualTo(TimeProvider.System);
         await Assert.That(scope.ServiceProvider.GetRequiredService<AggregateRepository<Counter, Guid>>()).IsNotNull();
+    }
+
+    [Test]
+    public async Task AddEventLoomUsesAnInternalSingleTenantByDefault()
+    {
+        var services = new ServiceCollection();
+        services.AddEventLoom(eventLoom => eventLoom
+            .AddEvent<CounterIncremented>()
+            .UseSqlite("Data Source=:memory:")
+            .AddAggregate<Counter, Guid>(aggregate => aggregate
+                .ConstructWith(id => new Counter(id))
+                .UseStream("counter", id => id.ToString("D"))));
+
+        using var serviceProvider = services.BuildServiceProvider();
+        using var scope = serviceProvider.CreateScope();
+
+        await Assert.That(scope.ServiceProvider.GetRequiredService<ITenantAccessor>().TenantId)
+            .IsEqualTo(new TenantId("default"));
+        await Assert.That(scope.ServiceProvider.GetRequiredService<AggregateRepository<Counter, Guid>>()).IsNotNull();
+    }
+
+    [Test]
+    public async Task MultiTenancyRequiresAnAccessor()
+    {
+        var services = new ServiceCollection();
+
+        await Assert.That(() => services.AddEventLoom(eventLoom => eventLoom
+                .AddEvent<CounterIncremented>()
+                .UseSqlite("Data Source=:memory:")
+                .ConfigureTenancy(TenancyMode.MultiTenant)))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task Named_projection_registration_requires_at_least_one_handler()
+    {
+        var services = new ServiceCollection();
+
+        await Assert.That(() => services.AddEventLoom(eventLoom => eventLoom
+                .AddEvent<CounterIncremented>()
+                .UseSqlite("Data Source=:memory:")
+                .AddProjection("tests.empty", _ => { })))
+            .Throws<InvalidOperationException>()
+            .WithMessage("Projection 'tests.empty' version 1 must register at least one handler.");
+    }
+
+    [Test]
+    public async Task Named_projection_registration_validates_duplicate_handlers_at_startup()
+    {
+        var services = new ServiceCollection();
+
+        await Assert.That(() => services.AddEventLoom(eventLoom => eventLoom
+                .AddEvent<CounterIncremented>()
+                .UseSqlite("Data Source=:memory:")
+                .AddProjection("tests.duplicate", projection => projection
+                    .Asynchronous<CounterProjection, CounterIncremented>()
+                    .Asynchronous<CounterProjection, CounterIncremented>())))
+            .Throws<InvalidOperationException>()
+            .WithMessage("A projection handler can only be registered once per event type and mode.");
     }
 
     [Test]
@@ -73,12 +131,12 @@ public sealed class EventLoomHostingTests
             .RegisterEvent<CounterIncremented>()
             .UseSqlite("Data Source=:memory:")
             .ConfigureSnapshotRetention(new KeepLatestSnapshotsPolicy(2))
-            .AddAggregateRepository<Counter, Guid>(
-                id => new Counter(id),
-                aggregateType: "counter",
-                streamId: id => id.ToString("D"),
-                snapshotAdapter: new CounterSnapshotAdapter(),
-                snapshotInvalidator: new AlwaysInvalidateSnapshots()));
+            .AddAggregate<Counter, Guid>(aggregate => aggregate
+                .ConstructWith(id => new Counter(id))
+                .UseStream("counter", id => id.ToString("D"))
+                .UseSnapshots(snapshot => snapshot
+                    .UseAdapter(new CounterSnapshotAdapter())
+                    .UseInvalidator(new AlwaysInvalidateSnapshots()))));
 
         using var serviceProvider = services.BuildServiceProvider();
         using var scope = serviceProvider.CreateScope();
@@ -87,6 +145,31 @@ public sealed class EventLoomHostingTests
             .IsEqualTo(2);
         await Assert.That(scope.ServiceProvider.GetRequiredService<SnapshotStore>()).IsNotNull();
         await Assert.That(scope.ServiceProvider.GetRequiredService<AggregateRepository<Counter, Guid>>()).IsNotNull();
+    }
+
+    [Test]
+    public async Task AddAggregate_accepts_typed_snapshot_configuration()
+    {
+        var services = new ServiceCollection();
+
+        services.AddEventLoom(eventLoom => eventLoom
+            .RegisterEvent<CounterIncremented>()
+            .UseSqlite("Data Source=:memory:")
+            .AddAggregate<Counter, Guid>(aggregate => aggregate
+                .ConstructWith(id => new Counter(id))
+                .UseStream("counter", id => id.ToString("D"))
+                .UseSnapshots(snapshot => snapshot
+                    .UseAdapter(new CounterSnapshotAdapter())
+                    .Every(2)
+                    .KeepLatest(3)
+                    .UseInvalidator(new AlwaysInvalidateSnapshots()))));
+
+        using var serviceProvider = services.BuildServiceProvider();
+        using var scope = serviceProvider.CreateScope();
+
+        await Assert.That(scope.ServiceProvider
+                .GetRequiredService<AggregateRepository<Counter, Guid>>())
+            .IsNotNull();
     }
 
     [Test]
@@ -106,8 +189,48 @@ public sealed class EventLoomHostingTests
         await Assert.That(ReferenceEquals(context.Database.GetDbConnection(), connection)).IsTrue();
     }
 
+    [Test]
+    public async Task Append_does_not_create_outbox_messages_without_a_publisher()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
+        var services = new ServiceCollection();
+        services.AddEventLoom(eventLoom => eventLoom
+            .RegisterEvent<CounterIncremented>()
+            .UseSingleTenancy("tenant-a")
+            .UseSqlite($"Data Source={databasePath}"));
+        await using var provider = services.BuildServiceProvider();
+
+        try
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
+            await context.Database.EnsureCreatedAsync();
+            await scope.ServiceProvider.GetRequiredService<EventStore>().AppendAsync(new AppendRequest(
+                "tenant-a",
+                "counter-1",
+                "counter",
+                ExpectedVersion.NoStream,
+                [new CounterIncremented()],
+                new EventMetadata()));
+
+            var pending = await scope.ServiceProvider.GetRequiredService<OutboxStore>()
+                .ReadPendingAsync("tenant-a");
+            await Assert.That(pending).IsEmpty();
+        }
+        finally
+        {
+            File.Delete(databasePath);
+        }
+    }
+
     [EventType("tests.counter-incremented", Version = 1)]
     private sealed record CounterIncremented : IDomainEvent;
+
+    private sealed class CounterProjection : IProjectionHandler<CounterIncremented>
+    {
+        public Task HandleAsync(EventEnvelope<CounterIncremented> envelope, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+    }
 
     private sealed class Counter(Guid id) : Aggregate<Guid>(id);
 

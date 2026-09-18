@@ -31,6 +31,28 @@ public static class EventStoreSchema
     }
 
     /// <summary>
+    /// Creates the EventLoom schema when the database has not been initialized.
+    /// </summary>
+    /// <remarks>
+    /// This is an explicit startup operation for development, tests, and deployments
+    /// that intentionally use EF Core's create-database contract. It does not migrate
+    /// an existing schema and must not be registered as an automatic production
+    /// startup action. Applications using deployment-managed migrations should keep
+    /// those migrations in the host application.
+    /// </remarks>
+    /// <param name="context">The event-store context to initialize.</param>
+    /// <param name="cancellationToken">A token used to cancel schema creation.</param>
+    /// <returns>A task that completes when the database initialization has finished.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="context"/> is <see langword="null"/>.</exception>
+    public static Task EnsureCreatedAsync(
+        EventStoreDbContext context,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return context.Database.EnsureCreatedAsync(cancellationToken);
+    }
+
+    /// <summary>
     /// Gets the event-store table names for the configured table prefix.
     /// </summary>
     /// <param name="options">The event-store naming options.</param>
@@ -74,6 +96,7 @@ public static class EventStoreSchema
         var tables = GetExpectedTables(context);
         var missingTables = new List<string>();
         var missingColumns = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+        var incompatibleColumns = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
         var connection = context.Database.GetDbConnection();
         var closeConnection = connection.State != ConnectionState.Open;
         if (closeConnection)
@@ -105,11 +128,27 @@ public static class EventStoreSchema
                         .Where(column => column is not null)
                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
                     var missing = table.Columns
-                        .Where(column => !actualColumns.Contains(column))
+                        .Where(column => !actualColumns.Contains(column.Name))
+                        .Select(column => column.Name)
                         .ToArray();
                     if (missing.Length > 0)
                     {
                         missingColumns.Add(table.DisplayName, missing);
+                    }
+
+                    var incompatible = table.Columns
+                        .Where(column => actualColumns.Contains(column.Name))
+                        .Where(column =>
+                        {
+                            var actual = reader.GetColumnSchema()
+                                .First(value => string.Equals(value.ColumnName, column.Name, StringComparison.OrdinalIgnoreCase));
+                            return IsIncompatible(column, actual, context.Database.ProviderName);
+                        })
+                        .Select(column => column.Name)
+                        .ToArray();
+                    if (incompatible.Length > 0)
+                    {
+                        incompatibleColumns.Add(table.DisplayName, incompatible);
                     }
                 }
             }
@@ -122,7 +161,7 @@ public static class EventStoreSchema
             }
         }
 
-        return new EventStoreSchemaValidationResult(missingTables, missingColumns);
+        return new EventStoreSchemaValidationResult(missingTables, missingColumns, incompatibleColumns);
     }
 
     private static IReadOnlyList<ExpectedTable> GetExpectedTables(EventStoreDbContext context)
@@ -140,12 +179,20 @@ public static class EventStoreSchema
                         Name = name,
                         Schema = entityType.GetSchema(),
                         Columns = entityType.GetProperties()
-                            .Select(property => property.GetColumnName(
-                                StoreObjectIdentifier.Table(name, entityType.GetSchema())))
-                            .Where(column => column is not null)
-                            .Cast<string>()
-                            .Distinct(StringComparer.Ordinal)
-                            .OrderBy(column => column, StringComparer.Ordinal)
+                            .Select(property => new
+                            {
+                                Name = property.GetColumnName(
+                                    StoreObjectIdentifier.Table(name, entityType.GetSchema())),
+                                property.ClrType,
+                                IsRequired = !property.IsNullable
+                            })
+                            .Where(column => column.Name is not null)
+                            .Select(column => new ExpectedColumn(
+                                column.Name!,
+                                column.ClrType,
+                                column.IsRequired))
+                            .DistinctBy(column => column.Name, StringComparer.Ordinal)
+                            .OrderBy(column => column.Name, StringComparer.Ordinal)
                             .ToArray()
                     };
             })
@@ -167,20 +214,55 @@ public static class EventStoreSchema
     private static string QuoteIdentifier(string identifier) =>
         $"\"{identifier.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
 
+    private static bool IsIncompatible(
+        ExpectedColumn expected,
+        DbColumn actual,
+        string? providerName)
+    {
+        if (expected.IsRequired && actual.AllowDBNull is true)
+        {
+            return true;
+        }
+
+        if (actual.DataType is null ||
+            string.Equals(providerName, "Microsoft.EntityFrameworkCore.Sqlite", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        var expectedType = Nullable.GetUnderlyingType(expected.ClrType) ?? expected.ClrType;
+        var actualType = Nullable.GetUnderlyingType(actual.DataType) ?? actual.DataType;
+        if (providerName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true &&
+            expectedType == typeof(DateTimeOffset) &&
+            actualType == typeof(DateTime))
+        {
+            return false;
+        }
+
+        return expectedType != actualType &&
+            !(expectedType.IsEnum && Enum.GetUnderlyingType(expectedType) == actualType);
+    }
+
     private sealed record ExpectedTable(
         string Name,
         string? Schema,
-        IReadOnlyList<string> Columns,
+        IReadOnlyList<ExpectedColumn> Columns,
         string DisplayName);
+
+    private sealed record ExpectedColumn(string Name, Type ClrType, bool IsRequired);
 }
 
 /// <summary>Reports EventLoom storage objects that are absent from the configured relational schema.</summary>
 public sealed record EventStoreSchemaValidationResult(
     IReadOnlyList<string> MissingTables,
-    IReadOnlyDictionary<string, IReadOnlyList<string>> MissingColumns)
+    IReadOnlyDictionary<string, IReadOnlyList<string>> MissingColumns,
+    IReadOnlyDictionary<string, IReadOnlyList<string>> IncompatibleColumns)
 {
     /// <summary>Gets whether every EventLoom table and mapped column is present.</summary>
-    public bool IsCompatible => MissingTables.Count == 0 && MissingColumns.Count == 0;
+    public bool IsCompatible =>
+        MissingTables.Count == 0 &&
+        MissingColumns.Count == 0 &&
+        IncompatibleColumns.Count == 0;
 }
 
 /// <summary>

@@ -18,16 +18,23 @@ using EventLoom;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
 
-builder.Services.AddEventLoom(eventLoom => eventLoom
-    .RegisterEvent<OrderPlaced>()
-    .UseSqlite("Data Source=eventloom.db"));
+builder.Services
+    .AddEventLoom()
+    .UseSqlite("Data Source=eventloom.db")
+    .AddEvent<OrderPlaced>();
 ```
 
-The package restores the core, EF Core, and hosting packages transitively, but
-applications should directly reference `EventLoom.Hosting` because it provides
-their composition, worker, health-check, and telemetry APIs. SQLite does not
-support distributed workers or multiple application instances against one event
-store. Use
+For an intentionally explicit empty-database initialization, resolve the
+dedicated `EventStoreDbContext` during startup and call
+`SqliteEventStoreSchema.EnsureCreatedAsync(context)`. Provider registration
+does not create or migrate storage automatically. This operation creates the
+configured tables and table prefix, but does not evolve an existing schema.
+
+The package restores the core, EF Core, and hosting packages transitively.
+ASP.NET Core applications should reference `EventLoom.AspNetCore` alongside
+this provider for application composition and endpoint integration. SQLite
+does not support distributed workers or multiple application instances against
+one event store. Use
 `EventLoom.EntityFrameworkCore.PostgreSql` for production distributed
 deployments.
 

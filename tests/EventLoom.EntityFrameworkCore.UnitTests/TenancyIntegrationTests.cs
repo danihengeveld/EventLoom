@@ -8,7 +8,7 @@ namespace EventLoom.EntityFrameworkCore.UnitTests;
 public sealed class TenancyIntegrationTests
 {
     [Test]
-    public async Task Required_tenancy_rejects_conflicting_scope_before_database_access()
+    public async Task Multi_tenancy_rejects_conflicting_scope_before_database_access()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await using var context = new EventStoreDbContext(
@@ -18,7 +18,7 @@ public sealed class TenancyIntegrationTests
             new EventSerializer(new EventRegistry()),
             new UuidV7EventIdGenerator(),
             TimeProvider.System,
-            new EventStoreOptions { TenancyMode = TenancyMode.Required },
+            new EventStoreOptions { TenancyMode = TenancyMode.MultiTenant },
             new TestTenantAccessor(new TenantId("acme")));
 
         await Assert.That(async () => await store.ReadStreamAsync("other", "stream"))
@@ -30,7 +30,7 @@ public sealed class TenancyIntegrationTests
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
-        var options = new EventStoreOptions { TenancyMode = TenancyMode.Required };
+        var options = new EventStoreOptions { TenancyMode = TenancyMode.MultiTenant };
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
             options);

@@ -25,24 +25,33 @@ The aggregate owns the `Restore` method so its snapshot state remains explicit
 application behavior. Change the snapshot type version whenever its serialized
 shape changes.
 
-## Register a snapshot-enabled repository
+## Register a snapshot-enabled aggregate
 
-Pass the adapter and a policy when registering the aggregate:
+Keep all snapshot concerns together in the aggregate registration:
 
 ```csharp
-eventLoom.AddAggregateRepository<Order, Guid>(
-    id => new Order(id),
-    aggregateType: "order",
-    streamId: id => id.ToString("D"),
-    snapshotAdapter: snapshots,
-    snapshotPolicy: new EveryNEventsSnapshotPolicy(100));
+eventLoom.AddAggregate<Order, Guid>(aggregate => aggregate
+    .ConstructWith(id => new Order(id))
+    .UseStream("order", id => id.ToString("D"))
+    .UseSnapshots(snapshot => snapshot
+        .UseAdapter(
+            order => new OrderSnapshot(order.Status, order.Items.ToArray()),
+            (order, value) => order.Restore(value))
+        .Every(100)
+        .KeepLatest(3)
+        .UseInvalidator(new RemoveUnusableOrderSnapshots())));
 ```
+
+The typed builder supports an existing adapter as well as the DTO adapter
+factory. Use `UsePolicy(...)` for custom cadence logic, `UseRetention(...)` for
+custom retention, and provide `upcasters` to `UseAdapter(...)` when a snapshot
+schema needs deterministic version-by-version migration.
 
 If no policy is supplied, EventLoom captures a snapshot every 100 events. It
 retains only the latest snapshot for each tenant and aggregate stream.
 
-Configure retention globally when recovery operations benefit from keeping more
-than one recent snapshot:
+Retention can be configured for one aggregate in the typed builder. Configure
+it globally when all aggregates should share the same default:
 
 ```csharp
 eventLoom.ConfigureSnapshotRetention(new KeepLatestSnapshotsPolicy(3));
@@ -97,10 +106,10 @@ stream. To remove unusable snapshots after that safe fallback, opt in with an
 for diagnosis.
 
 ```csharp
-eventLoom.AddAggregateRepository<Order, Guid>(
-    id => new Order(id),
-    aggregateType: "order",
-    streamId: id => id.ToString("D"),
-    snapshotAdapter: snapshots,
-    snapshotInvalidator: new RemoveUnusableOrderSnapshots());
+eventLoom.AddAggregate<Order, Guid>(aggregate => aggregate
+    .ConstructWith(id => new Order(id))
+    .UseStream("order", id => id.ToString("D"))
+    .UseSnapshots(snapshot => snapshot
+        .UseAdapter(snapshots)
+        .UseInvalidator(new RemoveUnusableOrderSnapshots())));
 ```

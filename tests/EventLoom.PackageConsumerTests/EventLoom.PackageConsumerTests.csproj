@@ -10,11 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="EventLoom" Version="$(EventLoomPackageVersion)" />
-    <PackageReference Include="EventLoom.EntityFrameworkCore" Version="$(EventLoomPackageVersion)" />
-    <PackageReference Include="EventLoom.EntityFrameworkCore.PostgreSql" Version="$(EventLoomPackageVersion)" />
+    <PackageReference Include="EventLoom.AspNetCore" Version="$(EventLoomPackageVersion)" />
     <PackageReference Include="EventLoom.EntityFrameworkCore.Sqlite" Version="$(EventLoomPackageVersion)" />
-    <PackageReference Include="EventLoom.Hosting" Version="$(EventLoomPackageVersion)" />
-    <PackageReference Include="EventLoom.Testing" Version="$(EventLoomPackageVersion)" />
   </ItemGroup>
 </Project>

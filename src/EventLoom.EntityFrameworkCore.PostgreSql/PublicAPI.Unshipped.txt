@@ -6,6 +6,8 @@ EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification.Trans
 EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification.UniqueViolation = 4 -> EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification
 EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification.Unknown = 0 -> EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassification
 EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlExceptionClassifier
+EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlEventStoreSchema
+static EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlEventStoreSchema.EnsureCreatedAsync(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlProviderCapabilities
 EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlProviderCapabilities.PostgreSqlProviderCapabilities() -> void
 EventLoom.EntityFrameworkCore.PostgreSql.PostgreSqlProviderCapabilities.SupportsDistributedWorkers.get -> bool

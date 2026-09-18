@@ -18,16 +18,17 @@ public sealed class OutboxPublisherWorkerTests
         services.AddSingleton(recorder);
         services.AddEventLoom(eventLoom => eventLoom
             .RegisterEvent<ItemAdded>()
-            .ConfigureWorkers(options =>
+            .UseSingleTenancy("tenant-a")
+            .UseSqlite($"Data Source={databasePath}")
+            .AddOutboxPublisher<IdempotentPublisher>(options =>
             {
                 options.InstanceId = Guid.NewGuid().ToString("N");
                 options.PollInterval = TimeSpan.FromMilliseconds(10);
                 options.LeaseDuration = TimeSpan.FromSeconds(1);
                 options.LeaseRenewalInterval = TimeSpan.FromMilliseconds(100);
                 options.MaxRetryAttempts = 1;
-            })
-            .UseSqlite($"Data Source={databasePath}")
-            .AddOutboxPublisher<IdempotentPublisher>());
+                options.SuccessfulDeliveryRetention = TimeSpan.FromDays(1);
+            }));
         await using var provider = services.BuildServiceProvider();
         var worker = provider.GetServices<IHostedService>().Single();
 
@@ -59,6 +60,133 @@ public sealed class OutboxPublisherWorkerTests
         }
     }
 
+    [Test]
+    public async Task Publisher_deletes_successful_message_and_attempts_by_default()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
+        var recorder = new SuccessfulPublisherRecorder();
+        var services = new ServiceCollection();
+        services.AddSingleton(recorder);
+        services.AddEventLoom(eventLoom => eventLoom
+            .RegisterEvent<ItemAdded>()
+            .UseSingleTenancy("tenant-a")
+            .UseSqlite($"Data Source={databasePath}")
+            .AddOutboxPublisher<SuccessfulPublisher>(options =>
+            {
+                options.InstanceId = Guid.NewGuid().ToString("N");
+                options.PollInterval = TimeSpan.FromMilliseconds(10);
+                options.LeaseDuration = TimeSpan.FromSeconds(1);
+                options.LeaseRenewalInterval = TimeSpan.FromMilliseconds(100);
+            }));
+        await using var provider = services.BuildServiceProvider();
+        var worker = provider.GetServices<IHostedService>().Single();
+
+        try
+        {
+            await EnsureCreatedAsync(provider);
+            await worker.StartAsync(CancellationToken.None);
+            var eventId = await AppendAsync(provider);
+            await recorder.Delivered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await WaitForMessageAsync(provider, eventId, expectedToExist: false);
+
+            await using var scope = provider.CreateAsyncScope();
+            var administration = scope.ServiceProvider.GetRequiredService<OutboxAdministration>();
+            await Assert.That(await administration.ReadAttemptsAsync("tenant-a", eventId)).IsEmpty();
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+            File.Delete(databasePath);
+        }
+    }
+
+    [Test]
+    public async Task Publisher_removes_retained_successful_message_after_retention_expires()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
+        var recorder = new SuccessfulPublisherRecorder();
+        var services = new ServiceCollection();
+        services.AddSingleton(recorder);
+        services.AddEventLoom(eventLoom => eventLoom
+            .RegisterEvent<ItemAdded>()
+            .UseSingleTenancy("tenant-a")
+            .UseSqlite($"Data Source={databasePath}")
+            .AddOutboxPublisher<SuccessfulPublisher>(options =>
+            {
+                options.InstanceId = Guid.NewGuid().ToString("N");
+                options.PollInterval = TimeSpan.FromMilliseconds(10);
+                options.LeaseDuration = TimeSpan.FromSeconds(1);
+                options.LeaseRenewalInterval = TimeSpan.FromMilliseconds(100);
+                options.SuccessfulDeliveryRetention = TimeSpan.FromMilliseconds(250);
+            }));
+        await using var provider = services.BuildServiceProvider();
+        var worker = provider.GetServices<IHostedService>().Single();
+
+        try
+        {
+            await EnsureCreatedAsync(provider);
+            await worker.StartAsync(CancellationToken.None);
+            var eventId = await AppendAsync(provider);
+            await recorder.Delivered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await WaitForMessageAsync(provider, eventId, expectedToExist: true);
+            await WaitForMessageAsync(provider, eventId, expectedToExist: false);
+
+            await using var scope = provider.CreateAsyncScope();
+            var administration = scope.ServiceProvider.GetRequiredService<OutboxAdministration>();
+            await Assert.That(await administration.ReadAttemptsAsync("tenant-a", eventId)).IsEmpty();
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+            File.Delete(databasePath);
+        }
+    }
+
+    [Test]
+    public async Task Publisher_never_deletes_failed_messages_or_attempts()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
+        var recorder = new FailingPublisherRecorder();
+        var services = new ServiceCollection();
+        services.AddSingleton(recorder);
+        services.AddEventLoom(eventLoom => eventLoom
+            .RegisterEvent<ItemAdded>()
+            .UseSingleTenancy("tenant-a")
+            .UseSqlite($"Data Source={databasePath}")
+            .AddOutboxPublisher<FailingPublisher>(options =>
+            {
+                options.InstanceId = Guid.NewGuid().ToString("N");
+                options.PollInterval = TimeSpan.FromMilliseconds(10);
+                options.LeaseDuration = TimeSpan.FromSeconds(1);
+                options.LeaseRenewalInterval = TimeSpan.FromMilliseconds(100);
+                options.MaxRetryAttempts = 0;
+            }));
+        await using var provider = services.BuildServiceProvider();
+        var worker = provider.GetServices<IHostedService>().Single();
+
+        try
+        {
+            await EnsureCreatedAsync(provider);
+            await worker.StartAsync(CancellationToken.None);
+            var eventId = await AppendAsync(provider);
+            await recorder.Failed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var message = await WaitForAttemptAsync(provider, eventId);
+            await worker.StopAsync(CancellationToken.None);
+
+            await using var scope = provider.CreateAsyncScope();
+            var administration = scope.ServiceProvider.GetRequiredService<OutboxAdministration>();
+            var attempts = await administration.ReadAttemptsAsync("tenant-a", eventId);
+            await Assert.That(message.PublishedAt).IsNull();
+            await Assert.That(attempts).IsNotEmpty();
+            await Assert.That(attempts.All(attempt => !attempt.Succeeded)).IsTrue();
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+            File.Delete(databasePath);
+        }
+    }
+
     private static async Task EnsureCreatedAsync(ServiceProvider provider)
     {
         await using var scope = provider.CreateAsyncScope();
@@ -76,6 +204,49 @@ public sealed class OutboxPublisherWorkerTests
             [new ItemAdded()],
             new EventMetadata()));
         return result.Events.Single().EventId;
+    }
+
+    private static async Task WaitForMessageAsync(
+        ServiceProvider provider,
+        Guid messageId,
+        bool expectedToExist)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (!timeout.IsCancellationRequested)
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var message = await scope.ServiceProvider.GetRequiredService<OutboxAdministration>()
+                .GetAsync("tenant-a", messageId, timeout.Token);
+            if ((message is not null) == expectedToExist)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        throw new TimeoutException($"Outbox message presence did not become '{expectedToExist}'.");
+    }
+
+    private static async Task<OutboxMessage> WaitForAttemptAsync(
+        ServiceProvider provider,
+        Guid messageId)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (!timeout.IsCancellationRequested)
+        {
+            await using var scope = provider.CreateAsyncScope();
+            var message = await scope.ServiceProvider.GetRequiredService<OutboxAdministration>()
+                .GetAsync("tenant-a", messageId, timeout.Token);
+            if (message?.AttemptCount > 0)
+            {
+                return message;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(10), timeout.Token);
+        }
+
+        throw new TimeoutException("The outbox publication attempt was not recorded.");
     }
 
     [EventType("tests.outbox-worker-item-added")]
@@ -121,5 +292,35 @@ public sealed class OutboxPublisherWorkerTests
             Delivered.TrySetResult(message);
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class SuccessfulPublisher(SuccessfulPublisherRecorder recorder) : IOutboxPublisher
+    {
+        public Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken)
+        {
+            recorder.Delivered.TrySetResult(message);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class SuccessfulPublisherRecorder
+    {
+        public TaskCompletionSource<OutboxMessage> Delivered { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    private sealed class FailingPublisher(FailingPublisherRecorder recorder) : IOutboxPublisher
+    {
+        public Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken)
+        {
+            recorder.Failed.TrySetResult();
+            throw new InvalidOperationException("The transport is unavailable.");
+        }
+    }
+
+    private sealed class FailingPublisherRecorder
+    {
+        public TaskCompletionSource Failed { get; } =
+            new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
 }

@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/EventLoom.Analyzers/EventLoom.Analyzers.csproj" />
     <Project Path="src/EventLoom.EntityFrameworkCore.PostgreSql/EventLoom.EntityFrameworkCore.PostgreSql.csproj" />
     <Project Path="src/EventLoom.EntityFrameworkCore.Sqlite/EventLoom.EntityFrameworkCore.Sqlite.csproj" />
     <Project Path="src/EventLoom.EntityFrameworkCore/EventLoom.EntityFrameworkCore.csproj" />
+    <Project Path="src/EventLoom.AspNetCore/EventLoom.AspNetCore.csproj" />
     <Project Path="src/EventLoom.Hosting/EventLoom.Hosting.csproj" />
     <Project Path="src/EventLoom.Testing/EventLoom.Testing.csproj" />
     <Project Path="src/EventLoom/EventLoom.csproj" />
@@ -13,6 +15,7 @@
     <Project Path="samples/EventLoom.ServiceDefaults/EventLoom.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/EventLoom.Analyzers.Tests/EventLoom.Analyzers.Tests.csproj" />
     <Project Path="tests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests.csproj" />
     <Project Path="tests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests.csproj" />
     <Project Path="tests/EventLoom.EntityFrameworkCore.UnitTests/EventLoom.EntityFrameworkCore.UnitTests.csproj" />

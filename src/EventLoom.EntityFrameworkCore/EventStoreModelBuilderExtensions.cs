@@ -34,7 +34,7 @@ public static class EventStoreModelBuilderExtensions
             entity.ToTable($"{prefix}streams", schema);
             entity.HasKey(value => new { value.TenantId, value.StreamId });
             entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
-            entity.Property(value => value.StreamId).HasMaxLength(256);
+            entity.Property(value => value.StreamId).HasMaxLength(256).IsRequired();
             entity.Property(value => value.AggregateType).HasMaxLength(256).IsRequired();
         });
 
@@ -44,6 +44,8 @@ public static class EventStoreModelBuilderExtensions
             entity.HasKey(value => value.EventId);
             entity.Property(value => value.EventId).ValueGeneratedNever();
             entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.StreamId).HasMaxLength(256).IsRequired();
+            entity.Property(value => value.AggregateType).HasMaxLength(256).IsRequired();
             entity.Property(value => value.EventType).HasMaxLength(256).IsRequired();
             entity.Property(value => value.Payload).IsRequired();
             entity.HasIndex(value => new { value.TenantId, value.StreamId, value.StreamVersion }).IsUnique();
@@ -74,6 +76,7 @@ public static class EventStoreModelBuilderExtensions
             entity.HasKey(value => new { value.TenantId, value.ProjectionName, value.ProjectionVersion });
             entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
             entity.Property(value => value.ProjectionName).HasMaxLength(256).IsRequired();
+            entity.HasIndex(value => new { value.TenantId, value.Status, value.UpdatedAt });
         });
         modelBuilder.Entity<ProjectionLeaseEntity>(entity =>
         {
@@ -127,6 +130,8 @@ public static class EventStoreModelBuilderExtensions
             entity.HasKey(value => value.Id);
             entity.Property(value => value.TenantId).HasMaxLength(256).IsRequired();
             entity.Property(value => value.ExceptionType).HasMaxLength(512);
+            entity.Property(value => value.MessageId).IsRequired();
+            entity.HasIndex(value => new { value.TenantId, value.MessageId, value.AttemptNumber }).IsUnique();
             entity.HasIndex(value => new { value.MessageId, value.AttemptNumber }).IsUnique();
             entity.HasIndex(value => new { value.TenantId, value.MessageId });
         });

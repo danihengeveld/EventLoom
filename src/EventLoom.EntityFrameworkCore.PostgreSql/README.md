@@ -17,17 +17,26 @@ using EventLoom;
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.Hosting;
 
-builder.Services.AddEventLoom(eventLoom => eventLoom
-    .RegisterEvent<OrderPlaced>()
-    .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!));
+builder.Services
+    .AddEventLoom()
+    .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
+    .AddEvent<OrderPlaced>();
 ```
 
-The package restores the core, EF Core, and hosting packages transitively, but
-applications should directly reference `EventLoom.Hosting` because it provides
-their composition, worker, health-check, and telemetry APIs. Use PostgreSQL for
-any production application that runs multiple instances, uses distributed
-projection or outbox workers, or needs the provider's distributed correctness
-guarantees.
+For an intentionally explicit empty-database initialization, resolve the
+dedicated `EventStoreDbContext` during startup and call
+`PostgreSqlEventStoreSchema.EnsureCreatedAsync(context)`. Provider registration
+does not create or migrate storage automatically. This operation creates the
+configured schema and table prefix, but does not evolve an existing schema;
+production migrations remain owned and reviewed by the host application's
+deployment process.
+
+The package restores the core, EF Core, and hosting packages transitively.
+ASP.NET Core applications should reference `EventLoom.AspNetCore` alongside
+this provider for application composition and endpoint integration. Use
+PostgreSQL for any production application that runs multiple instances, uses
+distributed projection or outbox workers, or needs the provider's distributed
+correctness guarantees.
 
 Packages are currently pre-release and not published to NuGet. Follow the
 [EF Core configuration guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/configure-ef-core.md)

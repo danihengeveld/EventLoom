@@ -1,4 +1,5 @@
 using EventLoom.EntityFrameworkCore;
+using EventLoom.EntityFrameworkCore.Sqlite;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,7 +19,7 @@ public sealed class EventStoreSqliteTests
             options,
             new EventStoreOptions { TablePrefix = "test_" });
 
-        await context.Database.EnsureCreatedAsync();
+        await SqliteEventStoreSchema.EnsureCreatedAsync(context);
 
         var tableNames = await context.Database
             .GetDbConnection()

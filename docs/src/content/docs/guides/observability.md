@@ -49,7 +49,9 @@ The `EventLoom` meter currently provides:
 - `eventloom.replayed.events`;
 - `eventloom.aggregate.load.duration` in milliseconds.
 - `eventloom.projection.deliveries` and `eventloom.projection.failures`;
-- `eventloom.outbox.deliveries` and `eventloom.outbox.failures`.
+- `eventloom.projection.lease_losses`;
+- `eventloom.outbox.deliveries`, `eventloom.outbox.failures`, and
+  `eventloom.outbox.lease_losses`.
 
 ## Data safety
 
@@ -73,9 +75,10 @@ After configuring EventLoom, register its readiness checks and expose the
 endpoint from an ASP.NET Core host:
 
 ```csharp
-builder.Services.AddEventLoom(eventLoom => eventLoom
-    .RegisterEvent<OrderPlaced>()
-    .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!));
+builder.Services
+    .AddEventLoom()
+    .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
+    .AddEvent<OrderPlaced>();
 builder.Services.AddEventLoomHealthChecks(options =>
 {
     options.MaximumProjectionLag = 500;
@@ -83,12 +86,15 @@ builder.Services.AddEventLoomHealthChecks(options =>
 });
 
 var app = builder.Build();
-app.MapHealthChecks("/health");
+app.MapEventLoomHealthChecks();
 ```
 
 The `eventloom.event-store` check verifies database connectivity and runs the
 read-only `EventStoreSchema.ValidateAsync` compatibility check. It reports
-missing EventLoom tables or mapped columns without application event data.
+counts of missing or incompatible EventLoom tables and mapped columns without
+application event data. The ASP.NET Core `MapEventLoomHealthChecks` convention
+returns 503 for both degraded and unhealthy EventLoom readiness, preventing a
+lagging or backed-up instance from being selected as ready.
 `eventloom.projections` is unhealthy for unresolved projection failures and
 degraded when event-offset lag exceeds `MaximumProjectionLag`.
 `eventloom.outbox` is degraded when unpublished message count exceeds

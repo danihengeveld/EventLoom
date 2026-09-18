@@ -1,0 +1,10 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Dani Hengeveld",
+  "classifications": [ "Web", "API", "Event Sourcing" ],
+  "identity": "EventLoom.Templates.Api",
+  "name": "EventLoom API",
+  "shortName": "eventloom-api",
+  "sourceName": "EventLoomApi",
+  "preferNameDirectory": true
+}

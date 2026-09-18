@@ -15,12 +15,12 @@ public interface IOutboxPublisher
 /// <summary>Runs registered outbox publishers under tenant-scoped fenced leases.</summary>
 internal sealed class OutboxPublisherWorker(
     IServiceScopeFactory scopeFactory,
-    EventStoreWorkerOptions options,
+    OutboxOptions options,
     TimeProvider timeProvider,
     ILogger<OutboxPublisherWorker> logger) : BackgroundService
 {
     private readonly IServiceScopeFactory scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
-    private readonly EventStoreWorkerOptions options = options ?? throw new ArgumentNullException(nameof(options));
+    private readonly OutboxOptions options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly ILogger<OutboxPublisherWorker> logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
@@ -46,7 +46,11 @@ internal sealed class OutboxPublisherWorker(
             progressed |= await RunTenantAsync(scope.ServiceProvider, store, tenantId, cancellationToken);
         }
 
-        return progressed;
+        var purged = await store.PurgePublishedAsync(
+            options.SuccessfulDeliveryRetention,
+            options.BatchSize,
+            cancellationToken);
+        return progressed || purged > 0;
     }
 
     private async Task<bool> RunTenantAsync(
@@ -85,6 +89,7 @@ internal sealed class OutboxPublisherWorker(
         }
         catch (OutboxLeaseLostException)
         {
+            EventLoomTelemetry.OutboxLeaseLosses.Add(1);
             logger.LogDebug("Outbox publisher lost its lease before finishing a batch.");
             return false;
         }
@@ -107,7 +112,12 @@ internal sealed class OutboxPublisherWorker(
             try
             {
                 await publisher.PublishAsync(message, cancellationToken);
-                var recorded = await store.RecordAttemptAsync(message, lease, exception: null, cancellationToken);
+                var recorded = await store.RecordAttemptAsync(
+                    message,
+                    lease,
+                    exception: null,
+                    options.SuccessfulDeliveryRetention,
+                    cancellationToken);
                 EventLoomTelemetry.OutboxDeliveries.Add(1);
                 return recorded;
             }

@@ -17,10 +17,9 @@ see [Configure the event store](/guides/configure-ef-core).
 Configure its persistence identity once:
 
 ```csharp
-eventLoom.AddAggregateRepository<Order, Guid>(
-    id => new Order(id),
-    "order",
-    id => id.ToString("D"));
+eventLoom.AddAggregate<Order, Guid>(aggregate => aggregate
+    .ConstructWith(id => new Order(id))
+    .UseStream("order", id => id.ToString("D")));
 ```
 
 With a scoped tenant accessor, command code stays focused on domain behavior:

@@ -1,7 +1,13 @@
 {
   "$schema": "https://json.schemastore.org/launchsettings.json",
   "profiles": {
-    "http": {
+    "Aspire AppHost": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "run --project ../EventLoom.Ordering.AppHost",
+      "workingDirectory": ".."
+    },
+    "API (direct)": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": false,

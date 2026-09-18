@@ -7,10 +7,18 @@ using EventLoom;
 /// </summary>
 public sealed class EventStoreOptions
 {
+    internal bool OutboxEnabled { get; set; }
+
     /// <summary>
-    /// Gets or sets the tenancy enforcement mode. The default is <see cref="TenancyMode.Disabled"/>.
+    /// Gets or sets the tenancy mode. The default is <see cref="TenancyMode.SingleTenant"/>.
     /// </summary>
-    public TenancyMode TenancyMode { get; set; }
+    public TenancyMode TenancyMode { get; set; } = TenancyMode.SingleTenant;
+
+    /// <summary>
+    /// Gets or sets the tenant identifier used in <see cref="TenancyMode.SingleTenant"/> mode.
+    /// </summary>
+    public string SingleTenantId { get; set; } = "default";
+
     /// <summary>
     /// Gets or sets the database schema name. The default is <c>eventloom</c>.
     /// </summary>

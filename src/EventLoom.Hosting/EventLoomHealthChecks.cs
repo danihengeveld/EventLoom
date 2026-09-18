@@ -32,7 +32,7 @@ public sealed class EventLoomHealthCheckOptions
 public static class EventLoomHealthCheckServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds payload-safe health checks for EventLoom after <see cref="EventLoomServiceCollectionExtensions.AddEventLoom"/>
+    /// Adds payload-safe health checks for EventLoom after <see cref="EventLoomServiceCollectionExtensions.AddEventLoom(IServiceCollection)"/>
     /// has configured the event store.
     /// </summary>
     /// <param name="services">The service collection to configure.</param>
@@ -82,7 +82,8 @@ internal sealed class EventStoreHealthCheck(IServiceScopeFactory scopeFactory) :
                     data: new Dictionary<string, object>
                     {
                         ["missing_table_count"] = validation.MissingTables.Count,
-                        ["missing_column_count"] = validation.MissingColumns.Count
+                        ["missing_column_count"] = validation.MissingColumns.Count,
+                        ["incompatible_column_count"] = validation.IncompatibleColumns.Count
                     });
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

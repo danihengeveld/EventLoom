@@ -238,8 +238,8 @@ EventLoom.StringIdConverter.ConvertFromCanonicalString(string! value) -> string!
 EventLoom.StringIdConverter.ConvertToCanonicalString(string! value) -> string!
 EventLoom.StringIdConverter.StringIdConverter() -> void
 EventLoom.TenancyMode
-EventLoom.TenancyMode.Disabled = 0 -> EventLoom.TenancyMode
-EventLoom.TenancyMode.Required = 1 -> EventLoom.TenancyMode
+EventLoom.TenancyMode.MultiTenant = 1 -> EventLoom.TenancyMode
+EventLoom.TenancyMode.SingleTenant = 0 -> EventLoom.TenancyMode
 EventLoom.TenantId
 EventLoom.TenantId.Equals(EventLoom.TenantId other) -> bool
 EventLoom.TenantId.TenantId() -> void
@@ -285,8 +285,10 @@ static EventLoom.EventLoomTelemetry.ActivitySource.get -> System.Diagnostics.Act
 static EventLoom.EventLoomTelemetry.Meter.get -> System.Diagnostics.Metrics.Meter!
 static EventLoom.EventLoomTelemetry.OutboxDeliveries.get -> System.Diagnostics.Metrics.Counter<long>!
 static EventLoom.EventLoomTelemetry.OutboxFailures.get -> System.Diagnostics.Metrics.Counter<long>!
+static EventLoom.EventLoomTelemetry.OutboxLeaseLosses.get -> System.Diagnostics.Metrics.Counter<long>!
 static EventLoom.EventLoomTelemetry.ProjectionDeliveries.get -> System.Diagnostics.Metrics.Counter<long>!
 static EventLoom.EventLoomTelemetry.ProjectionFailures.get -> System.Diagnostics.Metrics.Counter<long>!
+static EventLoom.EventLoomTelemetry.ProjectionLeaseLosses.get -> System.Diagnostics.Metrics.Counter<long>!
 static EventLoom.EventMetadata.operator !=(EventLoom.EventMetadata? left, EventLoom.EventMetadata? right) -> bool
 static EventLoom.EventMetadata.operator ==(EventLoom.EventMetadata? left, EventLoom.EventMetadata? right) -> bool
 static EventLoom.EventRegistration.operator !=(EventLoom.EventRegistration? left, EventLoom.EventRegistration? right) -> bool
@@ -304,3 +306,24 @@ static EventLoom.TenantId.operator ==(EventLoom.TenantId left, EventLoom.TenantI
 ~override EventLoom.ExpectedVersion.Equals(object obj) -> bool
 ~override EventLoom.ExpectedVersion.ToString() -> string
 ~override EventLoom.TenantId.Equals(object obj) -> bool
+EventLoom.EventSerializationOptions
+EventLoom.EventSerializationOptions.EventSerializationOptions() -> void
+EventLoom.EventSerializationOptions.Contexts.get -> System.Collections.Generic.IList<System.Text.Json.Serialization.JsonSerializerContext!>!
+EventLoom.EventSerializationOptions.Converters.get -> System.Collections.Generic.IList<System.Text.Json.Serialization.JsonConverter!>!
+EventLoom.EventSerializationOptions.ReflectionFallback.get -> bool
+EventLoom.EventSerializationOptions.ReflectionFallback.set -> void
+EventLoom.EventSerializationOptions.PropertyNamingPolicy.get -> System.Text.Json.JsonNamingPolicy?
+EventLoom.EventSerializationOptions.PropertyNamingPolicy.set -> void
+EventLoom.EventSerializationOptions.PropertyNameCaseInsensitive.get -> bool
+EventLoom.EventSerializationOptions.PropertyNameCaseInsensitive.set -> void
+EventLoom.EventSerializationOptions.NumberHandling.get -> System.Text.Json.Serialization.JsonNumberHandling
+EventLoom.EventSerializationOptions.NumberHandling.set -> void
+EventLoom.EventSerializationOptions.ReferenceHandler.get -> System.Text.Json.Serialization.ReferenceHandler?
+EventLoom.EventSerializationOptions.ReferenceHandler.set -> void
+EventLoom.EventSerializationOptions.TypeInfoResolver.get -> System.Text.Json.Serialization.Metadata.IJsonTypeInfoResolver?
+EventLoom.EventSerializationOptions.TypeInfoResolver.set -> void
+EventLoom.EventSerializationValidationException
+EventLoom.EventSerializationValidationException.EventSerializationValidationException(EventLoom.EventRegistration! registration, System.Exception! innerException) -> void
+EventLoom.EventSerializer.EventSerializer(EventLoom.EventRegistry! registry, EventLoom.EventSerializationOptions! serializationOptions) -> void
+EventLoom.EventSerializer.EventSerializer(EventLoom.EventRegistry! registry, EventLoom.EventSerializationOptions! serializationOptions, System.Collections.Generic.IEnumerable<EventLoom.EventUpcasterChain!>? upcasterChains) -> void
+EventLoom.EventSerializer.ValidateRegisteredEvents() -> void

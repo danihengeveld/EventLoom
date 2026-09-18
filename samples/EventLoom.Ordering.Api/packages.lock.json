@@ -132,6 +132,12 @@
       "eventloom": {
         "type": "Project"
       },
+      "eventloom.aspnetcore": {
+        "type": "Project",
+        "dependencies": {
+          "EventLoom.Hosting": "[0.1.0-alpha.0, )"
+        }
+      },
       "eventloom.entityframeworkcore": {
         "type": "Project",
         "dependencies": {

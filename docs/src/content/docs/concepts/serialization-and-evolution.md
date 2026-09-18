@@ -12,9 +12,10 @@ name.
 Reflection serialization is enabled by default:
 
 ```csharp
-services.AddEventLoom(eventLoom => eventLoom
-    .RegisterEvent<OrderPlaced>()
-    .UsePostgreSql(connectionString));
+services
+    .AddEventLoom()
+    .UsePostgreSql(connectionString)
+    .AddEvent<OrderPlaced>();
 ```
 
 This is the simplest option for ordinary server applications.
@@ -29,11 +30,12 @@ application and register its context:
 [JsonSerializable(typeof(OrderCancelled))]
 public partial class OrderingJsonContext : JsonSerializerContext;
 
-services.AddEventLoom(eventLoom => eventLoom
+services
+    .AddEventLoom()
+    .UsePostgreSql(connectionString)
     .AddJsonSerializerContext(OrderingJsonContext.Default)
-    .RegisterEvent<OrderPlaced>()
-    .RegisterEvent<OrderCancelled>()
-    .UsePostgreSql(connectionString));
+    .AddEvent<OrderPlaced>()
+    .AddEvent<OrderCancelled>();
 ```
 
 Register every event type that can be persisted or deserialized. EventLoom
@@ -74,7 +76,7 @@ Register the current event and each upcaster:
 
 ```csharp
 eventLoom
-    .RegisterEvent<OrderPlaced>()
+    .AddEvent<OrderPlaced>()
     .AddUpcaster(new OrderPlacedV1ToV2());
 ```
 

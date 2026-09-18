@@ -13,27 +13,24 @@ Use `UsePostgreSql` for a distributed deployment. Configure a stable schema,
 table prefix, tenancy mode, and worker identity before production data exists:
 
 ```csharp
-builder.Services.AddScoped<ITenantAccessor, AuthenticatedTenantAccessor>();
-builder.Services.AddEventLoom(eventLoom => eventLoom
-    .ConfigureTenancy(TenancyMode.Required)
+builder.Services
+    .AddEventLoom()
+    .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
+    .UseMultiTenancy<AuthenticatedTenantAccessor>()
     .ConfigureEventStore(options =>
     {
         options.Schema = "eventloom";
         options.TablePrefix = "eventloom_";
     })
-    .ConfigureWorkers(options =>
-    {
-        options.InstanceId = builder.Configuration["HOSTNAME"]
-            ?? Environment.MachineName;
-    })
-    .RegisterEvent<OrderPlaced>()
-    .UsePostgreSql(
-        builder.Configuration.GetConnectionString("EventStore")!));
+    .AddEvent<OrderPlaced>();
 ```
 
-The instance ID must uniquely identify a concurrently running process. Do not
-change event names, aggregate type names, stream-ID formats, schema names, or
-table prefixes after writing production data without an explicit data migration.
+EventLoom generates a unique identity for each projection and outbox worker
+process by default (machine name, process ID, and a random suffix). Override
+`InstanceId` only when your deployment provides an equally unique and stable
+process identity. Do not change event names, aggregate type names, stream-ID
+formats, schema names, or table prefixes after writing production data without
+an explicit data migration.
 
 ## Deploy schema deliberately
 
@@ -81,7 +78,12 @@ with ad hoc SQL. Monitor database availability, append latency, lock waits,
 retry rates, failed command responses, and storage growth.
 
 Use `EventStoreSchema.ValidateAsync(context)` as a read-only deployment gate
-for the EventLoom tables and mapped columns. `AddEventLoomHealthChecks()`
+for EventLoom tables, columns, nullability, and provider-reported CLR types.
+The EF Core model also specifies portable keys, required fields, unique
+constraints, and worker query indexes for generated migrations.
+SQLite's flexible type system does not expose stable CLR type metadata, so its
+validation remains limited to portable table, column, and nullability checks.
+`AddEventLoomHealthChecks()`
 registers connectivity, schema compatibility, projection, and outbox readiness
 checks; see [Observability](./observability/). EventLoom runs registered
 projections and persists their checkpoints and failures; inspect and repair
@@ -109,3 +111,9 @@ Expose projection resume, skip, replay, outbox inspection, and health details
 only to authorized operational administrators. Never expose event payloads,
 metadata headers, or tenant-scoped operational records through an unauthenticated
 endpoint.
+
+`MapEventLoomAdminDiagnostics("EventLoomOperators")` is an opt-in ASP.NET Core
+surface for protected, aggregate-only schema and worker diagnostics. It is not
+mapped by default and rejects an empty authorization-policy name. It does not
+map tenant-scoped inspection or repair actions; authorize and audit those
+application-specific workflows at your own administrative boundary.

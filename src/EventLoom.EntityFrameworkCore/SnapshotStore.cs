@@ -16,7 +16,16 @@ public sealed class SnapshotStore(
     private readonly ISnapshotRetentionPolicy retentionPolicy = retentionPolicy ?? new KeepLatestSnapshotsPolicy(1);
 
     /// <summary>Writes a snapshot and applies the configured retention policy for the aggregate stream.</summary>
-    public async Task WriteAsync(SnapshotWriteRequest request, CancellationToken cancellationToken = default)
+    public Task WriteAsync(
+        SnapshotWriteRequest request,
+        CancellationToken cancellationToken = default) =>
+        WriteWithRetentionAsync(request, null, cancellationToken);
+
+    /// <summary>Writes a snapshot using an optional aggregate-specific retention policy.</summary>
+    public async Task WriteWithRetentionAsync(
+        SnapshotWriteRequest request,
+        ISnapshotRetentionPolicy? retentionPolicy,
+        CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         var tenantId = new TenantId(request.TenantId).Value;
@@ -52,7 +61,7 @@ public sealed class SnapshotStore(
                 value.AggregateType == request.AggregateType)
             .OrderByDescending(value => value.StreamVersion)
             .ThenByDescending(value => value.Id)
-            .Skip(retentionPolicy.SnapshotsToRetain)
+            .Skip((retentionPolicy ?? this.retentionPolicy).SnapshotsToRetain)
             .Select(value => value.Id)
             .ToArrayAsync(cancellationToken);
         if (expiredSnapshotIds.Length > 0)

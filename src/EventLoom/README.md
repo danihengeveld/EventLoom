@@ -29,10 +29,10 @@ public sealed class InventoryItem(Guid id) : Aggregate<Guid>(id)
 }
 ```
 
-This package has no storage provider. Add
-`EventLoom.EntityFrameworkCore.PostgreSql` for distributed production
-deployments or `EventLoom.EntityFrameworkCore.Sqlite` for local and
-single-node use.
+This package has no application composition or storage provider. Web
+applications should add `EventLoom.AspNetCore` plus exactly one provider:
+`EventLoom.EntityFrameworkCore.PostgreSql` for distributed production or
+`EventLoom.EntityFrameworkCore.Sqlite` for local and single-node use.
 
 Packages are currently pre-release and not published to NuGet. See the
 [getting started guide](https://github.com/danihengeveld/EventLoom/tree/main/docs/src/content/docs/getting-started)

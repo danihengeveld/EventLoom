@@ -1,12 +1,10 @@
 using EventLoom;
+using EventLoom.AspNetCore;
 using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.Hosting;
-using EventLoom.Ordering.Api;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Hosting;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Trace;
+using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using System.Text.Json.Serialization;
 using EventLoom.Ordering.Api.Api;
@@ -19,19 +17,36 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(tracing => tracing.AddEventLoomInstrumentation());
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull);
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+    options.AddDocumentTransformer((document, _, _) =>
+    {
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["Tenant"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.ApiKey,
+            In = ParameterLocation.Header,
+            Name = "X-Tenant-ID",
+            Description = "Tenant used to scope EventLoom requests."
+        };
+        document.Security ??= [];
+        document.Security.Add(new OpenApiSecurityRequirement
+        {
+            [new OpenApiSecuritySchemeReference("Tenant")] = []
+        });
+
+        return Task.CompletedTask;
+    }));
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ITenantAccessor, RequestTenantAccessor>();
 
 var connectionString = builder.Configuration.GetConnectionString("EventStore")
     ?? throw new InvalidOperationException(
         "ConnectionStrings:EventStore is required. Run the sample through EventLoom.Ordering.AppHost.");
 
-builder.Services.AddEventLoom(eventLoom =>
-{
-    eventLoom.AddOrdering();
-    eventLoom.UsePostgreSql(connectionString);
-});
+builder.Services
+    .AddEventLoom()
+    .UsePostgreSql(connectionString)
+    .AddOrdering();
 builder.Services.AddEventLoomHealthChecks(options =>
 {
     options.MaximumProjectionLag = 500;
@@ -39,25 +54,25 @@ builder.Services.AddEventLoomHealthChecks(options =>
 });
 
 var app = builder.Build();
-await using (var scope = app.Services.CreateAsyncScope())
+if (app.Environment.IsDevelopment())
 {
-    await scope.ServiceProvider.GetRequiredService<EventStoreDbContext>().Database.EnsureCreatedAsync();
+    await app.InitializeEventLoomDevelopmentDatabaseAsync();
 }
 
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
-    app.MapScalarApiReference();
+    app.MapScalarApiReference(options =>
+    {
+        options.AddPreferredSecuritySchemes("Tenant");
+        options.AddApiKeyAuthentication("Tenant", scheme =>
+            scheme.WithName("X-Tenant-ID").WithValue("acme"));
+    });
 }
 
-app.UseWhen(
-    context =>
-        !context.Request.Path.StartsWithSegments("/health") &&
-        !context.Request.Path.StartsWithSegments("/alive") &&
-        (!app.Environment.IsDevelopment() ||
-         (!context.Request.Path.StartsWithSegments("/openapi") &&
-          !context.Request.Path.StartsWithSegments("/scalar"))),
+app.UseWhen(context => context.Request.Path.StartsWithSegments("/api"),
     branch => branch.Use(TenantRequirementMiddleware.InvokeAsync));
 app.MapDefaultEndpoints();
+app.MapEventLoomHealthChecks("/health/eventloom");
 app.MapOrderEndpoints();
 app.Run();

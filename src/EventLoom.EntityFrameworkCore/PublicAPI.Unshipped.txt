@@ -1,6 +1,6 @@
 EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>
 EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.AggregateRepository(EventLoom.EntityFrameworkCore.EventStore! store, System.Func<TId, TAggregate!>! factory, System.Func<TAggregate!, System.Collections.Generic.IEnumerable<EventLoom.IDomainEvent!>!>! pendingEvents, System.Func<TAggregate!, long>! version) -> void
-EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.AggregateRepository(EventLoom.EntityFrameworkCore.EventStore! store, System.Func<TId, TAggregate!>! factory, string! aggregateType, System.Func<TId, string!>! streamId, EventLoom.ITenantAccessor? tenantAccessor = null, EventLoom.EntityFrameworkCore.SnapshotStore? snapshotStore = null, EventLoom.IAggregateSnapshotAdapter<TAggregate!>? snapshotAdapter = null, EventLoom.ISnapshotPolicy? snapshotPolicy = null, EventLoom.ISnapshotInvalidator? snapshotInvalidator = null) -> void
+EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.AggregateRepository(EventLoom.EntityFrameworkCore.EventStore! store, System.Func<TId, TAggregate!>! factory, string! aggregateType, System.Func<TId, string!>! streamId, EventLoom.ITenantAccessor? tenantAccessor = null, EventLoom.EntityFrameworkCore.SnapshotStore? snapshotStore = null, EventLoom.IAggregateSnapshotAdapter<TAggregate!>? snapshotAdapter = null, EventLoom.ISnapshotPolicy? snapshotPolicy = null, EventLoom.ISnapshotInvalidator? snapshotInvalidator = null, EventLoom.ISnapshotRetentionPolicy? snapshotRetentionPolicy = null) -> void
 EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.LoadAsync(TId id) -> System.Threading.Tasks.Task<TAggregate!>!
 EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.LoadAsync(TId id, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<TAggregate!>!
 EventLoom.EntityFrameworkCore.AggregateRepository<TAggregate, TId>.LoadAsync(string! tenantId, string! streamId, TId id) -> System.Threading.Tasks.Task<TAggregate!>!
@@ -42,9 +42,17 @@ EventLoom.EntityFrameworkCore.AppendResult.WasIdempotentReplay.get -> bool
 EventLoom.EntityFrameworkCore.AppendResult.WasIdempotentReplay.init -> void
 EventLoom.EntityFrameworkCore.DistributedWorkerConfigurationException
 EventLoom.EntityFrameworkCore.DistributedWorkerConfigurationException.DistributedWorkerConfigurationException(string! providerName) -> void
+EventLoom.EntityFrameworkCore.EventLoomUnitOfWork
+EventLoom.EntityFrameworkCore.EventLoomUnitOfWork.AppendAsync(EventLoom.EntityFrameworkCore.AppendRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.AppendResult!>!
+EventLoom.EntityFrameworkCore.EventLoomUnitOfWork.CommitAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+EventLoom.EntityFrameworkCore.EventLoomUnitOfWork.DbTransaction.get -> System.Data.Common.DbTransaction!
+EventLoom.EntityFrameworkCore.EventLoomUnitOfWork.DisposeAsync() -> System.Threading.Tasks.ValueTask
+EventLoom.EntityFrameworkCore.EventLoomUnitOfWork.EnlistAsync(Microsoft.EntityFrameworkCore.DbContext! applicationContext, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+EventLoom.EntityFrameworkCore.EventLoomUnitOfWork.RollbackAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 EventLoom.EntityFrameworkCore.EventStore
 EventLoom.EntityFrameworkCore.EventStore.AppendAsync(EventLoom.EntityFrameworkCore.AppendRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.AppendResult!>!
 EventLoom.EntityFrameworkCore.EventStore.AppendInTransactionAsync(EventLoom.EntityFrameworkCore.AppendRequest! request, System.Data.Common.DbTransaction! transaction, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.AppendResult!>!
+EventLoom.EntityFrameworkCore.EventStore.BeginUnitOfWorkAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.EventLoomUnitOfWork!>!
 EventLoom.EntityFrameworkCore.EventStore.EventStore(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, EventLoom.EventSerializer! serializer, EventLoom.IEventIdGenerator! eventIdGenerator, System.TimeProvider! timeProvider, EventLoom.EntityFrameworkCore.EventStoreOptions? eventStoreOptions = null, EventLoom.ITenantAccessor? tenantAccessor = null, EventLoom.EntityFrameworkCore.IEventStoreRetryPolicy? retryPolicy = null, EventLoom.IInlineProjectionDispatcher? inlineProjectionDispatcher = null) -> void
 EventLoom.EntityFrameworkCore.EventStore.ReadStreamAsync(string! tenantId, string! streamId, long? fromVersion = null, long? toVersion = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<EventLoom.EventEnvelope!>!>!
 EventLoom.EntityFrameworkCore.EventStore.ReadTenantOffsetsAsync(string! tenantId, long afterOffset = 0, int limit = 100, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<EventLoom.EventEnvelope!>!>!
@@ -58,6 +66,8 @@ EventLoom.EntityFrameworkCore.EventStoreOptions
 EventLoom.EntityFrameworkCore.EventStoreOptions.EventStoreOptions() -> void
 EventLoom.EntityFrameworkCore.EventStoreOptions.Schema.get -> string!
 EventLoom.EntityFrameworkCore.EventStoreOptions.Schema.set -> void
+EventLoom.EntityFrameworkCore.EventStoreOptions.SingleTenantId.get -> string!
+EventLoom.EntityFrameworkCore.EventStoreOptions.SingleTenantId.set -> void
 EventLoom.EntityFrameworkCore.EventStoreOptions.TablePrefix.get -> string!
 EventLoom.EntityFrameworkCore.EventStoreOptions.TablePrefix.set -> void
 EventLoom.EntityFrameworkCore.EventStoreOptions.TenancyMode.get -> EventLoom.TenancyMode
@@ -67,9 +77,11 @@ EventLoom.EntityFrameworkCore.EventStoreOptions.UseSchema.set -> void
 EventLoom.EntityFrameworkCore.EventStoreSchema
 EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult
 EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.<Clone>$() -> EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult!
-EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.Deconstruct(out System.Collections.Generic.IReadOnlyList<string!>! MissingTables, out System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<string!>!>! MissingColumns) -> void
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.Deconstruct(out System.Collections.Generic.IReadOnlyList<string!>! MissingTables, out System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<string!>!>! MissingColumns, out System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<string!>!>! IncompatibleColumns) -> void
 EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.Equals(EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult? other) -> bool
-EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.EventStoreSchemaValidationResult(System.Collections.Generic.IReadOnlyList<string!>! MissingTables, System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<string!>!>! MissingColumns) -> void
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.EventStoreSchemaValidationResult(System.Collections.Generic.IReadOnlyList<string!>! MissingTables, System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<string!>!>! MissingColumns, System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<string!>!>! IncompatibleColumns) -> void
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.IncompatibleColumns.get -> System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<string!>!>!
+EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.IncompatibleColumns.init -> void
 EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.IsCompatible.get -> bool
 EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.MissingColumns.get -> System.Collections.Generic.IReadOnlyDictionary<string!, System.Collections.Generic.IReadOnlyList<string!>!>!
 EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.MissingColumns.init -> void
@@ -254,6 +266,7 @@ EventLoom.EntityFrameworkCore.SnapshotStore.InvalidateAsync(EventLoom.EntityFram
 EventLoom.EntityFrameworkCore.SnapshotStore.ReadLatestAsync(string! tenantId, string! streamId, string! aggregateType, string! snapshotType, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.SnapshotEnvelope?>!
 EventLoom.EntityFrameworkCore.SnapshotStore.SnapshotStore(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, System.TimeProvider! timeProvider, EventLoom.ISnapshotRetentionPolicy? retentionPolicy = null) -> void
 EventLoom.EntityFrameworkCore.SnapshotStore.WriteAsync(EventLoom.EntityFrameworkCore.SnapshotWriteRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+EventLoom.EntityFrameworkCore.SnapshotStore.WriteWithRetentionAsync(EventLoom.EntityFrameworkCore.SnapshotWriteRequest! request, EventLoom.ISnapshotRetentionPolicy? retentionPolicy, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
 EventLoom.EntityFrameworkCore.SnapshotWriteRequest
 EventLoom.EntityFrameworkCore.SnapshotWriteRequest.<Clone>$() -> EventLoom.EntityFrameworkCore.SnapshotWriteRequest!
 EventLoom.EntityFrameworkCore.SnapshotWriteRequest.AggregateType.get -> string!
@@ -342,6 +355,7 @@ static EventLoom.EntityFrameworkCore.AppendResult.operator !=(EventLoom.EntityFr
 static EventLoom.EntityFrameworkCore.AppendResult.operator ==(EventLoom.EntityFrameworkCore.AppendResult? left, EventLoom.EntityFrameworkCore.AppendResult? right) -> bool
 static EventLoom.EntityFrameworkCore.EventStoreModelBuilderExtensions.ApplyEventStoreConfiguration(this Microsoft.EntityFrameworkCore.ModelBuilder! modelBuilder, EventLoom.EntityFrameworkCore.EventStoreOptions! options) -> Microsoft.EntityFrameworkCore.ModelBuilder!
 static EventLoom.EntityFrameworkCore.EventStoreSchema.GetTableNames(EventLoom.EntityFrameworkCore.EventStoreOptions! options) -> string![]!
+static EventLoom.EntityFrameworkCore.EventStoreSchema.EnsureCreatedAsync(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 static EventLoom.EntityFrameworkCore.EventStoreSchema.MigrateAsync(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 static EventLoom.EntityFrameworkCore.EventStoreSchema.ValidateAsync(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult!>!
 static EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult.operator !=(EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult? left, EventLoom.EntityFrameworkCore.EventStoreSchemaValidationResult? right) -> bool

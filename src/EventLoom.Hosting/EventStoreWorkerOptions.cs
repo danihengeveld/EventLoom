@@ -1,10 +1,10 @@
 namespace EventLoom.Hosting;
 
-/// <summary>Configures EventLoom distributed worker behavior.</summary>
+/// <summary>Configures the projection worker: instance identity, polling, batching, lease, and retry behavior.</summary>
 public sealed class EventStoreWorkerOptions
 {
     /// <summary>Gets or sets the unique application-instance identity.</summary>
-    public string InstanceId { get; set; } = Environment.MachineName;
+    public string InstanceId { get; set; } = WorkerIdentity.Create();
 
     /// <summary>Gets or sets the worker polling interval.</summary>
     public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(1);

@@ -15,18 +15,17 @@ internal static class OrderingEventLoomBuilderExtensions
             (order, snapshot) => order.Restore(snapshot));
 
         return eventLoom
-            .ConfigureTenancy(TenancyMode.Required)
-            .RegisterEvent<OrderPlaced>()
-            .RegisterEvent<OrderItemAdded>()
-            .RegisterEvent<OrderCancelled>()
+            .UseMultiTenancy<RequestTenantAccessor>()
+            .AddEvent<OrderPlaced>()
+            .AddEvent<OrderItemAdded>()
+            .AddEvent<OrderCancelled>()
             .ConfigureProjectionModel(ConfigureReadModels)
-            .AddAggregateRepository<Order, Guid>(
-                id => new Order(id),
-                "order",
-                id => id.ToString("D"),
-                snapshots,
-                new EveryNEventsSnapshotPolicy(2))
-            .AddOutboxPublisher<LoggingOutboxPublisher>()
+            .AddAggregate<Order, Guid>(aggregate => aggregate
+                .ConstructWith(id => new Order(id))
+                .UseStream("order", id => id.ToString("D"))
+                .UseSnapshots(snapshots, new EveryNEventsSnapshotPolicy(2)))
+            .AddOutboxPublisher<LoggingOutboxPublisher>(options =>
+                options.SuccessfulDeliveryRetention = TimeSpan.FromDays(1))
             .AddEfProjection<OrderSummaryProjection, OrderPlaced>(OrderSummaryProjection.Name)
             .AddEfProjection<OrderSummaryProjection, OrderItemAdded>(OrderSummaryProjection.Name)
             .AddEfProjection<OrderSummaryProjection, OrderCancelled>(OrderSummaryProjection.Name);

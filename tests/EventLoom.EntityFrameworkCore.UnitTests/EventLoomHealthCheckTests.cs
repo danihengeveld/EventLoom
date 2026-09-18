@@ -22,8 +22,10 @@ public sealed class EventLoomHealthCheckTests
         services.AddLogging();
         services.AddEventLoom(eventLoom => eventLoom
             .RegisterEvent<ItemAdded>()
+            .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
-            .AddProjection<RecordingProjection, ItemAdded>("tests.health"));
+            .AddProjection<RecordingProjection, ItemAdded>("tests.health")
+            .AddOutboxPublisher<NoopOutboxPublisher>());
         services.AddEventLoomHealthChecks(options =>
         {
             options.MaximumProjectionLag = 0;
@@ -52,6 +54,7 @@ public sealed class EventLoomHealthCheckTests
             await Assert.That(healthy.Entries["eventloom.event-store"].Status).IsEqualTo(HealthStatus.Healthy);
             await Assert.That(healthy.Entries["eventloom.projections"].Status).IsEqualTo(HealthStatus.Healthy);
             await Assert.That(healthy.Entries["eventloom.outbox"].Status).IsEqualTo(HealthStatus.Healthy);
+            await Assert.That(healthy.Entries["eventloom.event-store"].Data.ContainsKey("incompatible_column_count")).IsFalse();
 
             var appended = await AppendAsync(provider);
             var delayed = await healthChecks.CheckHealthAsync();
@@ -113,6 +116,12 @@ public sealed class EventLoomHealthCheckTests
     private sealed class RecordingProjection : IProjectionHandler<ItemAdded>
     {
         public Task HandleAsync(EventEnvelope<ItemAdded> envelope, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+    }
+
+    private sealed class NoopOutboxPublisher : IOutboxPublisher
+    {
+        public Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken) =>
             Task.CompletedTask;
     }
 }

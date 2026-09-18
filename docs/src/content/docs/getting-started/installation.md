@@ -20,11 +20,11 @@ You need:
 
 ## Add EventLoom from this checkout
 
-Reference the core hosting and provider projects from your application:
+Reference the ASP.NET Core application package and one provider project:
 
 ```xml
 <ItemGroup>
-  <ProjectReference Include="../EventLoom/src/EventLoom.Hosting/EventLoom.Hosting.csproj" />
+  <ProjectReference Include="../EventLoom/src/EventLoom.AspNetCore/EventLoom.AspNetCore.csproj" />
   <ProjectReference Include="../EventLoom/src/EventLoom.EntityFrameworkCore.PostgreSql/EventLoom.EntityFrameworkCore.PostgreSql.csproj" />
 </ItemGroup>
 ```
@@ -32,7 +32,7 @@ Reference the core hosting and provider projects from your application:
 For SQLite instead, reference:
 
 ```xml
-<ProjectReference Include="../EventLoom/src/EventLoom.Hosting/EventLoom.Hosting.csproj" />
+<ProjectReference Include="../EventLoom/src/EventLoom.AspNetCore/EventLoom.AspNetCore.csproj" />
 <ProjectReference Include="../EventLoom/src/EventLoom.EntityFrameworkCore.Sqlite/EventLoom.EntityFrameworkCore.Sqlite.csproj" />
 ```
 
@@ -41,7 +41,7 @@ one provider for an application. The [Ordering API sample](/guides/ordering-api)
 uses PostgreSQL through .NET Aspire to demonstrate the production path.
 
 When EventLoom packages are published, use the corresponding
-`EventLoom.Hosting` and one provider package from NuGet instead of project
+`EventLoom.AspNetCore` and one provider package from NuGet instead of project
 references.
 
 ## Choose a provider
@@ -73,3 +73,15 @@ installations where the Ryuk resource-reaper image cannot run. Do not set it
 globally without arranging normal container cleanup.
 
 Next, [build your first aggregate](/getting-started/first-aggregate).
+
+## Start from the API template
+
+After installing the template package, create a single-tenant SQLite starter:
+
+```bash
+dotnet new eventloom-api --name MyEventLoomApi
+```
+
+The generated app uses `EventLoom.AspNetCore`, explicit Development-only schema
+initialization, standard health mapping, and EventLoom contract analyzers.
+Replace SQLite with PostgreSQL before deploying multiple instances.

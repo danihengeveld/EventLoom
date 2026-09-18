@@ -15,7 +15,8 @@ effectively-once database effects.
 ## Register an asynchronous projection
 
 Implement one typed handler interface for each event a logical projection
-handles. Register every handler using the same stable name and version:
+handles. Register them through one named projection so every handler shares the
+same stable name and version:
 
 ```csharp
 public sealed class OrderSummaryProjection :
@@ -35,8 +36,9 @@ public sealed class OrderSummaryProjection :
 }
 
 eventLoom
-    .AddProjection<OrderSummaryProjection, OrderPlaced>("orders.summary")
-    .AddProjection<OrderSummaryProjection, OrderCancelled>("orders.summary");
+    .AddProjection("orders.summary", projection => projection
+        .Asynchronous<OrderSummaryProjection, OrderPlaced>()
+        .Asynchronous<OrderSummaryProjection, OrderCancelled>());
 ```
 
 The worker is registered automatically when the first asynchronous projection
@@ -85,7 +87,8 @@ public sealed class OrderSummaryProjection : IEfProjectionHandler<OrderPlaced>
     }
 }
 
-eventLoom.AddEfProjection<OrderSummaryProjection, OrderPlaced>("orders.summary");
+eventLoom.AddProjection("orders.summary", projection => projection
+    .Transactional<OrderSummaryProjection, OrderPlaced>());
 ```
 
 `ConfigureProjectionModel` is for read models owned by the projection. Keep
@@ -107,12 +110,25 @@ public sealed class InlineOrderCounter(EventStoreDbContext context)
     }
 }
 
-eventLoom.AddInlineProjection<InlineOrderCounter, OrderPlaced>("orders.counter");
+eventLoom.AddProjection("orders.counter", projection => projection
+    .Inline<InlineOrderCounter, OrderPlaced>());
 ```
 
 An inline handler resolves the same scoped `EventStoreDbContext` as the
 append. It must do only transactional database work; never call HTTP services,
 publish messages, or perform other effects that cannot be rolled back.
+
+The named API makes the durable checkpoint identity explicit once. Pass
+`version: 2` when changing a projection's read-model contract:
+
+```csharp
+eventLoom.AddProjection("orders.summary", projection => projection
+    .Transactional<OrderSummaryV2Projection, OrderPlaced>(), version: 2);
+```
+
+`Asynchronous`, `Transactional`, and `Inline` describe the delivery behavior
+at the registration site. Legacy `AddProjection`, `AddEfProjection`, and
+`AddInlineProjection` overloads remain supported for existing applications.
 
 ## Failures, pause, resume, skip, and replay
 

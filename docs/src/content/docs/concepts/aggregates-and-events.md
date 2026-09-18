@@ -48,15 +48,16 @@ different result from the live command path.
 EventLoom does not scan assemblies by default:
 
 ```csharp
-services.AddEventLoom(eventLoom => eventLoom
-    .RegisterEvent<OrderPlaced>()
-    .RegisterEvent<OrderCancelled>()
-    .UsePostgreSql(connectionString));
+services
+    .AddEventLoom()
+    .UsePostgreSql(connectionString)
+    .AddEvent<OrderPlaced>()
+    .AddEvent<OrderCancelled>();
 ```
 
 Explicit registration makes the persisted event surface visible at startup and
 fails early for missing or duplicate stable event names. Use
-`RegisterEventsFromAssembly(assembly)` only when the application deliberately
+`AddEventsFromAssemblyContaining<T>()` only when the application deliberately
 accepts convention-based discovery.
 
 ## Strongly typed IDs
@@ -72,10 +73,9 @@ public sealed class Order(OrderId id) : Aggregate<OrderId>(id);
 At the persistence boundary, configure one canonical stream conversion:
 
 ```csharp
-eventLoom.AddAggregateRepository<Order, OrderId>(
-    id => new Order(id),
-    "order",
-    id => id.Value.ToString("N"));
+eventLoom.AddAggregate<Order, OrderId>(aggregate => aggregate
+    .ConstructWith(id => new Order(id))
+    .UseStream("order", id => id.Value.ToString("N")));
 ```
 
 The conversion must be stable for the lifetime of the stream. EventLoom

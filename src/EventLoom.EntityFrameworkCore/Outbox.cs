@@ -114,17 +114,35 @@ public sealed class OutboxStore(EventStoreDbContext context, TimeProvider timePr
     }
 
     /// <summary>
-    /// Records a publication attempt and marks the message published only when the transport succeeded.
+    /// Records a failed publication attempt or deletes the message and its attempts after successful publication.
     /// </summary>
     /// <returns><see langword="false"/> when another worker has already published the message.</returns>
     public async Task<bool> RecordAttemptAsync(
         OutboxMessage message,
         WorkerLease lease,
         Exception? exception,
+        CancellationToken cancellationToken = default) =>
+        await RecordAttemptAsync(
+            message,
+            lease,
+            exception,
+            TimeSpan.Zero,
+            cancellationToken);
+
+    internal async Task<bool> RecordAttemptAsync(
+        OutboxMessage message,
+        WorkerLease lease,
+        Exception? exception,
+        TimeSpan successfulDeliveryRetention,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(message);
         ArgumentNullException.ThrowIfNull(lease);
+        if (successfulDeliveryRetention < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(successfulDeliveryRetention));
+        }
+
         if (message.TenantId != lease.TenantId)
         {
             throw new InvalidOperationException("The outbox message does not belong to the supplied lease tenant.");
@@ -151,6 +169,17 @@ public sealed class OutboxStore(EventStoreDbContext context, TimeProvider timePr
 
         var attemptedAt = timeProvider.GetUtcNow();
         entity.AttemptCount++;
+        if (exception is null && successfulDeliveryRetention == TimeSpan.Zero)
+        {
+            await context.OutboxAttempts
+                .Where(value => value.MessageId == entity.MessageId)
+                .ExecuteDeleteAsync(cancellationToken);
+            context.Outbox.Remove(entity);
+            await context.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return true;
+        }
+
         context.OutboxAttempts.Add(new OutboxAttemptEntity
         {
             MessageId = entity.MessageId,
@@ -168,6 +197,69 @@ public sealed class OutboxStore(EventStoreDbContext context, TimeProvider timePr
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return true;
+    }
+
+    internal async Task<int> PurgePublishedAsync(
+        TimeSpan successfulDeliveryRetention,
+        int limit,
+        CancellationToken cancellationToken = default)
+    {
+        if (successfulDeliveryRetention < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(successfulDeliveryRetention));
+        }
+
+        if (limit is < 1 or > 10_000)
+        {
+            throw new ArgumentOutOfRangeException(nameof(limit), "Outbox purge limits must be between 1 and 10,000.");
+        }
+
+        var now = timeProvider.GetUtcNow();
+        var maximumAge = now - DateTimeOffset.MinValue;
+        var cutoff = successfulDeliveryRetention >= maximumAge
+            ? DateTimeOffset.MinValue
+            : now - successfulDeliveryRetention;
+
+        context.ChangeTracker.Clear();
+        Guid[] messageIds;
+        if (context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            messageIds = await context.Outbox.AsNoTracking()
+                .Where(value => value.PublishedAt != null && value.PublishedAt <= cutoff)
+                .OrderBy(value => value.PublishedAt)
+                .ThenBy(value => value.Id)
+                .Select(value => value.MessageId)
+                .Take(limit)
+                .ToArrayAsync(cancellationToken);
+        }
+        else
+        {
+            var candidates = await context.Outbox.AsNoTracking()
+                .Where(value => value.PublishedAt != null)
+                .OrderBy(value => value.Id)
+                .Select(value => new { value.MessageId, value.PublishedAt })
+                .Take(limit)
+                .ToArrayAsync(cancellationToken);
+            messageIds = candidates
+                .Where(value => value.PublishedAt <= cutoff)
+                .Select(value => value.MessageId)
+                .ToArray();
+        }
+
+        if (messageIds.Length == 0)
+        {
+            return 0;
+        }
+
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        await context.OutboxAttempts
+            .Where(value => messageIds.Contains(value.MessageId))
+            .ExecuteDeleteAsync(cancellationToken);
+        var deleted = await context.Outbox
+            .Where(value => messageIds.Contains(value.MessageId) && value.PublishedAt != null)
+            .ExecuteDeleteAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return deleted;
     }
 
     /// <summary>Gets the stable lease name used by tenant outbox publishers.</summary>

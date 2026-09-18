@@ -31,8 +31,8 @@ the API, waits for the database before it starts the API, and launches the
 Aspire dashboard. Open the dashboard URL printed by the AppHost. Its
 **Resources** page provides the AppHost-managed URL for the API.
 
-The sample uses `EnsureCreatedAsync` for a new database. Use reviewed EF Core
-migrations before starting production application instances.
+The sample explicitly initializes a new database only in Development. Use
+reviewed, host-owned EF Core migrations before starting production instances.
 
 The sample intentionally uses only PostgreSQL. That lets it demonstrate
 EventLoom's distributed production provider and makes its telemetry available
@@ -134,9 +134,10 @@ must protect them with an administrator authorization policy. Replay resets
 the checkpoint but does not clear the read model; use a new projection version
 and shadow table for a production rebuild.
 
-Each event is also written to the outbox. Replace `<event-id>` with the
-event's `eventId` from the event-history response to inspect the logging
-publisher's durable delivery record and attempts:
+Each event is also written to the outbox. This sample retains successful
+delivery records for one day instead of using EventLoom's immediate-deletion
+default. Replace `<event-id>` with the event's `eventId` from the event-history
+response to inspect the logging publisher's delivery record and attempts:
 
 ```bash
 curl -H 'X-Tenant-ID: acme' \

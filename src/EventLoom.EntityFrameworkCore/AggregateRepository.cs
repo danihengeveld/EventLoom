@@ -17,6 +17,7 @@ public sealed class AggregateRepository<TAggregate, TId>
     private readonly IAggregateSnapshotAdapter<TAggregate>? snapshotAdapter;
     private readonly ISnapshotPolicy? snapshotPolicy;
     private readonly ISnapshotInvalidator? snapshotInvalidator;
+    private readonly ISnapshotRetentionPolicy? snapshotRetentionPolicy;
 
     /// <summary>Initializes a repository with explicit persistence delegates.</summary>
     public AggregateRepository(
@@ -43,7 +44,8 @@ public sealed class AggregateRepository<TAggregate, TId>
         SnapshotStore? snapshotStore = null,
         IAggregateSnapshotAdapter<TAggregate>? snapshotAdapter = null,
         ISnapshotPolicy? snapshotPolicy = null,
-        ISnapshotInvalidator? snapshotInvalidator = null)
+        ISnapshotInvalidator? snapshotInvalidator = null,
+        ISnapshotRetentionPolicy? snapshotRetentionPolicy = null)
         : this(
             store,
             factory,
@@ -65,6 +67,7 @@ public sealed class AggregateRepository<TAggregate, TId>
             ? null
             : snapshotPolicy ?? new EveryNEventsSnapshotPolicy(100);
         this.snapshotInvalidator = snapshotInvalidator;
+        this.snapshotRetentionPolicy = snapshotRetentionPolicy;
     }
 
     /// <summary>Loads an aggregate from its complete stream history, or creates a new instance when absent.</summary>
@@ -302,7 +305,7 @@ public sealed class AggregateRepository<TAggregate, TId>
             snapshotAdapter is not null &&
             snapshotPolicy!.ShouldSnapshot(aggregate.Version))
         {
-            await snapshotStore.WriteAsync(
+            await snapshotStore.WriteWithRetentionAsync(
                 new SnapshotWriteRequest(
                     ResolveTenant(),
                     streamId!(aggregate.Id),
@@ -311,6 +314,7 @@ public sealed class AggregateRepository<TAggregate, TId>
                     snapshotAdapter.SnapshotType,
                     snapshotAdapter.SchemaVersion,
                     snapshotAdapter.Capture(aggregate)),
+                snapshotRetentionPolicy,
                 cancellationToken);
         }
 

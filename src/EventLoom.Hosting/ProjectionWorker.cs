@@ -116,6 +116,7 @@ internal sealed class ProjectionWorker(
         }
         catch (ProjectionLeaseLostException)
         {
+            EventLoomTelemetry.ProjectionLeaseLosses.Add(1);
             logger.LogDebug("Projection worker lost its lease before finishing a batch.");
             return false;
         }

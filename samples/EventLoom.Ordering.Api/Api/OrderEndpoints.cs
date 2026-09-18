@@ -10,17 +10,17 @@ internal static class OrderEndpoints
 {
     public static void MapOrderEndpoints(this WebApplication app)
     {
-        app.MapPost("/orders", CreateAsync);
-        app.MapGet("/orders/{id:guid}", GetAsync);
-        app.MapPost("/orders/{id:guid}/items", AddItemAsync);
-        app.MapPost("/orders/{id:guid}/cancel", CancelAsync);
-        app.MapGet("/orders/{id:guid}/events", GetEventsAsync);
-        app.MapGet("/orders/{id:guid}/summary", GetSummaryAsync);
-        app.MapGet("/projections/order-summary", GetProjectionStatusAsync);
-        app.MapPost("/projections/order-summary/resume", ResumeProjectionAsync);
-        app.MapPost("/projections/order-summary/replay", ReplayProjectionAsync);
-        app.MapPost("/projections/order-summary/failures/{eventId:guid}/skip", SkipProjectionFailureAsync);
-        app.MapGet("/outbox/{messageId:guid}", GetOutboxMessageAsync);
+        app.MapPost("/api/orders", CreateAsync);
+        app.MapGet("/api/orders/{id:guid}", GetAsync);
+        app.MapPost("/api/orders/{id:guid}/items", AddItemAsync);
+        app.MapPost("/api/orders/{id:guid}/cancel", CancelAsync);
+        app.MapGet("/api/orders/{id:guid}/events", GetEventsAsync);
+        app.MapGet("/api/orders/{id:guid}/summary", GetSummaryAsync);
+        app.MapGet("/api/projections/order-summary", GetProjectionStatusAsync);
+        app.MapPost("/api/projections/order-summary/resume", ResumeProjectionAsync);
+        app.MapPost("/api/projections/order-summary/replay", ReplayProjectionAsync);
+        app.MapPost("/api/projections/order-summary/failures/{eventId:guid}/skip", SkipProjectionFailureAsync);
+        app.MapGet("/api/outbox/{messageId:guid}", GetOutboxMessageAsync);
     }
 
     private static async Task<IResult> CreateAsync(
@@ -40,7 +40,7 @@ internal static class OrderEndpoints
         }
 
         await repository.SaveAsync(order, RequestMetadata(context), AppendId(context), cancellationToken);
-        return Results.Created($"/orders/{order.Id:D}", new { order.Id, order.Status, order.Items });
+        return Results.Created($"/api/orders/{order.Id:D}", new { order.Id, order.Status, order.Items });
     }
 
     private static async Task<IResult> GetAsync(

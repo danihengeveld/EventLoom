@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
+    <ProjectReference Include="..\..\src\EventLoom.AspNetCore\EventLoom.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore.PostgreSql\EventLoom.EntityFrameworkCore.PostgreSql.csproj" />
     <ProjectReference Include="..\EventLoom.ServiceDefaults\EventLoom.ServiceDefaults.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />

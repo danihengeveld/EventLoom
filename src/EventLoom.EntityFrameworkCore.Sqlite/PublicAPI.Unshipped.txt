@@ -1,4 +1,6 @@
 EventLoom.EntityFrameworkCore.Sqlite.EventLoomSqliteBuilderExtensions
+EventLoom.EntityFrameworkCore.Sqlite.SqliteEventStoreSchema
+static EventLoom.EntityFrameworkCore.Sqlite.SqliteEventStoreSchema.EnsureCreatedAsync(EventLoom.EntityFrameworkCore.EventStoreDbContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 EventLoom.EntityFrameworkCore.Sqlite.SqliteProviderCapabilities
 EventLoom.EntityFrameworkCore.Sqlite.SqliteProviderCapabilities.SqliteProviderCapabilities() -> void
 EventLoom.EntityFrameworkCore.Sqlite.SqliteProviderCapabilities.SupportsDistributedWorkers.get -> bool

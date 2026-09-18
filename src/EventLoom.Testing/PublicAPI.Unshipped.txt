@@ -1,6 +1,45 @@
+EventLoom.Testing.AggregateScenario
+EventLoom.Testing.AggregateScenario<TAggregate, TId>
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.Aggregate.get -> TAggregate!
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.Given(TId id, params EventLoom.IDomainEvent![]! history) -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.Given(TId id, System.Collections.Generic.IEnumerable<EventLoom.IDomainEvent!>! history) -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.RaisedEvents.get -> System.Collections.Generic.IReadOnlyList<EventLoom.IDomainEvent!>!
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.Then(System.Action<TAggregate!>! assertion) -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.ThenEvents(System.Action<System.Collections.Generic.IReadOnlyList<EventLoom.IDomainEvent!>!>! assertion) -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.ThenNoEventsRaised() -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.ThenThrows<TException>() -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.ThrownException.get -> System.Exception?
+EventLoom.Testing.AggregateScenario<TAggregate, TId>.When(System.Action<TAggregate!>! command) -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
+EventLoom.Testing.EventLoomSqliteTestHost
+EventLoom.Testing.EventLoomSqliteTestHost.Clock.get -> EventLoom.Testing.ManualTimeProvider!
+EventLoom.Testing.EventLoomSqliteTestHost.CreateScope() -> Microsoft.Extensions.DependencyInjection.AsyncServiceScope
+EventLoom.Testing.EventLoomSqliteTestHost.DisposeAsync() -> System.Threading.Tasks.ValueTask
+EventLoom.Testing.EventLoomSqliteTestHost.RunScopedAsync(System.Func<System.IServiceProvider!, System.Threading.CancellationToken, System.Threading.Tasks.Task!>! action, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+EventLoom.Testing.EventLoomSqliteTestHost.RunScopedWithResultAsync<TResult>(System.Func<System.IServiceProvider!, System.Threading.CancellationToken, System.Threading.Tasks.Task<TResult>!>! action, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<TResult>!
+EventLoom.Testing.EventLoomSqliteTestHost.Services.get -> System.IServiceProvider!
+EventLoom.Testing.EventLoomTestHostOptions
+EventLoom.Testing.EventLoomTestHostOptions.ConfigureEventLoom.get -> System.Action<EventLoom.Hosting.EventLoomBuilder!>?
+EventLoom.Testing.EventLoomTestHostOptions.ConfigureEventLoom.set -> void
+EventLoom.Testing.EventLoomTestHostOptions.EventLoomTestHostOptions() -> void
+EventLoom.Testing.EventLoomTestHostOptions.StartTime.get -> System.DateTimeOffset
+EventLoom.Testing.EventLoomTestHostOptions.StartTime.set -> void
+EventLoom.Testing.EventLoomTestHostOptions.TenantId.get -> string!
+EventLoom.Testing.EventLoomTestHostOptions.TenantId.set -> void
+EventLoom.Testing.EventLoomTestHostOptions.UseDeterministicEventIds.get -> bool
+EventLoom.Testing.EventLoomTestHostOptions.UseDeterministicEventIds.set -> void
 EventLoom.Testing.EventTestBuilder<TEvent>
 EventLoom.Testing.EventTestBuilder<TEvent>.Build() -> TEvent
 EventLoom.Testing.EventTestBuilder<TEvent>.EventTestBuilder() -> void
 EventLoom.Testing.EventTestBuilder<TEvent>.Serialize(EventLoom.EventSerializer! serializer) -> string!
 EventLoom.Testing.EventTestBuilder<TEvent>.SerializeToDocument(EventLoom.EventSerializer! serializer) -> System.Text.Json.JsonDocument!
 EventLoom.Testing.EventTestBuilder<TEvent>.With(TEvent event) -> EventLoom.Testing.EventTestBuilder<TEvent>!
+EventLoom.Testing.ManualTimeProvider
+EventLoom.Testing.ManualTimeProvider.Advance(System.TimeSpan duration) -> System.DateTimeOffset
+EventLoom.Testing.ManualTimeProvider.ManualTimeProvider(System.DateTimeOffset? start = null) -> void
+EventLoom.Testing.ManualTimeProvider.SetUtcNow(System.DateTimeOffset value) -> void
+EventLoom.Testing.SequentialEventIdGenerator
+EventLoom.Testing.SequentialEventIdGenerator.Create() -> System.Guid
+EventLoom.Testing.SequentialEventIdGenerator.SequentialEventIdGenerator() -> void
+override EventLoom.Testing.ManualTimeProvider.GetUtcNow() -> System.DateTimeOffset
+static EventLoom.Testing.AggregateScenario.For<TAggregate, TId>(System.Func<TId, TAggregate!>! factory) -> EventLoom.Testing.AggregateScenario<TAggregate!, TId>!
+static EventLoom.Testing.EventLoomSqliteTestHost.CreateAsync(System.Action<EventLoom.Testing.EventLoomTestHostOptions!>? configure = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<EventLoom.Testing.EventLoomSqliteTestHost!>!

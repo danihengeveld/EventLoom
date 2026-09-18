@@ -1,0 +1,6 @@
+#nullable enable
+EventLoom.Analyzers.DomainEventContractAnalyzer
+EventLoom.Analyzers.DomainEventContractAnalyzer.DomainEventContractAnalyzer() -> void
+const EventLoom.Analyzers.DomainEventContractAnalyzer.MissingEventTypeDiagnosticId = "EL0001" -> string!
+override EventLoom.Analyzers.DomainEventContractAnalyzer.Initialize(Microsoft.CodeAnalysis.Diagnostics.AnalysisContext! context) -> void
+override EventLoom.Analyzers.DomainEventContractAnalyzer.SupportedDiagnostics.get -> System.Collections.Immutable.ImmutableArray<Microsoft.CodeAnalysis.DiagnosticDescriptor!>

@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text.Json.Serialization;
 using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +14,18 @@ namespace EventLoom.Hosting;
 /// </summary>
 public static class EventLoomServiceCollectionExtensions
 {
+    /// <summary>Adds EventLoom and returns its fluent configuration builder.</summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <returns>The EventLoom configuration builder.</returns>
+    public static EventLoomBuilder AddEventLoom(this IServiceCollection services)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.AddLogging();
+        var builder = new EventLoomBuilder(services);
+        builder.RegisterServices();
+        return builder;
+    }
+
     /// <summary>
     /// Adds EventLoom's event registry, serializer, event store, clock, and EF Core context.
     /// Events and a database provider must be explicitly configured through <paramref name="configure"/>.
@@ -30,10 +41,9 @@ public static class EventLoomServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        services.AddLogging();
-        var builder = new EventLoomBuilder(services);
+        var builder = services.AddEventLoom();
         configure(builder);
-        builder.RegisterServices();
+        builder.ValidateConfiguration();
         return services;
     }
 }
@@ -41,20 +51,22 @@ public static class EventLoomServiceCollectionExtensions
 /// <summary>
 /// Configures EventLoom services using explicit event and storage registrations.
 /// </summary>
-public sealed class EventLoomBuilder
+public sealed partial class EventLoomBuilder
 {
     private readonly IServiceCollection services;
     private readonly EventRegistry registry = new();
-    private readonly List<JsonSerializerContext> serializerContexts = [];
     private readonly List<IEventUpcaster> upcasters = [];
     private readonly List<ProjectionHandlerRegistration> projectionRegistrations = [];
     private readonly List<Action<ModelBuilder>> projectionModelConfigurations = [];
     private EventStoreOptions eventStoreOptions = new();
     private EventStoreWorkerOptions workerOptions = new();
+    private readonly OutboxOptions outboxOptions = new();
     private ISnapshotRetentionPolicy snapshotRetentionPolicy = new KeepLatestSnapshotsPolicy(1);
     private TimeProvider timeProvider = TimeProvider.System;
     private Action<IServiceProvider, DbContextOptionsBuilder>? configureDbContext;
     private bool outboxPublisherRegistered;
+    private bool servicesRegistered;
+    private ServiceDescriptor? singleTenantAccessorDescriptor;
 
     internal EventLoomBuilder(IServiceCollection services)
     {
@@ -73,6 +85,11 @@ public sealed class EventLoomBuilder
         return this;
     }
 
+    /// <summary>Registers a domain-event type for persistence and deserialization.</summary>
+    public EventLoomBuilder AddEvent<TEvent>()
+        where TEvent : IDomainEvent =>
+        RegisterEvent<TEvent>();
+
     /// <summary>
     /// Registers all concrete domain-event types in an assembly.
     /// </summary>
@@ -85,17 +102,9 @@ public sealed class EventLoomBuilder
         return this;
     }
 
-    /// <summary>
-    /// Adds a source-generated JSON serialization context for event serialization.
-    /// </summary>
-    /// <param name="context">The serialization context to use.</param>
-    /// <returns>This builder.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="context"/> is <see langword="null"/>.</exception>
-    public EventLoomBuilder AddJsonSerializerContext(JsonSerializerContext context)
-    {
-        serializerContexts.Add(context ?? throw new ArgumentNullException(nameof(context)));
-        return this;
-    }
+    /// <summary>Registers concrete domain-event types from the assembly containing <typeparamref name="TMarker"/>.</summary>
+    public EventLoomBuilder AddEventsFromAssemblyContaining<TMarker>() =>
+        RegisterEventsFromAssembly(typeof(TMarker).Assembly);
 
     /// <summary>
     /// Adds an event upcaster used when reading earlier versions of an event.
@@ -122,12 +131,29 @@ public sealed class EventLoomBuilder
         return this;
     }
 
-    /// <summary>
-    /// Configures tenancy enforcement for event-store operations.
-    /// When required, a scoped <see cref="ITenantAccessor"/> must provide a tenant and
-    /// explicit tenant arguments must match it.
-    /// </summary>
-    /// <param name="mode">The tenancy enforcement mode.</param>
+    /// <summary>Uses one tenant for normal repository operations.</summary>
+    /// <param name="tenantId">The stable persisted tenant identifier.</param>
+    /// <returns>This builder.</returns>
+    public EventLoomBuilder UseSingleTenancy(string tenantId = "default")
+    {
+        eventStoreOptions.TenancyMode = TenancyMode.SingleTenant;
+        eventStoreOptions.SingleTenantId = new TenantId(tenantId).Value;
+        return this;
+    }
+
+    /// <summary>Enables request-scoped multi-tenancy using the specified accessor.</summary>
+    /// <typeparam name="TAccessor">The scoped tenant accessor implementation.</typeparam>
+    /// <returns>This builder.</returns>
+    public EventLoomBuilder UseMultiTenancy<TAccessor>()
+        where TAccessor : class, ITenantAccessor
+    {
+        eventStoreOptions.TenancyMode = TenancyMode.MultiTenant;
+        services.AddScoped<ITenantAccessor, TAccessor>();
+        return this;
+    }
+
+    /// <summary>Configures tenancy using an accessor registered by the application.</summary>
+    /// <param name="mode">The tenancy mode.</param>
     /// <returns>This builder.</returns>
     public EventLoomBuilder ConfigureTenancy(TenancyMode mode)
     {
@@ -140,7 +166,11 @@ public sealed class EventLoomBuilder
         return this;
     }
 
-    /// <summary>Configures distributed worker identity, polling, lease, and retry settings.</summary>
+    /// <summary>
+    /// Configures projection worker identity, polling, lease, and retry settings. Outbox worker
+    /// settings are configured separately through
+    /// <see cref="AddOutboxPublisher{TPublisher}(Action{OutboxOptions}?)"/>.
+    /// </summary>
     public EventLoomBuilder ConfigureWorkers(Action<EventStoreWorkerOptions> configure)
     {
         ArgumentNullException.ThrowIfNull(configure);
@@ -181,6 +211,7 @@ public sealed class EventLoomBuilder
         key.Validate();
         services.TryAddScoped<TProjection>();
         projectionRegistrations.Add(ProjectionHandlerRegistration.CreateAsynchronous<TProjection, TEvent>(key));
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ProjectionWorker>());
         return this;
     }
 
@@ -200,6 +231,7 @@ public sealed class EventLoomBuilder
         key.Validate();
         services.TryAddScoped<TProjection>();
         projectionRegistrations.Add(ProjectionHandlerRegistration.CreateEf<TProjection, TEvent>(key));
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ProjectionWorker>());
         return this;
     }
 
@@ -217,6 +249,7 @@ public sealed class EventLoomBuilder
         key.Validate();
         services.TryAddScoped<TProjection>();
         projectionRegistrations.Add(ProjectionHandlerRegistration.CreateInline<TProjection, TEvent>(key));
+        services.TryAddScoped<IInlineProjectionDispatcher, InlineProjectionDispatcher>();
         return this;
     }
 
@@ -233,14 +266,19 @@ public sealed class EventLoomBuilder
     }
 
     /// <summary>
-    /// Registers the single transport-neutral publisher that delivers durable outbox messages.
-    /// EventLoom calls it at least once and supplies <see cref="OutboxMessage.MessageId"/> as a stable
-    /// idempotency key for the transport.
+    /// Registers the single transport-neutral publisher that delivers durable outbox messages, and
+    /// optionally configures its worker: instance identity, polling, batching, lease, retry, and
+    /// successful-delivery retention.
+    /// Registering a publisher enables transactional outbox message creation and starts the outbox
+    /// worker. EventLoom calls the publisher at least once and supplies
+    /// <see cref="OutboxMessage.MessageId"/> as a stable idempotency key for the transport.
     /// </summary>
     /// <typeparam name="TPublisher">The publisher implementation.</typeparam>
+    /// <param name="configure">Optionally configures the outbox worker and lifecycle.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="InvalidOperationException">More than one publisher is registered.</exception>
-    public EventLoomBuilder AddOutboxPublisher<TPublisher>()
+    /// <exception cref="ArgumentOutOfRangeException">A configured outbox value is out of range.</exception>
+    public EventLoomBuilder AddOutboxPublisher<TPublisher>(Action<OutboxOptions>? configure = null)
         where TPublisher : class, IOutboxPublisher
     {
         if (outboxPublisherRegistered)
@@ -248,8 +286,12 @@ public sealed class EventLoomBuilder
             throw new InvalidOperationException("Only one EventLoom outbox publisher can be registered.");
         }
 
+        configure?.Invoke(outboxOptions);
+        outboxOptions.Validate();
         services.AddScoped<IOutboxPublisher, TPublisher>();
         outboxPublisherRegistered = true;
+        eventStoreOptions.OutboxEnabled = true;
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, OutboxPublisherWorker>());
         return this;
     }
 
@@ -265,109 +307,32 @@ public sealed class EventLoomBuilder
         return this;
     }
 
-    /// <summary>
-    /// Registers a typed aggregate repository.
-    /// </summary>
+    /// <summary>Registers an aggregate using one cohesive persistence configuration.</summary>
     /// <typeparam name="TAggregate">The aggregate type.</typeparam>
     /// <typeparam name="TId">The aggregate identifier type.</typeparam>
-    /// <param name="factory">Creates an aggregate for its identifier.</param>
-    /// <param name="pendingEvents">Gets the aggregate's uncommitted events.</param>
-    /// <param name="version">Gets the aggregate's current version.</param>
+    /// <param name="configure">Configures aggregate construction, stream identity, and optional snapshots.</param>
     /// <returns>This builder.</returns>
-    public EventLoomBuilder AddAggregateRepository<TAggregate, TId>(
-        Func<TId, TAggregate> factory,
-        Func<TAggregate, IEnumerable<IDomainEvent>> pendingEvents,
-        Func<TAggregate, long> version)
+    public EventLoomBuilder AddAggregate<TAggregate, TId>(
+        Action<AggregateRegistrationBuilder<TAggregate, TId>> configure)
         where TAggregate : Aggregate<TId>
     {
-        ArgumentNullException.ThrowIfNull(factory);
-        ArgumentNullException.ThrowIfNull(pendingEvents);
-        ArgumentNullException.ThrowIfNull(version);
+        ArgumentNullException.ThrowIfNull(configure);
+        var builder = new AggregateRegistrationBuilder<TAggregate, TId>();
+        configure(builder);
+        var registration = builder.Build();
 
-        services.AddScoped(services => new AggregateRepository<TAggregate, TId>(
-            services.GetRequiredService<EventStore>(),
-            factory,
-            pendingEvents,
-            version));
-        return this;
-    }
-
-    /// <summary>
-    /// Registers a repository that snapshots configured aggregates at the supplied policy interval.
-    /// </summary>
-    public EventLoomBuilder AddAggregateRepository<TAggregate, TId>(
-        Func<TId, TAggregate> factory,
-        string aggregateType,
-        Func<TId, string> streamId,
-        IAggregateSnapshotAdapter<TAggregate> snapshotAdapter,
-        ISnapshotPolicy? snapshotPolicy = null,
-        ISnapshotInvalidator? snapshotInvalidator = null)
-        where TAggregate : Aggregate<TId>
-    {
-        ArgumentNullException.ThrowIfNull(factory);
-        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
-        ArgumentNullException.ThrowIfNull(streamId);
-        ArgumentNullException.ThrowIfNull(snapshotAdapter);
-
+        var snapshots = registration.SnapshotConfiguration;
         services.AddScoped(serviceProvider => new AggregateRepository<TAggregate, TId>(
             serviceProvider.GetRequiredService<EventStore>(),
-            factory,
-            aggregateType,
-            streamId,
-            serviceProvider.GetService<ITenantAccessor>(),
-            serviceProvider.GetRequiredService<SnapshotStore>(),
-            snapshotAdapter,
-            snapshotPolicy,
-            snapshotInvalidator));
-        return this;
-    }
-
-    /// <summary>
-    /// Registers a typed aggregate repository using the standard
-    /// <see cref="Aggregate{TId}.PendingEvents"/> and
-    /// <see cref="Aggregate{TId}.Version"/> members.
-    /// </summary>
-    /// <typeparam name="TAggregate">The aggregate type.</typeparam>
-    /// <typeparam name="TId">The aggregate identifier type.</typeparam>
-    /// <param name="factory">Creates an aggregate for its identifier.</param>
-    /// <returns>This builder.</returns>
-    public EventLoomBuilder AddAggregateRepository<TAggregate, TId>(
-        Func<TId, TAggregate> factory)
-        where TAggregate : Aggregate<TId>
-    {
-        ArgumentNullException.ThrowIfNull(factory);
-        return AddAggregateRepository(
-            factory,
-            aggregate => aggregate.PendingEvents.Select(value => value.Event),
-            aggregate => aggregate.Version);
-    }
-
-    /// <summary>
-    /// Registers a repository with configured aggregate and stream identity,
-    /// enabling short tenant-scoped load and save operations.
-    /// </summary>
-    /// <typeparam name="TAggregate">The aggregate type.</typeparam>
-    /// <typeparam name="TId">The aggregate identifier type.</typeparam>
-    /// <param name="factory">Creates an aggregate for its identifier.</param>
-    /// <param name="aggregateType">The stable persisted aggregate type name.</param>
-    /// <param name="streamId">Converts an aggregate ID to its canonical stream ID.</param>
-    /// <returns>This builder.</returns>
-    public EventLoomBuilder AddAggregateRepository<TAggregate, TId>(
-        Func<TId, TAggregate> factory,
-        string aggregateType,
-        Func<TId, string> streamId)
-        where TAggregate : Aggregate<TId>
-    {
-        ArgumentNullException.ThrowIfNull(factory);
-        ArgumentException.ThrowIfNullOrWhiteSpace(aggregateType);
-        ArgumentNullException.ThrowIfNull(streamId);
-
-        services.AddScoped(serviceProvider => new AggregateRepository<TAggregate, TId>(
-            serviceProvider.GetRequiredService<EventStore>(),
-            factory,
-            aggregateType,
-            streamId,
-            serviceProvider.GetService<ITenantAccessor>()));
+            registration.Factory,
+            registration.AggregateType,
+            registration.StreamId,
+            ResolveTenantAccessor(serviceProvider),
+            snapshots is null ? null : serviceProvider.GetRequiredService<SnapshotStore>(),
+            snapshots?.Adapter,
+            snapshots?.Policy,
+            snapshots?.Invalidator,
+            snapshots?.RetentionPolicy));
         return this;
     }
 
@@ -395,7 +360,10 @@ public sealed class EventLoomBuilder
     /// </summary>
     /// <remarks>
     /// This advanced overload is intended for sharing a scoped <c>DbConnection</c> with an
-    /// application context that uses <see cref="EventStore.AppendInTransactionAsync"/>.
+    /// application context so that it can share a unit of work with EventLoom through
+    /// <see cref="EventStore.BeginUnitOfWorkAsync"/>, or through the lower-level
+    /// <see cref="EventStore.AppendInTransactionAsync"/> for callers that manage a
+    /// <see cref="System.Data.Common.DbTransaction"/> directly.
     /// </remarks>
     /// <param name="configure">Configures the context options, including its database provider.</param>
     /// <returns>This builder.</returns>
@@ -415,17 +383,12 @@ public sealed class EventLoomBuilder
 
     internal void RegisterServices()
     {
-        if (configureDbContext is null)
+        if (servicesRegistered)
         {
-            throw new InvalidOperationException(
-                "Configure an EventLoom database provider with a provider-specific UsePostgreSql or UseSqlite extension.");
+            return;
         }
 
-        var upcasterChains = upcasters
-            .GroupBy(upcaster => upcaster.EventName, StringComparer.Ordinal)
-            .Select(group => new EventUpcasterChain(group.Key, group))
-            .ToArray();
-        var projectionRegistry = new ProjectionRegistry(projectionRegistrations);
+        servicesRegistered = true;
         Action<ModelBuilder> configureProjectionModel = modelBuilder =>
         {
             foreach (var configure in projectionModelConfigurations)
@@ -435,18 +398,43 @@ public sealed class EventLoomBuilder
         };
 
         services.AddSingleton(registry);
-        services.AddSingleton(new EventSerializer(registry, serializerContexts, upcasterChains: upcasterChains));
+        services.AddSingleton(_ =>
+        {
+            var upcasterChains = upcasters
+                .GroupBy(upcaster => upcaster.EventName, StringComparer.Ordinal)
+                .Select(group => new EventUpcasterChain(group.Key, group))
+                .ToArray();
+            return new EventSerializer(registry, SerializationOptions, upcasterChains);
+        });
         services.AddSingleton<IEventIdGenerator, UuidV7EventIdGenerator>();
-        services.AddSingleton(timeProvider);
+        singleTenantAccessorDescriptor = ServiceDescriptor.Scoped<ITenantAccessor>(_ =>
+        {
+            if (eventStoreOptions.TenancyMode == TenancyMode.MultiTenant)
+            {
+                throw MissingMultiTenantAccessor();
+            }
+
+            return new SingleTenantAccessor(new TenantId(eventStoreOptions.SingleTenantId));
+        });
+        services.TryAdd(singleTenantAccessorDescriptor);
+        services.AddSingleton(_ => timeProvider);
         services.AddSingleton<TimeProviderClock>();
-        services.AddSingleton(eventStoreOptions);
+        services.AddSingleton(_ =>
+        {
+            ValidateConfiguration();
+            return eventStoreOptions;
+        });
         services.AddSingleton(workerOptions);
-        services.AddSingleton(snapshotRetentionPolicy);
+        services.AddSingleton(outboxOptions);
+        services.AddSingleton(_ => snapshotRetentionPolicy);
         services.AddSingleton(configureProjectionModel);
-        services.AddSingleton(projectionRegistry);
+        services.AddSingleton(_ => new ProjectionRegistry(projectionRegistrations));
         services.AddDbContext<EventStoreDbContext>((serviceProvider, options) =>
         {
-            configureDbContext(serviceProvider, options);
+            var configure = configureDbContext
+                ?? throw new InvalidOperationException(
+                    "Configure an EventLoom database provider with a provider-specific UsePostgreSql or UseSqlite extension.");
+            configure(serviceProvider, options);
         });
         services.AddScoped(serviceProvider => new EventStoreDbContext(
             serviceProvider.GetRequiredService<DbContextOptions<EventStoreDbContext>>(),
@@ -459,19 +447,46 @@ public sealed class EventLoomBuilder
         services.AddScoped<WorkerLeaseStore>();
         services.AddScoped<OutboxStore>();
         services.AddScoped<OutboxAdministration>();
-        if (projectionRegistry.AsynchronousProjections.Count > 0)
+        services.AddScoped<EventLoomOperationalDiagnostics>();
+    }
+
+    internal void ValidateConfiguration()
+    {
+        if (configureDbContext is null)
         {
-            services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ProjectionWorker>());
+            throw new InvalidOperationException(
+                "Configure an EventLoom database provider with a provider-specific UsePostgreSql or UseSqlite extension.");
         }
 
-        if (projectionRegistrations.Any(value => value.Mode == ProjectionMode.Inline))
+        new EventSerializer(registry, SerializationOptions).ValidateRegisteredEvents();
+        eventStoreOptions.OutboxEnabled = outboxPublisherRegistered;
+        eventStoreOptions.SingleTenantId = new TenantId(eventStoreOptions.SingleTenantId).Value;
+        outboxOptions.Validate();
+        _ = new ProjectionRegistry(projectionRegistrations);
+        if (eventStoreOptions.TenancyMode == TenancyMode.MultiTenant &&
+            !services.Any(descriptor =>
+                descriptor.ServiceType == typeof(ITenantAccessor) &&
+                !ReferenceEquals(descriptor, singleTenantAccessorDescriptor)))
         {
-            services.AddScoped<IInlineProjectionDispatcher, InlineProjectionDispatcher>();
+            throw MissingMultiTenantAccessor();
         }
+    }
 
-        if (outboxPublisherRegistered)
-        {
-            services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, OutboxPublisherWorker>());
-        }
+    private static InvalidOperationException MissingMultiTenantAccessor() =>
+        new(
+            "Multi-tenant EventLoom configuration requires a scoped ITenantAccessor. " +
+            "Use UseMultiTenancy<TAccessor>() or register ITenantAccessor before AddEventLoom.");
+
+    private static ITenantAccessor ResolveTenantAccessor(IServiceProvider serviceProvider)
+    {
+        var options = serviceProvider.GetRequiredService<EventStoreOptions>();
+        return options.TenancyMode == TenancyMode.SingleTenant
+            ? new SingleTenantAccessor(new TenantId(options.SingleTenantId))
+            : serviceProvider.GetRequiredService<ITenantAccessor>();
+    }
+
+    internal sealed class SingleTenantAccessor(TenantId tenantId) : ITenantAccessor
+    {
+        public TenantId? TenantId { get; } = tenantId;
     }
 }

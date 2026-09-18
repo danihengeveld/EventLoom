@@ -18,9 +18,9 @@ embedded, and controlled single-node applications.
 
 ## Choose a package
 
-Most applications should reference `EventLoom.Hosting` and exactly one provider
-package. The provider brings the core and EF Core infrastructure dependencies
-with it.
+Most web applications should reference `EventLoom.AspNetCore` and exactly one
+provider package. The provider brings the core and EF Core infrastructure
+dependencies with it.
 
 | Package | Install directly? | Use it for |
 | --- | --- | --- |
@@ -28,16 +28,19 @@ with it.
 | `EventLoom.EntityFrameworkCore.PostgreSql` | Yes | PostgreSQL event storage and distributed worker correctness. |
 | `EventLoom.EntityFrameworkCore.Sqlite` | Yes | Local development, tests, embedded apps, and one controlled process. |
 | `EventLoom.EntityFrameworkCore` | No, normally transitive | Shared EF Core storage, aggregate repositories, snapshots, projections, and outbox infrastructure. |
-| `EventLoom.Hosting` | Yes | Dependency injection, workers, health checks, and optional OpenTelemetry helpers. |
-| `EventLoom.Testing` | Not in the initial NuGet release | Source-only test fixture helpers while its public value matures. |
+| `EventLoom.AspNetCore` | Yes for web apps | Canonical ASP.NET Core composition, workers, health checks, and endpoint helpers. |
+| `EventLoom.Hosting` | Usually transitive | Host-neutral composition and worker implementation. |
+| `EventLoom.Testing` | Yes, for test projects | Aggregate Given/When/Then scenarios and a managed SQLite test host. |
+| `EventLoom.Analyzers` | Recommended | Build-time validation for persisted EventLoom contracts. |
 
 ## Quick start
 
 After the first package release, a PostgreSQL application will start with:
 
 ```bash
-dotnet add package EventLoom.Hosting --prerelease
+dotnet add package EventLoom.AspNetCore --prerelease
 dotnet add package EventLoom.EntityFrameworkCore.PostgreSql --prerelease
+dotnet add package EventLoom.Analyzers --prerelease
 ```
 
 Define immutable events with stable names and versions, then change aggregate
@@ -65,13 +68,13 @@ Register the event, configured repository, and PostgreSQL provider:
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.Hosting;
 
-builder.Services.AddEventLoom(eventLoom => eventLoom
-    .RegisterEvent<CounterIncremented>()
-    .AddAggregateRepository<Counter, Guid>(
-        id => new Counter(id),
-        "counter",
-        id => id.ToString("D"))
-    .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!));
+builder.Services
+    .AddEventLoom()
+    .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
+    .AddEvent<CounterIncremented>()
+    .AddAggregate<Counter, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Counter(id))
+        .UseStream("counter", id => id.ToString("D")));
 ```
 
 For a local-only application, install
@@ -84,8 +87,8 @@ multi-instance or distributed-worker behavior.
 - **Append order:** `StreamVersion` provides optimistic concurrency within a
   stream; PostgreSQL tenant offsets provide the committed global ordering for
   projections.
-- **Tenancy:** disabled by default or explicitly required through a scoped
-  `ITenantAccessor`.
+- **Tenancy:** single-tenant by default with an internal stable tenant;
+  multi-tenancy is an explicit opt-in with `UseMultiTenancy<TAccessor>()`.
 - **Projections and outbox:** asynchronous, at-least-once delivery is the
   default. Consumers must be idempotent; EventLoom does not promise general
   exactly-once external delivery.

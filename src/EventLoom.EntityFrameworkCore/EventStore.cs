@@ -114,6 +114,51 @@ public sealed class EventStore(
         }
     }
 
+    /// <summary>
+    /// Appends within the transaction already active on this event store's context, for use by
+    /// <see cref="EventLoomUnitOfWork"/>, which begins that transaction on this same context.
+    /// </summary>
+    internal async Task<AppendResult> AppendWithinAmbientTransactionAsync(
+        AppendRequest request,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        if (request.Events.Count == 0)
+        {
+            throw new ArgumentException("At least one event is required.", nameof(request));
+        }
+
+        var tenantId = ResolveTenant(request.TenantId);
+        try
+        {
+            return await AppendCoreAsync(request, tenantId, ownsTransaction: false, cancellationToken);
+        }
+        catch (DbUpdateException exception)
+        {
+            throw new EventStoreConcurrencyException(tenantId, request.StreamId, exception);
+        }
+    }
+
+    /// <summary>
+    /// Begins a unit of work that shares this event store's underlying database connection, so
+    /// application state and EventLoom appends can commit or roll back together without the
+    /// caller directly managing a <see cref="DbTransaction"/>.
+    /// </summary>
+    /// <remarks>
+    /// Enlist application <see cref="Microsoft.EntityFrameworkCore.DbContext"/> instances with
+    /// <see cref="EventLoomUnitOfWork.EnlistAsync"/>. They must be configured with the exact same
+    /// scoped database connection as this event store. The caller must commit or roll back the
+    /// returned unit of work, then dispose it. <see cref="AppendInTransactionAsync"/> remains
+    /// available for callers that already manage a <see cref="DbTransaction"/> directly.
+    /// </remarks>
+    /// <param name="cancellationToken">Cancels beginning the transaction.</param>
+    /// <returns>A unit of work scoped to a new transaction on this event store's connection.</returns>
+    public async Task<EventLoomUnitOfWork> BeginUnitOfWorkAsync(CancellationToken cancellationToken = default)
+    {
+        var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        return new EventLoomUnitOfWork(this, context, transaction);
+    }
+
     private async Task<AppendResult> AppendCoreAsync(
         AppendRequest request,
         string tenantId,
@@ -136,13 +181,13 @@ public sealed class EventStore(
                 .ToListAsync(cancellationToken);
             if (existing.Count > 0)
             {
-                    if (transaction is not null)
-                    {
-                        await transaction.CommitAsync(cancellationToken);
-                    }
-
-                    return new AppendResult(existing.Select(ToEnvelope).ToArray(), true);
+                if (transaction is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
                 }
+
+                return new AppendResult(existing.Select(ToEnvelope).ToArray(), true);
+            }
         }
 
         var currentVersion = stream?.Version;
@@ -198,23 +243,26 @@ public sealed class EventStore(
                 AppendId = request.AppendId
             };
             context.Events.Add(eventEntity);
-            context.Outbox.Add(new OutboxEntity
+            if (eventStoreOptions.OutboxEnabled)
             {
-                MessageId = eventEntity.EventId,
-                TenantId = eventEntity.TenantId,
-                StreamId = eventEntity.StreamId,
-                AggregateType = eventEntity.AggregateType,
-                StreamVersion = eventEntity.StreamVersion,
-                TenantOffset = eventEntity.TenantOffset,
-                EventType = eventEntity.EventType,
-                EventTypeVersion = eventEntity.EventTypeVersion,
-                Payload = eventEntity.Payload,
-                OccurredAt = eventEntity.OccurredAt,
-                CorrelationId = eventEntity.CorrelationId,
-                CausationId = eventEntity.CausationId,
-                Actor = eventEntity.Actor,
-                Headers = eventEntity.Headers
-            });
+                context.Outbox.Add(new OutboxEntity
+                {
+                    MessageId = eventEntity.EventId,
+                    TenantId = eventEntity.TenantId,
+                    StreamId = eventEntity.StreamId,
+                    AggregateType = eventEntity.AggregateType,
+                    StreamVersion = eventEntity.StreamVersion,
+                    TenantOffset = eventEntity.TenantOffset,
+                    EventType = eventEntity.EventType,
+                    EventTypeVersion = eventEntity.EventTypeVersion,
+                    Payload = eventEntity.Payload,
+                    OccurredAt = eventEntity.OccurredAt,
+                    CorrelationId = eventEntity.CorrelationId,
+                    CausationId = eventEntity.CausationId,
+                    Actor = eventEntity.Actor,
+                    Headers = eventEntity.Headers
+                });
+            }
             var envelope = ToEnvelope(eventEntity, @event, request.Metadata);
             envelopes.Add(envelope);
             if (inlineProjectionDispatcher is not null)
@@ -396,7 +444,7 @@ public sealed class EventStore(
     private string ResolveTenant(string requestedTenantId)
     {
         var requested = new TenantId(requestedTenantId);
-        if (eventStoreOptions.TenancyMode != TenancyMode.Required)
+        if (eventStoreOptions.TenancyMode == TenancyMode.SingleTenant)
         {
             return requested.Value;
         }

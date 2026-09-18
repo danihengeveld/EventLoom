@@ -18,14 +18,13 @@ using EventLoom;
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.Hosting;
 
-builder.Services.AddEventLoom(eventLoom => eventLoom
-    .RegisterEvent<OrderPlaced>()
-    .AddAggregateRepository<Order, Guid>(
-        id => new Order(id),
-        "order",
-        id => id.ToString("D"))
-    .UsePostgreSql(
-        builder.Configuration.GetConnectionString("EventStore")!));
+builder.Services
+    .AddEventLoom()
+    .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
+    .AddEvent<OrderPlaced>()
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D")));
 ```
 
 `UsePostgreSql` enables the default `eventloom` schema and adds the bounded
@@ -48,9 +47,10 @@ single-node deployments:
 ```csharp
 using EventLoom.EntityFrameworkCore.Sqlite;
 
-builder.Services.AddEventLoom(eventLoom => eventLoom
-    .RegisterEvent<OrderPlaced>()
-    .UseSqlite("Data Source=eventloom.db"));
+builder.Services
+    .AddEventLoom()
+    .UseSqlite("Data Source=eventloom.db")
+    .AddEvent<OrderPlaced>();
 ```
 
 `UseSqlite` disables schemas and initializes the SQLite provider from its
@@ -63,20 +63,22 @@ correctness.
 Configure these before selecting the provider:
 
 ```csharp
-builder.Services.AddEventLoom(eventLoom => eventLoom
-    .ConfigureTenancy(TenancyMode.Required)
+builder.Services
+    .AddEventLoom()
+    .UsePostgreSql(connectionString)
+    .UseMultiTenancy<AuthenticatedTenantAccessor>()
     .ConfigureEventStore(options =>
     {
         options.Schema = "events";
         options.TablePrefix = "app_";
     })
-    .RegisterEvent<OrderPlaced>()
-    .UsePostgreSql(connectionString));
+    .AddEvent<OrderPlaced>();
 ```
 
 | `EventStoreOptions` property | Default | Notes |
 | --- | --- | --- |
-| `TenancyMode` | `Disabled` | Set to `Required` with a scoped `ITenantAccessor`. |
+| `TenancyMode` | `SingleTenant` | Set to `MultiTenant` by `UseMultiTenancy<TAccessor>()`. |
+| `SingleTenantId` | `default` | Stable internal identity used in single-tenant mode. |
 | `Schema` | `eventloom` | PostgreSQL only. |
 | `TablePrefix` | `eventloom_` | Applied to every EventLoom table. |
 | `UseSchema` | `false` | Set automatically by the provider extension. |
@@ -86,8 +88,11 @@ provider owns `UseSchema`: PostgreSQL enables it, while SQLite disables it.
 
 ## Worker and retry settings
 
-Configure worker primitives when an application starts workers that use
-`WorkerLeaseStore`:
+Both the projection worker and the outbox worker use `WorkerLeaseStore` for
+fenced, tenant-scoped leases, but each has its own dedicated options so their
+polling, batching, lease, and retry behavior can be tuned independently.
+
+Configure the projection worker with `ConfigureWorkers`:
 
 ```csharp
 eventLoom.ConfigureWorkers(options =>
@@ -101,11 +106,16 @@ eventLoom.ConfigureWorkers(options =>
 });
 ```
 
+Configure the outbox worker through `AddOutboxPublisher`'s optional callback
+instead; it groups the same worker controls together with successful-delivery
+retention. See [Outbox and application integration](./outbox/) to register a
+publisher.
+
 EventLoom validates these values during registration. Registering an
-asynchronous projection or an outbox publisher adds its hosted worker
-automatically. PostgreSQL safely supports multiple worker instances; SQLite is
-limited to one controlled application instance. See
-[Outbox and application integration](./outbox/) to register a publisher.
+asynchronous projection adds the projection worker automatically; registering
+an outbox publisher adds the outbox worker automatically. PostgreSQL safely
+supports multiple worker instances; SQLite is limited to one controlled
+application instance.
 
 ## OpenTelemetry
 
@@ -116,22 +126,22 @@ guidance.
 
 ## Schema creation and migrations
 
-The current pre-release includes the EF Core model but does not ship
-EventLoom-owned migrations. The sample uses `EnsureCreatedAsync` for a local
-empty database:
+The current pre-release includes the EF Core model but does not ship static
+provider migrations because schema and table names are configurable. The
+sample explicitly initializes a local empty database:
 
 ```csharp
-await using var scope = app.Services.CreateAsyncScope();
-var storeContext = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
-await storeContext.Database.EnsureCreatedAsync();
+if (app.Environment.IsDevelopment())
+{
+    await app.InitializeEventLoomDevelopmentDatabaseAsync();
+}
 ```
 
-Do not call `EnsureCreatedAsync` against a database managed by migrations. For
-production, create and review migrations in the host application against the
-dedicated `EventStoreDbContext`, then apply them through your deployment
-process. `EventStoreSchema.MigrateAsync` is available for the eventual
-migration-based path but has no EventLoom migrations to apply in the current
-release.
+The helper refuses to run outside Development and does not migrate an existing
+schema. For production, create and review migrations in the host application
+against the dedicated `EventStoreDbContext`, then apply them through your
+deployment process. `EventStoreSchema.MigrateAsync` applies those host-owned
+migrations when an application-controlled migration step is appropriate.
 
 `EventStoreSchema.GetTableNames(options)` returns the table names EventLoom
 manages for diagnostics and health checks.

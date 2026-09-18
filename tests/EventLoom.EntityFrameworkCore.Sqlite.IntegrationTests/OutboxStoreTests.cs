@@ -120,7 +120,8 @@ public sealed class OutboxStoreTests
             context,
             new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
             new UuidV7EventIdGenerator(),
-            TimeProvider.System);
+            TimeProvider.System,
+            context.Configuration);
 
     private static AppendRequest Request(IReadOnlyList<IDomainEvent> events) =>
         new("tenant-a", "order-1", "order", ExpectedVersion.NoStream, events, new EventMetadata());
@@ -131,7 +132,7 @@ public sealed class OutboxStoreTests
     private static DbContextOptions<ApplicationDbContext> CreateApplicationOptions(SqliteConnection connection) =>
         new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options;
 
-    private static EventStoreOptions Options() => new() { TablePrefix = "test_" };
+    private static EventStoreOptions Options() => new() { TablePrefix = "test_", OutboxEnabled = true };
 
     private static async Task CreateApplicationTableAsync(SqliteConnection connection)
     {
