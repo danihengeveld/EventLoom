@@ -1,11 +1,8 @@
-using EventLoom;
-using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Logging;
+using SQLitePCL;
 
 namespace EventLoom.EntityFrameworkCore.UnitTests;
 
@@ -14,7 +11,7 @@ public sealed class EventLoomHealthCheckTests
     [Test]
     public async Task Health_checks_validate_schema_and_report_projection_and_outbox_work()
     {
-        SQLitePCL.Batteries_V2.Init();
+        Batteries_V2.Init();
         var databasePath = Path.Combine(
             Environment.CurrentDirectory,
             $"eventloom-health-{Guid.NewGuid():N}.db");
@@ -54,7 +51,8 @@ public sealed class EventLoomHealthCheckTests
             await Assert.That(healthy.Entries["eventloom.event-store"].Status).IsEqualTo(HealthStatus.Healthy);
             await Assert.That(healthy.Entries["eventloom.projections"].Status).IsEqualTo(HealthStatus.Healthy);
             await Assert.That(healthy.Entries["eventloom.outbox"].Status).IsEqualTo(HealthStatus.Healthy);
-            await Assert.That(healthy.Entries["eventloom.event-store"].Data.ContainsKey("incompatible_column_count")).IsFalse();
+            await Assert.That(healthy.Entries["eventloom.event-store"].Data.ContainsKey("incompatible_column_count"))
+                .IsFalse();
 
             var appended = await AppendAsync(provider);
             var delayed = await healthChecks.CheckHealthAsync();
@@ -84,7 +82,8 @@ public sealed class EventLoomHealthCheckTests
             var failedProjection = await healthChecks.CheckHealthAsync();
             await Assert.That(failedProjection.Entries["eventloom.projections"].Status)
                 .IsEqualTo(HealthStatus.Unhealthy);
-            await Assert.That(failedProjection.Entries["eventloom.projections"].Data.ContainsKey("tenant_id")).IsFalse();
+            await Assert.That(failedProjection.Entries["eventloom.projections"].Data.ContainsKey("tenant_id"))
+                .IsFalse();
         }
         finally
         {
@@ -115,7 +114,9 @@ public sealed class EventLoomHealthCheckTests
 
     private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
     {
-        private void Apply(ItemAdded @event) { }
+        private void Apply(ItemAdded @event)
+        {
+        }
     }
 
     private sealed class RecordingProjection : IProjectionHandler<ItemAdded>

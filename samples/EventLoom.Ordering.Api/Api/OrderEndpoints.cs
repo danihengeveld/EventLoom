@@ -201,8 +201,10 @@ internal static class OrderEndpoints
     }
 
     private static async Task<IResult> SkipProjectionFailureAsync(
-        Guid eventId, ProjectionAdministration administration, ITenantAccessor tenantAccessor, CancellationToken cancellationToken) =>
-        (await administration.SkipAsync(tenantAccessor.TenantId!.Value.Value, OrderSummaryKey, eventId, cancellationToken))
+        Guid eventId, ProjectionAdministration administration, ITenantAccessor tenantAccessor,
+        CancellationToken cancellationToken) =>
+        (await administration.SkipAsync(tenantAccessor.TenantId!.Value.Value, OrderSummaryKey, eventId,
+            cancellationToken))
             ? Results.NoContent()
             : Results.NotFound();
 

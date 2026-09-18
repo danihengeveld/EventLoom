@@ -1,7 +1,5 @@
-using Microsoft.EntityFrameworkCore;
-using EventLoom;
-
 using System.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace EventLoom.EntityFrameworkCore;
 
@@ -70,6 +68,7 @@ public sealed class SnapshotStore(
                 .Where(value => expiredSnapshotIds.Contains(value.Id))
                 .ExecuteDeleteAsync(cancellationToken);
         }
+
         await transaction.CommitAsync(cancellationToken);
     }
 
@@ -90,15 +89,17 @@ public sealed class SnapshotStore(
                 value.SnapshotType == snapshotType)
             .OrderByDescending(value => value.StreamVersion)
             .FirstOrDefaultAsync(cancellationToken);
-        return snapshot is null ? null : new SnapshotEnvelope(
-            snapshot.TenantId,
-            snapshot.StreamId,
-            snapshot.AggregateType,
-            snapshot.StreamVersion,
-            snapshot.SnapshotType,
-            snapshot.SchemaVersion,
-            snapshot.Payload,
-            snapshot.CreatedAt);
+        return snapshot is null
+            ? null
+            : new SnapshotEnvelope(
+                snapshot.TenantId,
+                snapshot.StreamId,
+                snapshot.AggregateType,
+                snapshot.StreamVersion,
+                snapshot.SnapshotType,
+                snapshot.SchemaVersion,
+                snapshot.Payload,
+                snapshot.CreatedAt);
     }
 
     /// <summary>Removes a specific unusable snapshot without modifying the aggregate's event history.</summary>

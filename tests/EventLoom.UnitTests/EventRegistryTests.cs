@@ -1,5 +1,3 @@
-using EventLoom;
-
 namespace EventLoom.UnitTests;
 
 public sealed class EventRegistryTests
@@ -57,8 +55,16 @@ public sealed class EventRegistryTests
 
     private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
     {
-        private void Apply(RegisteredEvent @event) { }
-        private void Apply(DuplicateNamedEvent @event) { }
-        private void Apply(MissingMetadataEvent @event) { }
+        private void Apply(RegisteredEvent @event)
+        {
+        }
+
+        private void Apply(DuplicateNamedEvent @event)
+        {
+        }
+
+        private void Apply(MissingMetadataEvent @event)
+        {
+        }
     }
 }

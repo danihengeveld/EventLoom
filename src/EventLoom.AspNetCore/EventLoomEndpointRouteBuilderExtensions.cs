@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace EventLoom.AspNetCore;
 
@@ -31,9 +32,9 @@ public static class EventLoomEndpointRouteBuilderExtensions
                 Predicate = check => check.Tags.Contains("eventloom", StringComparer.OrdinalIgnoreCase),
                 ResultStatusCodes =
                 {
-                    [Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy] = StatusCodes.Status200OK,
-                    [Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded] = StatusCodes.Status503ServiceUnavailable,
-                    [Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable
+                    [HealthStatus.Healthy] = StatusCodes.Status200OK,
+                    [HealthStatus.Degraded] = StatusCodes.Status503ServiceUnavailable,
+                    [HealthStatus.Unhealthy] = StatusCodes.Status503ServiceUnavailable
                 }
             });
     }

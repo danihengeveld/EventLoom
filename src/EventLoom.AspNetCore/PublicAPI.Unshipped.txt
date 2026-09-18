@@ -1,6 +1,0 @@
-#nullable enable
-EventLoom.AspNetCore.EventLoomApplicationExtensions
-EventLoom.AspNetCore.EventLoomEndpointRouteBuilderExtensions
-static EventLoom.AspNetCore.EventLoomApplicationExtensions.InitializeEventLoomDevelopmentDatabaseAsync(this Microsoft.AspNetCore.Builder.WebApplication! app, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-static EventLoom.AspNetCore.EventLoomEndpointRouteBuilderExtensions.MapEventLoomHealthChecks(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! pattern = "/health") -> Microsoft.AspNetCore.Builder.IEndpointConventionBuilder!
-static EventLoom.AspNetCore.EventLoomEndpointRouteBuilderExtensions.MapEventLoomAdminDiagnostics(this Microsoft.AspNetCore.Routing.IEndpointRouteBuilder! endpoints, string! authorizationPolicy, string! pattern = "/admin/eventloom") -> Microsoft.AspNetCore.Routing.RouteGroupBuilder!

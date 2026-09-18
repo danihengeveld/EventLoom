@@ -1,5 +1,3 @@
-using EventLoom;
-using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
 using Microsoft.Extensions.DependencyInjection;
@@ -254,7 +252,9 @@ public sealed class OutboxPublisherWorkerTests
 
     private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
     {
-        private void Apply(ItemAdded @event) { }
+        private void Apply(ItemAdded @event)
+        {
+        }
     }
 
     private sealed class IdempotentPublisher(IdempotentPublisherRecorder recorder) : IOutboxPublisher

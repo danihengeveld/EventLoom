@@ -141,7 +141,8 @@ public static class EventStoreSchema
                         .Where(column =>
                         {
                             var actual = reader.GetColumnSchema()
-                                .First(value => string.Equals(value.ColumnName, column.Name, StringComparison.OrdinalIgnoreCase));
+                                .First(value => string.Equals(value.ColumnName, column.Name,
+                                    StringComparison.OrdinalIgnoreCase));
                             return IsIncompatible(column, actual, context.Database.ProviderName);
                         })
                         .Select(column => column.Name)
@@ -240,7 +241,7 @@ public static class EventStoreSchema
         }
 
         return expectedType != actualType &&
-            !(expectedType.IsEnum && Enum.GetUnderlyingType(expectedType) == actualType);
+               !(expectedType.IsEnum && Enum.GetUnderlyingType(expectedType) == actualType);
     }
 
     private sealed record ExpectedTable(

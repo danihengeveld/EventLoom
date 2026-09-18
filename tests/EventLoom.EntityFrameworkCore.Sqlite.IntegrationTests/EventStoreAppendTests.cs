@@ -1,9 +1,8 @@
-using EventLoom;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using EventLoom.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
-using System.Collections.Concurrent;
-using System.Diagnostics;
 
 namespace EventLoom.UnitTests;
 
@@ -84,7 +83,8 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterEvent<Added>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         await store.AppendAsync(new AppendRequest(
             "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream, [new Added(1)], new EventMetadata()));
 
@@ -102,7 +102,8 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterEvent<Added>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         var request = new AppendRequest(
             "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream, [new Added(1)], new EventMetadata(), "same");
         await store.AppendAsync(request);
@@ -121,7 +122,8 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterEvent<Added>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
 
         await store.AppendAsync(new AppendRequest(
             "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream, [new Added(1)], new EventMetadata()));
@@ -143,7 +145,8 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterEvent<Added>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         await store.AppendAsync(new AppendRequest(
             "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream,
             [new Added(1), new Added(2), new Added(3)], new EventMetadata()));
@@ -163,7 +166,8 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterEvent<Added>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         await store.AppendAsync(new AppendRequest(
             " ACME ", "cart-1", "cart", ExpectedVersion.NoStream, [new Added(1)], new EventMetadata()));
 
@@ -182,7 +186,8 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterEvent<Added>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         await store.AppendAsync(new AppendRequest(
             "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream, [new Added(1)], new EventMetadata()));
 
@@ -202,7 +207,8 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterEvent<Added>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
 
@@ -221,6 +227,8 @@ public sealed class EventStoreAppendTests
 
     private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
     {
-        private void Apply(Added @event) { }
+        private void Apply(Added @event)
+        {
+        }
     }
 }

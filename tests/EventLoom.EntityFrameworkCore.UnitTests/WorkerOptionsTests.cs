@@ -1,4 +1,6 @@
+using EventLoom.EntityFrameworkCore;
 using EventLoom.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EventLoom.UnitTests;
 
@@ -44,7 +46,7 @@ public sealed class WorkerOptionsTests
     [Test]
     public async Task Outbox_options_reject_negative_successful_delivery_retention()
     {
-        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+        var services = new ServiceCollection();
 
         await Assert.That(() => services.AddEventLoom(eventLoom => eventLoom
                 .AddOutboxPublisher<NoopPublisher>(options =>
@@ -54,7 +56,7 @@ public sealed class WorkerOptionsTests
 
     private sealed class NoopPublisher : IOutboxPublisher
     {
-        public Task PublishAsync(EventLoom.EntityFrameworkCore.OutboxMessage message, CancellationToken cancellationToken) =>
+        public Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken) =>
             Task.CompletedTask;
     }
 }

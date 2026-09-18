@@ -1,9 +1,8 @@
-using EventLoom;
+using System.Data.Common;
 using EventLoom.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using System.Data.Common;
 
 namespace EventLoom.UnitTests;
 
@@ -20,7 +19,8 @@ public sealed class AggregateRepositoryTests
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterEvent<Incremented>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
             id => new Counter(id),
@@ -49,7 +49,8 @@ public sealed class AggregateRepositoryTests
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterEvent<Incremented>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
             id => new Counter(id),
@@ -76,7 +77,8 @@ public sealed class AggregateRepositoryTests
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterEvent<Incremented>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
         var adapter = new AggregateSnapshotAdapter<Counter, CounterSnapshot>(
             aggregate => new CounterSnapshot(aggregate.Value),
@@ -122,7 +124,8 @@ public sealed class AggregateRepositoryTests
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterEvent<Incremented>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
         var adapter = new AggregateSnapshotAdapter<Counter, CounterSnapshot>(
             aggregate => new CounterSnapshot(aggregate.Value),
@@ -167,7 +170,8 @@ public sealed class AggregateRepositoryTests
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterEvent<Incremented>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
         var adapter = new AggregateSnapshotAdapter<Counter, CounterSnapshot>(
             aggregate => new CounterSnapshot(aggregate.Value),
@@ -209,7 +213,8 @@ public sealed class AggregateRepositoryTests
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterEvent<Incremented>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
         var adapter = new AggregateSnapshotAdapter<Counter, CounterSnapshot>(
             aggregate => new CounterSnapshot(aggregate.Value),
@@ -291,11 +296,11 @@ public sealed class AggregateRepositoryTests
 
         await using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT "StreamVersion"
-            FROM "test_snapshots"
-            WHERE "TenantId" = 'tenant-a' AND "StreamId" = 'counter-1'
-            ORDER BY "StreamVersion";
-            """;
+                              SELECT "StreamVersion"
+                              FROM "test_snapshots"
+                              WHERE "TenantId" = 'tenant-a' AND "StreamId" = 'counter-1'
+                              ORDER BY "StreamVersion";
+                              """;
         await using var reader = await command.ExecuteReaderAsync();
         var versions = new List<long>();
         while (await reader.ReadAsync())
@@ -320,7 +325,8 @@ public sealed class AggregateRepositoryTests
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterEvent<Incremented>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         var adapter = new AggregateSnapshotAdapter<Counter, CounterSnapshot>(
             aggregate => new CounterSnapshot(aggregate.Value),
             (aggregate, snapshot) => aggregate.Restore(snapshot));

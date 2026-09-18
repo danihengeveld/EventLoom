@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Text.Json.Serialization.Metadata;
 
 namespace EventLoom;
 
@@ -92,10 +91,10 @@ public sealed class EventSerializer
         try
         {
             return JsonSerializer.Deserialize(
-                    normalizedPayload,
-                    currentRegistration.ClrType,
-                    options)
-                ?? throw new EventDeserializationException(eventName, version);
+                       normalizedPayload,
+                       currentRegistration.ClrType,
+                       options)
+                   ?? throw new EventDeserializationException(eventName, version);
         }
         catch (JsonException exception)
         {
@@ -143,7 +142,8 @@ public sealed class EventSerializer
                 var payload = JsonSerializer.Serialize((object?)null, registration.ClrType, options);
                 _ = JsonSerializer.Deserialize(payload, registration.ClrType, options);
             }
-            catch (Exception exception) when (exception is JsonException or NotSupportedException or InvalidOperationException)
+            catch (Exception exception) when (exception is JsonException or NotSupportedException
+                                                  or InvalidOperationException)
             {
                 throw new EventSerializationValidationException(registration, exception);
             }

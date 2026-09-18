@@ -5,10 +5,13 @@ public enum ExpectedVersionKind
 {
     /// <summary>Requires one exact current stream version.</summary>
     Exact,
+
     /// <summary>Requires that no stream exists.</summary>
     NoStream,
+
     /// <summary>Requires that a stream exists at any version.</summary>
     StreamExists,
+
     /// <summary>Does not impose an application-level stream version requirement.</summary>
     Any
 }

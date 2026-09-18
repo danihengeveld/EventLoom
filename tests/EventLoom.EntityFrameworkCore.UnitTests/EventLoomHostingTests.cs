@@ -1,4 +1,4 @@
-using EventLoom;
+using System.Data.Common;
 using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.EntityFrameworkCore.Sqlite;
@@ -6,7 +6,7 @@ using EventLoom.Hosting;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using System.Data.Common;
+using SQLitePCL;
 
 namespace EventLoom.UnitTests;
 
@@ -15,7 +15,7 @@ public sealed class EventLoomHostingTests
     [Test]
     public async Task AddEventLoomRegistersCoreServicesAndTypedRepository()
     {
-        SQLitePCL.Batteries_V2.Init();
+        Batteries_V2.Init();
         var services = new ServiceCollection();
 
         services.AddEventLoom(eventLoom => eventLoom
@@ -34,8 +34,10 @@ public sealed class EventLoomHostingTests
         await Assert.That(scope.ServiceProvider.GetRequiredService<EventStore>()).IsNotNull();
         var context = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
         await Assert.That(context.Database.ProviderName).IsEqualTo("Microsoft.EntityFrameworkCore.Sqlite");
-        await Assert.That(scope.ServiceProvider.GetRequiredService<IEventIdGenerator>()).IsTypeOf<UuidV7EventIdGenerator>();
-        await Assert.That(scope.ServiceProvider.GetRequiredService<TimeProviderClock>().Provider).IsEqualTo(TimeProvider.System);
+        await Assert.That(scope.ServiceProvider.GetRequiredService<IEventIdGenerator>())
+            .IsTypeOf<UuidV7EventIdGenerator>();
+        await Assert.That(scope.ServiceProvider.GetRequiredService<TimeProviderClock>().Provider)
+            .IsEqualTo(TimeProvider.System);
         await Assert.That(scope.ServiceProvider.GetRequiredService<AggregateRepository<Counter, Guid>>()).IsNotNull();
     }
 
@@ -242,6 +244,7 @@ public sealed class EventLoomHostingTests
         public string SnapshotType => "tests.counter";
         public int SchemaVersion => 1;
         public string Capture(Counter aggregate) => "{}";
+
         public void Restore(Counter aggregate, int schemaVersion, string payload)
         {
         }

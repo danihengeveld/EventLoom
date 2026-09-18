@@ -1,5 +1,4 @@
 using EventLoom.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -104,6 +103,7 @@ internal sealed class ProjectionHealthCheck(
 {
     private readonly IServiceScopeFactory scopeFactory =
         scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
+
     private readonly ProjectionRegistry registry = registry ?? throw new ArgumentNullException(nameof(registry));
     private readonly EventLoomHealthCheckOptions options = options ?? throw new ArgumentNullException(nameof(options));
 
@@ -150,6 +150,7 @@ internal sealed class OutboxHealthCheck(
 {
     private readonly IServiceScopeFactory scopeFactory =
         scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
+
     private readonly EventLoomHealthCheckOptions options = options ?? throw new ArgumentNullException(nameof(options));
 
     public async Task<HealthCheckResult> CheckHealthAsync(

@@ -28,19 +28,17 @@ internal static class DomainEventContract
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited = false, AllowMultiple = false)]
 public sealed class EventTypeAttribute(string name) : Attribute
 {
-    private int version = 1;
-
     /// <summary>Gets the stable persisted event name.</summary>
     public string Name { get; } = ValidateName(name);
 
     /// <summary>Gets or sets the positive schema version.</summary>
     public int Version
     {
-        get => version;
-        init => version = value > 0
+        get;
+        init => field = value > 0
             ? value
             : throw new ArgumentOutOfRangeException(nameof(value), "Event schema version must be positive.");
-    }
+    } = 1;
 
     private static string ValidateName(string name)
     {

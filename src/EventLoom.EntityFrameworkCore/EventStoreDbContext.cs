@@ -15,7 +15,6 @@ public sealed class EventStoreDbContext(
     Action<ModelBuilder>? configureModel = null) : DbContext(options)
 {
     private readonly EventStoreOptions configuration = eventStoreOptions ?? new();
-    private readonly Action<ModelBuilder>? configureModel = configureModel;
 
     internal EventStoreOptions Configuration => configuration;
     internal Action<ModelBuilder>? ModelConfiguration => configureModel;
@@ -33,7 +32,7 @@ public sealed class EventStoreDbContext(
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyEventStoreConfiguration(configuration);
-        configureModel?.Invoke(modelBuilder);
+        ModelConfiguration?.Invoke(modelBuilder);
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)

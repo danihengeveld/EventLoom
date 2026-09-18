@@ -1,4 +1,3 @@
-using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -67,7 +66,8 @@ internal sealed class ProjectionRegistry(IEnumerable<ProjectionHandlerRegistrati
                 value.HandlerType
             }).Any(group => group.Count() > 1))
         {
-            throw new InvalidOperationException("A projection handler can only be registered once per event type and mode.");
+            throw new InvalidOperationException(
+                "A projection handler can only be registered once per event type and mode.");
         }
 
         return materialized;
@@ -97,7 +97,8 @@ internal sealed record ProjectionHandlerRegistration(
             static async (services, envelope, _, cancellationToken) =>
             {
                 var handler = services?.GetRequiredService<THandler>()
-                    ?? throw new InvalidOperationException("Asynchronous projection dispatch requires a service provider.");
+                              ?? throw new InvalidOperationException(
+                                  "Asynchronous projection dispatch requires a service provider.");
                 await handler.HandleAsync(ToTyped<TEvent>(envelope), cancellationToken);
             });
 
@@ -111,10 +112,12 @@ internal sealed record ProjectionHandlerRegistration(
             static async (services, envelope, context, cancellationToken) =>
             {
                 var handler = services?.GetRequiredService<THandler>()
-                    ?? throw new InvalidOperationException("EF projection dispatch requires a service provider.");
+                              ?? throw new InvalidOperationException(
+                                  "EF projection dispatch requires a service provider.");
                 await handler.HandleAsync(
                     ToTyped<TEvent>(envelope),
-                    context ?? throw new InvalidOperationException("EF projection dispatch requires an EventLoom context."),
+                    context ?? throw new InvalidOperationException(
+                        "EF projection dispatch requires an EventLoom context."),
                     cancellationToken);
             });
 
@@ -128,7 +131,8 @@ internal sealed record ProjectionHandlerRegistration(
             static async (services, envelope, _, cancellationToken) =>
             {
                 var handler = services?.GetRequiredService<THandler>()
-                    ?? throw new InvalidOperationException("Inline projection dispatch requires a service provider.");
+                              ?? throw new InvalidOperationException(
+                                  "Inline projection dispatch requires a service provider.");
                 await handler.HandleAsync(ToTyped<TEvent>(envelope), cancellationToken);
             });
 
@@ -154,7 +158,9 @@ internal sealed class InlineProjectionDispatcher(ProjectionRegistry registry, IS
     : IInlineProjectionDispatcher
 {
     private readonly ProjectionRegistry registry = registry ?? throw new ArgumentNullException(nameof(registry));
-    private readonly IServiceProvider serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+
+    private readonly IServiceProvider serviceProvider =
+        serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
 
     public Task DispatchAsync(EventEnvelope envelope, CancellationToken cancellationToken)
     {

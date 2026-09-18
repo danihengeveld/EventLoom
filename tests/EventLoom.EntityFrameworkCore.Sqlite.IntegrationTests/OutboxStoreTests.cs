@@ -1,4 +1,3 @@
-using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -64,7 +63,8 @@ public sealed class OutboxStoreTests
         await using var verificationApplicationContext = new ApplicationDbContext(CreateApplicationOptions(connection));
         await Assert.That((await CreateEventStore(verificationContext).ReadStreamAsync("tenant-a", "order-1")).Count)
             .IsEqualTo(1);
-        await Assert.That((await new OutboxStore(verificationContext, TimeProvider.System).ReadPendingAsync("tenant-a")).Count)
+        await Assert.That((await new OutboxStore(verificationContext, TimeProvider.System).ReadPendingAsync("tenant-a"))
+                .Count)
             .IsEqualTo(1);
         await Assert.That((await verificationApplicationContext.Records.SingleAsync()).Name).IsEqualTo("committed");
     }
@@ -94,7 +94,8 @@ public sealed class OutboxStoreTests
         await using var verificationApplicationContext = new ApplicationDbContext(CreateApplicationOptions(connection));
         await Assert.That((await CreateEventStore(verificationContext).ReadStreamAsync("tenant-a", "order-1")).Count)
             .IsEqualTo(0);
-        await Assert.That((await new OutboxStore(verificationContext, TimeProvider.System).ReadPendingAsync("tenant-a")).Count)
+        await Assert.That((await new OutboxStore(verificationContext, TimeProvider.System).ReadPendingAsync("tenant-a"))
+                .Count)
             .IsEqualTo(0);
         await Assert.That(await verificationApplicationContext.Records.CountAsync()).IsEqualTo(0);
     }
@@ -137,7 +138,8 @@ public sealed class OutboxStoreTests
     private static async Task CreateApplicationTableAsync(SqliteConnection connection)
     {
         await using var command = connection.CreateCommand();
-        command.CommandText = """CREATE TABLE "application_records" ("Id" INTEGER NOT NULL PRIMARY KEY, "Name" TEXT NOT NULL)""";
+        command.CommandText =
+            """CREATE TABLE "application_records" ("Id" INTEGER NOT NULL PRIMARY KEY, "Name" TEXT NOT NULL)""";
         await command.ExecuteNonQueryAsync();
     }
 
@@ -146,7 +148,9 @@ public sealed class OutboxStoreTests
 
     private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
     {
-        private void Apply(ItemAdded @event) { }
+        private void Apply(ItemAdded @event)
+        {
+        }
     }
 
     private sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options)

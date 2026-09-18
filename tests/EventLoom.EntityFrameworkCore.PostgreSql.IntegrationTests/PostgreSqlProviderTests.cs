@@ -1,5 +1,3 @@
-using EventLoom.EntityFrameworkCore;
-using EventLoom.EntityFrameworkCore.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 

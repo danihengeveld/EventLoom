@@ -124,11 +124,10 @@ public sealed class ProjectionStore(EventStoreDbContext context, TimeProvider ti
         CancellationToken cancellationToken = default)
     {
         tenantId = Normalize(tenantId, key);
-        var failures = context.ProjectionFailures.AsNoTracking().Where(
-            value =>
-                value.TenantId == tenantId &&
-                value.ProjectionName == key.Name &&
-                value.ProjectionVersion == key.Version);
+        var failures = context.ProjectionFailures.AsNoTracking().Where(value =>
+            value.TenantId == tenantId &&
+            value.ProjectionName == key.Name &&
+            value.ProjectionVersion == key.Version);
         if (!includeResolved)
         {
             failures = failures.Where(value => value.ResolvedAt == null);
@@ -297,15 +296,15 @@ public sealed class ProjectionStore(EventStoreDbContext context, TimeProvider ti
             cancellationToken);
         await VerifyLeaseAsync(tenantId, key, lease, cancellationToken);
         var checkpoint = await FindCheckpointAsync(tenantId, key, cancellationToken)
-            ?? new ProjectionCheckpointEntity
-            {
-                TenantId = tenantId,
-                ProjectionName = key.Name,
-                ProjectionVersion = key.Version,
-                TenantOffset = 0,
-                Status = ProjectionStatus.Running,
-                UpdatedAt = timeProvider.GetUtcNow()
-            };
+                         ?? new ProjectionCheckpointEntity
+                         {
+                             TenantId = tenantId,
+                             ProjectionName = key.Name,
+                             ProjectionVersion = key.Version,
+                             TenantOffset = 0,
+                             Status = ProjectionStatus.Running,
+                             UpdatedAt = timeProvider.GetUtcNow()
+                         };
         if (context.Entry(checkpoint).State == EntityState.Detached)
         {
             context.ProjectionCheckpoints.Add(checkpoint);

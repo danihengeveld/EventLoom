@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using SQLitePCL;
 
 namespace EventLoom.UnitTests;
 
@@ -6,5 +7,5 @@ internal static class SqliteTestBootstrap
 {
     [ModuleInitializer]
     internal static void Initialize() =>
-        SQLitePCL.Batteries_V2.Init();
+        Batteries_V2.Init();
 }

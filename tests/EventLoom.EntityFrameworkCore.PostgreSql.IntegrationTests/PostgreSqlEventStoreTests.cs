@@ -1,5 +1,3 @@
-using EventLoom;
-using EventLoom.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -22,7 +20,8 @@ public sealed class PostgreSqlEventStoreTests
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterEvent<OrderPlaced>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(), TimeProvider.System);
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
         var streamId = Guid.NewGuid().ToString("D");
 
         var result = await store.AppendAsync(new AppendRequest(
@@ -44,6 +43,8 @@ public sealed class PostgreSqlEventStoreTests
 
     private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
     {
-        private void Apply(OrderPlaced @event) { }
+        private void Apply(OrderPlaced @event)
+        {
+        }
     }
 }

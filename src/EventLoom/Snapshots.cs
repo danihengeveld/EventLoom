@@ -10,8 +10,6 @@ public interface IAggregateSnapshot;
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited = false)]
 public sealed class SnapshotTypeAttribute(string name) : Attribute
 {
-    private int version = 1;
-
     /// <summary>Gets the stable persisted snapshot name.</summary>
     public string Name { get; } = string.IsNullOrWhiteSpace(name)
         ? throw new ArgumentException("Snapshot name is required.", nameof(name))
@@ -20,11 +18,11 @@ public sealed class SnapshotTypeAttribute(string name) : Attribute
     /// <summary>Gets or sets the positive snapshot schema version.</summary>
     public int Version
     {
-        get => version;
-        init => version = value > 0
+        get;
+        init => field = value > 0
             ? value
             : throw new ArgumentOutOfRangeException(nameof(value), "Snapshot schema version must be positive.");
-    }
+    } = 1;
 }
 
 /// <summary>Captures and restores an aggregate using an application-owned versioned snapshot DTO.</summary>
@@ -108,10 +106,10 @@ public sealed class SnapshotUpcasterChain
         for (var version = fromVersion; version < targetVersion; version++)
         {
             var upcaster = upcasters.SingleOrDefault(value =>
-                value.FromVersion == version && value.ToVersion == version + 1)
-                ?? throw new SnapshotUpcastException(
-                    SnapshotType,
-                    $"No upcaster exists from version {version} to {version + 1}.");
+                               value.FromVersion == version && value.ToVersion == version + 1)
+                           ?? throw new SnapshotUpcastException(
+                               SnapshotType,
+                               $"No upcaster exists from version {version} to {version + 1}.");
             try
             {
                 current = upcaster.Upcast(current);
@@ -147,20 +145,26 @@ public sealed class AggregateSnapshotAdapter<TAggregate, TSnapshot>(
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         PropertyNameCaseInsensitive = false
     };
+
     private readonly Func<TAggregate, TSnapshot> capture = capture ?? throw new ArgumentNullException(nameof(capture));
-    private readonly Action<TAggregate, TSnapshot> restore = restore ?? throw new ArgumentNullException(nameof(restore));
-    private readonly SnapshotTypeAttribute metadata = typeof(TSnapshot).GetCustomAttributes(typeof(SnapshotTypeAttribute), false)
+
+    private readonly Action<TAggregate, TSnapshot>
+        restore = restore ?? throw new ArgumentNullException(nameof(restore));
+
+    private readonly SnapshotTypeAttribute metadata = typeof(TSnapshot)
+        .GetCustomAttributes(typeof(SnapshotTypeAttribute), false)
         .OfType<SnapshotTypeAttribute>()
         .SingleOrDefault() ?? throw new InvalidOperationException(
-            $"Snapshot type '{typeof(TSnapshot).FullName}' is missing SnapshotTypeAttribute.");
+        $"Snapshot type '{typeof(TSnapshot).FullName}' is missing SnapshotTypeAttribute.");
+
     private readonly SnapshotUpcasterChain? upcasterChain = upcasters is null
         ? null
         : new SnapshotUpcasterChain(
             typeof(TSnapshot).GetCustomAttributes(typeof(SnapshotTypeAttribute), false)
                 .OfType<SnapshotTypeAttribute>()
                 .SingleOrDefault()?.Name
-                ?? throw new InvalidOperationException(
-                    $"Snapshot type '{typeof(TSnapshot).FullName}' is missing SnapshotTypeAttribute."),
+            ?? throw new InvalidOperationException(
+                $"Snapshot type '{typeof(TSnapshot).FullName}' is missing SnapshotTypeAttribute."),
             upcasters);
 
     /// <inheritdoc />
@@ -201,8 +205,10 @@ public sealed class AggregateSnapshotAdapter<TAggregate, TSnapshot>(
                 }
 
                 using var document = JsonDocument.Parse(payload);
-                normalizedPayload = upcasterChain.Upcast(document.RootElement, schemaVersion, SchemaVersion).GetRawText();
+                normalizedPayload = upcasterChain.Upcast(document.RootElement, schemaVersion, SchemaVersion)
+                    .GetRawText();
             }
+
             var snapshot = jsonTypeInfo is null
                 ? JsonSerializer.Deserialize<TSnapshot>(normalizedPayload, DefaultJsonOptions)
                 : JsonSerializer.Deserialize(normalizedPayload, jsonTypeInfo);

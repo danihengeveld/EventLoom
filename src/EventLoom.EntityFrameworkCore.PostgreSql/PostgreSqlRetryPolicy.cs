@@ -15,7 +15,7 @@ public sealed class PostgreSqlRetryPolicy(EventStoreWorkerOptions options, TimeP
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(operation);
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 0;; attempt++)
         {
             try
             {

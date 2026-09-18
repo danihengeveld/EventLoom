@@ -1,5 +1,5 @@
-using System.Collections.Immutable;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -84,13 +84,13 @@ public sealed class DomainEventContractAnalyzer : DiagnosticAnalyzer
             }
 
             startContext.RegisterSymbolAction(
-                context => AnalyzeNamedType(context, domainEvent, eventTypeAttribute, aggregate),
+                innerContext => AnalyzeNamedType(innerContext, domainEvent, eventTypeAttribute, aggregate),
                 SymbolKind.NamedType);
             startContext.RegisterSymbolAction(
-                context => AnalyzeMethod(context, domainEvent, aggregate),
+                innerContext => AnalyzeMethod(innerContext, domainEvent, aggregate),
                 SymbolKind.Method);
             startContext.RegisterOperationAction(
-                context => AnalyzeInvocation(context, domainEvent, aggregate),
+                innerContext => AnalyzeInvocation(innerContext, domainEvent, aggregate),
                 OperationKind.Invocation);
         });
     }

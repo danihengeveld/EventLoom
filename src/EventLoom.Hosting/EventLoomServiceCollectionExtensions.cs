@@ -1,11 +1,9 @@
 using System.Reflection;
-using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace EventLoom.Hosting;
 
@@ -427,8 +425,8 @@ public sealed partial class EventLoomBuilder
         services.AddDbContext<EventStoreDbContext>((serviceProvider, options) =>
         {
             var configure = configureDbContext
-                ?? throw new InvalidOperationException(
-                    "Configure an EventLoom database provider with a provider-specific UsePostgreSql or UseSqlite extension.");
+                            ?? throw new InvalidOperationException(
+                                "Configure an EventLoom database provider with a provider-specific UsePostgreSql or UseSqlite extension.");
             configure(serviceProvider, options);
         });
         services.AddScoped(serviceProvider => new EventStoreDbContext(

@@ -1,5 +1,3 @@
-using EventLoom;
-
 namespace EventLoom.UnitTests;
 
 public sealed class DomainKernelTests

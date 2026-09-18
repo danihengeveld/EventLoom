@@ -1,7 +1,8 @@
+using System.Data.Common;
 using EventLoom.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using System.Data.Common;
+using SQLitePCL;
 
 namespace EventLoom.EntityFrameworkCore.Sqlite;
 
@@ -39,7 +40,7 @@ public static class EventLoomSqliteBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
-        SQLitePCL.Batteries_V2.Init();
+        Batteries_V2.Init();
 
         return builder
             .ConfigureEventStore(options => options.UseSchema = false)
@@ -79,7 +80,7 @@ public static class EventLoomSqliteBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(connectionFactory);
-        SQLitePCL.Batteries_V2.Init();
+        Batteries_V2.Init();
 
         return builder
             .ConfigureEventStore(options => options.UseSchema = false)

@@ -19,13 +19,11 @@ public sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider t
         tenantId = new TenantId(tenantId).Value;
         ArgumentException.ThrowIfNullOrWhiteSpace(leaseName);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
-        if (duration <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(duration));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(duration, TimeSpan.Zero);
 
         var now = timeProvider.GetUtcNow();
-        var isPostgreSql = context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true;
+        var isPostgreSql = context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ==
+                           true;
         var leases = context.ProjectionLeases.AsQueryable();
         if (isPostgreSql)
         {
@@ -129,11 +127,8 @@ public sealed record WorkerLease(
     DateTimeOffset LeaseUntil);
 
 /// <summary>Indicates that a worker lease was lost to a concurrent owner.</summary>
-public sealed class WorkerLeaseConflictException : InvalidOperationException
-{
-    /// <summary>Initializes a lease conflict exception.</summary>
-    public WorkerLeaseConflictException(string tenantId, string leaseName, Exception innerException)
-        : base($"Worker lease '{leaseName}' for tenant '{tenantId}' could not be acquired because it changed concurrently.", innerException)
-    {
-    }
-}
+/// <remarks>Initializes a lease conflict exception.</remarks>
+public sealed class WorkerLeaseConflictException(string tenantId, string leaseName, Exception innerException)
+    : InvalidOperationException(
+        $"Worker lease '{leaseName}' for tenant '{tenantId}' could not be acquired because it changed concurrently.",
+        innerException);

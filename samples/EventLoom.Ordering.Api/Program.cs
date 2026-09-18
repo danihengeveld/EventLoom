@@ -1,14 +1,12 @@
-using EventLoom;
+using System.Text.Json.Serialization;
 using EventLoom.AspNetCore;
-using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.Hosting;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi;
-using Scalar.AspNetCore;
-using System.Text.Json.Serialization;
 using EventLoom.Ordering.Api.Api;
 using EventLoom.Ordering.Api.Infrastructure;
+using EventLoom.ServiceDefaults;
+using Microsoft.OpenApi;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
@@ -40,8 +38,8 @@ builder.Services.AddOpenApi(options =>
 builder.Services.AddHttpContextAccessor();
 
 var connectionString = builder.Configuration.GetConnectionString("EventStore")
-    ?? throw new InvalidOperationException(
-        "ConnectionStrings:EventStore is required. Run the sample through EventLoom.Ordering.AppHost.");
+                       ?? throw new InvalidOperationException(
+                           "ConnectionStrings:EventStore is required. Run the sample through EventLoom.Ordering.AppHost.");
 
 builder.Services
     .AddEventLoom()

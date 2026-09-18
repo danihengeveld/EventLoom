@@ -1,5 +1,3 @@
-using EventLoom.EntityFrameworkCore;
-
 namespace EventLoom.EntityFrameworkCore.Sqlite;
 
 /// <summary>

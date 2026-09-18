@@ -1,5 +1,3 @@
-using EventLoom;
-using EventLoom.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -125,12 +123,12 @@ public sealed class PostgreSqlLeaseTests
         var leases = new WorkerLeaseStore(context, TimeProvider.System);
         var stale = (await leases.TryAcquireAsync(
             "tenant-a",
-            OutboxStore.GetLeaseName(),
+            OutboxStore.OutboxPublisherLeaseName,
             "node-a",
             TimeSpan.FromMinutes(1)))!;
         await leases.TryAcquireAsync(
             "tenant-a",
-            OutboxStore.GetLeaseName(),
+            OutboxStore.OutboxPublisherLeaseName,
             "node-a",
             TimeSpan.FromMinutes(1));
 
@@ -170,7 +168,7 @@ public sealed class PostgreSqlLeaseTests
         var message = (await outbox.ReadPendingAsync("tenant-a")).Single();
         var lease = (await new WorkerLeaseStore(context, TimeProvider.System).TryAcquireAsync(
             "tenant-a",
-            OutboxStore.GetLeaseName(),
+            OutboxStore.OutboxPublisherLeaseName,
             "node-a",
             TimeSpan.FromMinutes(1)))!;
 
@@ -190,6 +188,8 @@ public sealed class PostgreSqlLeaseTests
 
     private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
     {
-        private void Apply(ItemAdded @event) { }
+        private void Apply(ItemAdded @event)
+        {
+        }
     }
 }

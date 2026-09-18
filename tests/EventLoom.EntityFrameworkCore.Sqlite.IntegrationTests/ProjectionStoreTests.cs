@@ -1,5 +1,3 @@
-using EventLoom;
-using EventLoom.EntityFrameworkCore;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
@@ -296,7 +294,9 @@ public sealed class ProjectionStoreTests
 
     private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
     {
-        private void Apply(ItemAdded @event) { }
+        private void Apply(ItemAdded @event)
+        {
+        }
     }
 
     private sealed class OrderReadModel

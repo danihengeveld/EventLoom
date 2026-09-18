@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using EventLoom;
 
 namespace EventLoom.UnitTests;
 
@@ -109,10 +108,21 @@ public sealed partial class EventSerializerTests
 
     public sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
     {
-        private void Apply(SerializedEvent @event) { }
-        private void Apply(VersionOneEvent @event) { }
-        private void Apply(VersionTwoEvent @event) { }
-        private void Apply(GeneratedEvent @event) { }
+        private void Apply(SerializedEvent @event)
+        {
+        }
+
+        private void Apply(VersionOneEvent @event)
+        {
+        }
+
+        private void Apply(VersionTwoEvent @event)
+        {
+        }
+
+        private void Apply(GeneratedEvent @event)
+        {
+        }
     }
 
     [JsonSerializable(typeof(GeneratedEvent))]

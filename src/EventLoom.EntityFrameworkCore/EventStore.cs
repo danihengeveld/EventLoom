@@ -1,10 +1,9 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
-using EventLoom;
+using Microsoft.EntityFrameworkCore;
 
 namespace EventLoom.EntityFrameworkCore;
 
@@ -23,8 +22,10 @@ public sealed class EventStore(
 {
     private readonly EventStoreDbContext context = context ?? throw new ArgumentNullException(nameof(context));
     private readonly EventSerializer serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+
     private readonly IEventIdGenerator eventIdGenerator =
         eventIdGenerator ?? throw new ArgumentNullException(nameof(eventIdGenerator));
+
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly EventStoreOptions eventStoreOptions = eventStoreOptions ?? new();
     private readonly ITenantAccessor? tenantAccessor = tenantAccessor;
@@ -47,7 +48,7 @@ public sealed class EventStore(
         var tenantId = ResolveTenant(request.TenantId);
         using var activity = EventLoomTelemetry.ActivitySource.StartActivity(
             "eventloom.append",
-            System.Diagnostics.ActivityKind.Producer);
+            ActivityKind.Producer);
         activity?.SetTag("eventloom.aggregate.type", request.AggregateType);
         activity?.SetTag("eventloom.event.count", request.Events.Count);
         var startedAt = timeProvider.GetTimestamp();
@@ -263,6 +264,7 @@ public sealed class EventStore(
                     Headers = eventEntity.Headers
                 });
             }
+
             var envelope = ToEnvelope(eventEntity, @event, request.Metadata);
             envelopes.Add(envelope);
             if (inlineProjectionDispatcher is not null)
@@ -280,6 +282,7 @@ public sealed class EventStore(
             context.ChangeTracker.Clear();
             throw;
         }
+
         if (transaction is not null)
         {
             await transaction.CommitAsync(cancellationToken);
@@ -291,20 +294,21 @@ public sealed class EventStore(
     [SuppressMessage(
         "Usage",
         "EF1003:Interpolated SQL queries should use the interpolated form",
-        Justification = "The table identifier comes from EF's mapped model and is quoted; tenant values remain parameters.")]
+        Justification =
+            "The table identifier comes from EF's mapped model and is quoted; tenant values remain parameters.")]
     private async Task<TenantOffsetEntity?> EnsurePostgreSqlOffsetAsync(
         string tenantId,
         CancellationToken cancellationToken)
     {
         var entityType = context.Model.FindEntityType(typeof(TenantOffsetEntity))
-            ?? throw new InvalidOperationException("The tenant offset entity is not mapped.");
+                         ?? throw new InvalidOperationException("The tenant offset entity is not mapped.");
         var table = QuoteIdentifier(entityType.GetTableName()
-            ?? throw new InvalidOperationException("The tenant offset table is not mapped."));
+                                    ?? throw new InvalidOperationException("The tenant offset table is not mapped."));
         var schema = entityType.GetSchema();
         var qualifiedTable = schema is null ? table : $"{QuoteIdentifier(schema)}.{table}";
 
         var sql = "INSERT INTO " + qualifiedTable +
-            " (\"TenantId\", \"NextOffset\") VALUES ({0}, 0) ON CONFLICT (\"TenantId\") DO NOTHING";
+                  " (\"TenantId\", \"NextOffset\") VALUES ({0}, 0) ON CONFLICT (\"TenantId\") DO NOTHING";
         await context.Database.ExecuteSqlRawAsync(
             sql,
             [tenantId],
@@ -325,9 +329,9 @@ public sealed class EventStore(
         AppendRequest request,
         AppendResult result,
         long startedAt,
-        System.Diagnostics.Activity? activity)
+        Activity? activity)
     {
-        var tags = new System.Diagnostics.TagList
+        var tags = new TagList
         {
             { "eventloom.aggregate.type", request.AggregateType }
         };
@@ -336,23 +340,23 @@ public sealed class EventStore(
         EventLoomTelemetry.AppendDuration.Record(timeProvider.GetElapsedTime(startedAt).TotalMilliseconds, tags);
         activity?.SetTag("eventloom.append.idempotent_replay", result.WasIdempotentReplay);
         activity?.SetTag("eventloom.event.count", result.Events.Count);
-        activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Ok);
+        activity?.SetStatus(ActivityStatusCode.Ok);
     }
 
     private void RecordAppendFailure(
         AppendRequest request,
         long startedAt,
-        System.Diagnostics.Activity? activity,
+        Activity? activity,
         Exception exception)
     {
-        var tags = new System.Diagnostics.TagList
+        var tags = new TagList
         {
             { "eventloom.aggregate.type", request.AggregateType },
             { "error.type", exception.GetType().FullName ?? exception.GetType().Name }
         };
         EventLoomTelemetry.AppendFailures.Add(1, tags);
         EventLoomTelemetry.AppendDuration.Record(timeProvider.GetElapsedTime(startedAt).TotalMilliseconds, tags);
-        activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, exception.GetType().Name);
+        activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);
     }
 
 
@@ -368,9 +372,11 @@ public sealed class EventStore(
     {
         tenantId = ResolveTenant(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
-        if (fromVersion is < 1 || toVersion is < 1 || (fromVersion.HasValue && toVersion.HasValue && fromVersion > toVersion))
+        if (fromVersion is < 1 || toVersion is < 1 ||
+            (fromVersion.HasValue && toVersion.HasValue && fromVersion > toVersion))
         {
-            throw new ArgumentOutOfRangeException(nameof(fromVersion), "Stream version bounds must be positive and ordered.");
+            throw new ArgumentOutOfRangeException(nameof(fromVersion),
+                "Stream version bounds must be positive and ordered.");
         }
 
         var query = context.Events
@@ -430,7 +436,8 @@ public sealed class EventStore(
 
         if (limit is < 1 or > 10_000)
         {
-            throw new ArgumentOutOfRangeException(nameof(limit), "Tenant offset read limits must be between 1 and 10,000.");
+            throw new ArgumentOutOfRangeException(nameof(limit),
+                "Tenant offset read limits must be between 1 and 10,000.");
         }
 
         var entities = await context.Events
@@ -450,8 +457,8 @@ public sealed class EventStore(
         }
 
         var current = tenantAccessor?.TenantId
-            ?? throw new InvalidOperationException(
-                "Tenancy is required, but the scoped tenant accessor did not provide a tenant.");
+                      ?? throw new InvalidOperationException(
+                          "Tenancy is required, but the scoped tenant accessor did not provide a tenant.");
         if (current.Value != requested.Value)
         {
             throw new InvalidOperationException(
@@ -473,7 +480,7 @@ public sealed class EventStore(
                 entity.CausationId,
                 entity.Actor,
                 JsonSerializer.Deserialize<Dictionary<string, string>>(entity.Headers)
-                    ?? throw new InvalidOperationException($"Event '{entity.EventId}' has invalid metadata headers."));
+                ?? throw new InvalidOperationException($"Event '{entity.EventId}' has invalid metadata headers."));
 
     private static EventEnvelope ToEnvelope(EventEntity entity, object @event, EventMetadata metadata) =>
         new(
@@ -505,7 +512,8 @@ public sealed record AppendResult(IReadOnlyList<EventEnvelope> Events, bool WasI
 
 /// <summary>Indicates that the current stream version did not satisfy the append expectation.</summary>
 public sealed class WrongExpectedVersionException(ExpectedVersion expected, long? actual)
-    : InvalidOperationException($"Expected stream version '{expected}', but actual version was '{actual?.ToString() ?? "no stream"}'.");
+    : InvalidOperationException(
+        $"Expected stream version '{expected}', but actual version was '{actual?.ToString() ?? "no stream"}'.");
 
 /// <summary>Indicates that a concurrent append conflicted with the event-store database boundary.</summary>
 public sealed class EventStoreConcurrencyException : InvalidOperationException

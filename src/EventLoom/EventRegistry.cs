@@ -78,10 +78,10 @@ public sealed class EventRegistry
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
         return registrationsByName.Values
-            .Where(registration => registration.Name == eventName)
-            .OrderByDescending(registration => registration.Version)
-            .FirstOrDefault()
-            ?? throw new EventNotRegisteredException(eventName, 0);
+                   .Where(registration => registration.Name == eventName)
+                   .OrderByDescending(registration => registration.Version)
+                   .FirstOrDefault()
+               ?? throw new EventNotRegisteredException(eventName, 0);
     }
 
     /// <summary>Gets all explicitly registered event types.</summary>
@@ -98,7 +98,7 @@ public sealed class EventRegistry
         }
 
         var attribute = eventType.GetCustomAttribute<EventTypeAttribute>()
-            ?? throw new EventTypeMetadataMissingException(eventType);
+                        ?? throw new EventTypeMetadataMissingException(eventType);
         var key = new EventTypeKey(attribute.Name, attribute.Version);
 
         if (registrationsByType.ContainsKey(eventType))

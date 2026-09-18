@@ -1,5 +1,3 @@
-using EventLoom;
-using EventLoom.EntityFrameworkCore;
 using EventLoom.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
@@ -22,7 +20,8 @@ public sealed class PostgreSqlConcurrencyTests
         var first = CreateStore(firstContext, registry);
         var second = CreateStore(secondContext, registry);
         var streamId = Guid.NewGuid().ToString("D");
-        var request = new AppendRequest("tenant-a", streamId, "test", ExpectedVersion.NoStream, [new Created()], new EventMetadata());
+        var request = new AppendRequest("tenant-a", streamId, "test", ExpectedVersion.NoStream, [new Created()],
+            new EventMetadata());
 
         var results = await Task.WhenAll(
             CaptureAsync(() => first.AppendAsync(request)),
@@ -37,7 +36,8 @@ public sealed class PostgreSqlConcurrencyTests
     {
         await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
         await container.StartAsync();
-        var options = new EventStoreOptions { UseSchema = true, Schema = "eventloom_idempotency", TablePrefix = "eventloom_" };
+        var options = new EventStoreOptions
+            { UseSchema = true, Schema = "eventloom_idempotency", TablePrefix = "eventloom_" };
         await using var firstContext = CreateContext(container.GetConnectionString(), options);
         await using var secondContext = CreateContext(container.GetConnectionString(), options);
         await firstContext.Database.EnsureCreatedAsync();
@@ -69,7 +69,8 @@ public sealed class PostgreSqlConcurrencyTests
     {
         await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
         await container.StartAsync();
-        var options = new EventStoreOptions { UseSchema = true, Schema = "eventloom_offsets", TablePrefix = "eventloom_" };
+        var options = new EventStoreOptions
+            { UseSchema = true, Schema = "eventloom_offsets", TablePrefix = "eventloom_" };
         await using var setupContext = CreateContext(container.GetConnectionString(), options);
         await setupContext.Database.EnsureCreatedAsync();
 
@@ -97,8 +98,10 @@ public sealed class PostgreSqlConcurrencyTests
                         [new Created()],
                         new EventMetadata()))));
 
-            var offsets = results.SelectMany(value => value.Events).Select(value => value.TenantOffset).OrderBy(value => value).ToArray();
-            await Assert.That(offsets).IsEquivalentTo(Enumerable.Range(1, stores.Length).Select(value => (long)value).ToArray());
+            var offsets = results.SelectMany(value => value.Events).Select(value => value.TenantOffset)
+                .OrderBy(value => value).ToArray();
+            await Assert.That(offsets)
+                .IsEquivalentTo(Enumerable.Range(1, stores.Length).Select(value => (long)value).ToArray());
         }
         finally
         {
@@ -140,6 +143,8 @@ public sealed class PostgreSqlConcurrencyTests
 
     private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
     {
-        private void Apply(Created @event) { }
+        private void Apply(Created @event)
+        {
+        }
     }
 }

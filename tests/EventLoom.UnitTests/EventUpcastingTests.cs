@@ -1,5 +1,4 @@
 using System.Text.Json;
-using EventLoom;
 
 namespace EventLoom.UnitTests;
 

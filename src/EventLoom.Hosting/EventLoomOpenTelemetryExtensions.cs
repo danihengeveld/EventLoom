@@ -1,4 +1,3 @@
-using EventLoom;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 

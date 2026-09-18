@@ -1,4 +1,3 @@
-using EventLoom;
 using EventLoom.EntityFrameworkCore;
 
 namespace EventLoom.Hosting;

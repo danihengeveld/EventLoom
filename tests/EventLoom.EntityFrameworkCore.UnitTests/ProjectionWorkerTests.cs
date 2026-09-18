@@ -1,10 +1,9 @@
-using EventLoom;
-using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using SQLitePCL;
 
 namespace EventLoom.EntityFrameworkCore.UnitTests;
 
@@ -71,7 +70,8 @@ public sealed class ProjectionWorkerTests
                 provider,
                 new ProjectionKey("tests.recording", 1),
                 ProjectionStatus.Running);
-            var persistedFailures = await administration.ReadFailuresAsync("tenant-a", new ProjectionKey("tests.failing", 1));
+            var persistedFailures =
+                await administration.ReadFailuresAsync("tenant-a", new ProjectionKey("tests.failing", 1));
 
             await Assert.That(failures.Attempts).IsEqualTo(2);
             await Assert.That(failedCheckpoint!.Status).IsEqualTo(ProjectionStatus.Paused);
@@ -91,7 +91,7 @@ public sealed class ProjectionWorkerTests
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
         var services = new ServiceCollection();
-        SQLitePCL.Batteries_V2.Init();
+        Batteries_V2.Init();
         services.AddEventLoom(eventLoom => eventLoom
             .RegisterEvent<ItemAdded>()
             .UseSingleTenancy("tenant-a")
@@ -130,7 +130,7 @@ public sealed class ProjectionWorkerTests
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
         var services = new ServiceCollection();
-        SQLitePCL.Batteries_V2.Init();
+        Batteries_V2.Init();
         services.AddEventLoom(eventLoom => eventLoom
             .RegisterEvent<ItemAdded>()
             .UseSingleTenancy("tenant-a")
@@ -161,7 +161,7 @@ public sealed class ProjectionWorkerTests
         ProjectionRecorder recorder,
         ProjectionFailureRecorder? failures = null)
     {
-        SQLitePCL.Batteries_V2.Init();
+        Batteries_V2.Init();
         var services = new ServiceCollection();
         services.AddSingleton(recorder);
         if (failures is not null)
@@ -238,7 +238,9 @@ public sealed class ProjectionWorkerTests
 
     private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
     {
-        private void Apply(ItemAdded @event) { }
+        private void Apply(ItemAdded @event)
+        {
+        }
     }
 
     private sealed class RecordingProjection(ProjectionRecorder recorder) : IProjectionHandler<ItemAdded>
@@ -272,6 +274,7 @@ public sealed class ProjectionWorkerTests
     private sealed class ProjectionFailureRecorder
     {
         public int Attempts;
+
         public TaskCompletionSource Retried { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
     }

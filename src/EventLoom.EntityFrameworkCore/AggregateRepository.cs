@@ -1,4 +1,4 @@
-using EventLoom;
+using System.Diagnostics;
 
 namespace EventLoom.EntityFrameworkCore;
 
@@ -58,7 +58,8 @@ public sealed class AggregateRepository<TAggregate, TId>
         this.tenantAccessor = tenantAccessor;
         if (snapshotAdapter is not null && snapshotStore is null)
         {
-            throw new ArgumentException("A snapshot store is required when a snapshot adapter is configured.", nameof(snapshotStore));
+            throw new ArgumentException("A snapshot store is required when a snapshot adapter is configured.",
+                nameof(snapshotStore));
         }
 
         this.snapshotStore = snapshotStore;
@@ -87,13 +88,13 @@ public sealed class AggregateRepository<TAggregate, TId>
         var aggregate = factory(id);
         using var activity = EventLoomTelemetry.ActivitySource.StartActivity(
             "eventloom.aggregate.load",
-            System.Diagnostics.ActivityKind.Client);
+            ActivityKind.Client);
         activity?.SetTag("eventloom.aggregate.type", aggregateType ?? "unconfigured");
         var startedAt = TimeProvider.System.GetTimestamp();
         IReadOnlyList<EventEnvelope> history;
         using (var readActivity = EventLoomTelemetry.ActivitySource.StartActivity(
                    "eventloom.event-stream.read",
-                   System.Diagnostics.ActivityKind.Client))
+                   ActivityKind.Client))
         {
             history = await store.ReadStreamAsync(tenantId, streamId, cancellationToken: cancellationToken);
             readActivity?.SetTag("eventloom.event.count", history.Count);
@@ -103,7 +104,7 @@ public sealed class AggregateRepository<TAggregate, TId>
         {
             using var replayActivity = EventLoomTelemetry.ActivitySource.StartActivity(
                 "eventloom.aggregate.replay",
-                System.Diagnostics.ActivityKind.Internal);
+                ActivityKind.Internal);
             replayActivity?.SetTag("eventloom.replay.tail_event_count", history.Count);
             aggregate.ApplyHistory(history.Select(value => value.Event));
         }
@@ -128,7 +129,7 @@ public sealed class AggregateRepository<TAggregate, TId>
         var aggregate = factory(id);
         using var activity = EventLoomTelemetry.ActivitySource.StartActivity(
             "eventloom.aggregate.load",
-            System.Diagnostics.ActivityKind.Client);
+            ActivityKind.Client);
         activity?.SetTag("eventloom.aggregate.type", aggregateType);
         var startedAt = TimeProvider.System.GetTimestamp();
         long? fromVersion = null;
@@ -138,7 +139,7 @@ public sealed class AggregateRepository<TAggregate, TId>
             SnapshotEnvelope? snapshot;
             using (var snapshotActivity = EventLoomTelemetry.ActivitySource.StartActivity(
                        "eventloom.snapshot.read",
-                       System.Diagnostics.ActivityKind.Client))
+                       ActivityKind.Client))
             {
                 snapshotActivity?.SetTag("eventloom.snapshot.type", snapshotAdapter.SnapshotType);
                 snapshot = await snapshotStore.ReadLatestAsync(
@@ -179,7 +180,7 @@ public sealed class AggregateRepository<TAggregate, TId>
         IReadOnlyList<EventEnvelope> history;
         using (var readActivity = EventLoomTelemetry.ActivitySource.StartActivity(
                    "eventloom.event-stream.read",
-                   System.Diagnostics.ActivityKind.Client))
+                   ActivityKind.Client))
         {
             history = await store.ReadStreamAsync(
                 tenantId,
@@ -191,7 +192,7 @@ public sealed class AggregateRepository<TAggregate, TId>
 
         using (var replayActivity = EventLoomTelemetry.ActivitySource.StartActivity(
                    "eventloom.aggregate.replay",
-                   System.Diagnostics.ActivityKind.Internal))
+                   ActivityKind.Internal))
         {
             replayActivity?.SetTag("eventloom.replay.tail_event_count", history.Count);
             replayActivity?.SetTag("eventloom.snapshot.used", snapshotUsed);
@@ -325,9 +326,9 @@ public sealed class AggregateRepository<TAggregate, TId>
         string aggregateType,
         int tailEventCount,
         long startedAt,
-        System.Diagnostics.Activity? activity)
+        Activity? activity)
     {
-        var tags = new System.Diagnostics.TagList
+        var tags = new TagList
         {
             { "eventloom.aggregate.type", aggregateType }
         };
@@ -336,7 +337,7 @@ public sealed class AggregateRepository<TAggregate, TId>
         EventLoomTelemetry.AggregateLoadDuration.Record(
             TimeProvider.System.GetElapsedTime(startedAt).TotalMilliseconds,
             tags);
-        activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Ok);
+        activity?.SetStatus(ActivityStatusCode.Ok);
     }
 
     private void EnsureConfigured()

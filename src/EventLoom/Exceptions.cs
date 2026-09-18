@@ -7,15 +7,18 @@ public class AggregateDispatchException(string message) : InvalidOperationExcept
 
 /// <summary>Indicates that an aggregate has no typed <c>Apply</c> method for an event.</summary>
 public sealed class MissingApplyHandlerException(Type aggregateType, Type eventType)
-    : AggregateDispatchException($"Aggregate '{aggregateType.FullName}' has no Apply handler for event '{eventType.FullName}'.");
+    : AggregateDispatchException(
+        $"Aggregate '{aggregateType.FullName}' has no Apply handler for event '{eventType.FullName}'.");
 
 /// <summary>Indicates that an aggregate has more than one typed <c>Apply</c> method for an event.</summary>
 public sealed class AmbiguousApplyHandlerException(Type aggregateType, Type eventType)
-    : AggregateDispatchException($"Aggregate '{aggregateType.FullName}' has multiple Apply handlers for event '{eventType.FullName}'.");
+    : AggregateDispatchException(
+        $"Aggregate '{aggregateType.FullName}' has multiple Apply handlers for event '{eventType.FullName}'.");
 
 /// <summary>Indicates that a discovered aggregate <c>Apply</c> method violates dispatch requirements.</summary>
 public sealed class InvalidApplyHandlerException(MethodInfo method, string reason)
-    : AggregateDispatchException($"Apply handler '{method.DeclaringType?.FullName}.{method.Name}' is invalid: {reason}");
+    : AggregateDispatchException(
+        $"Apply handler '{method.DeclaringType?.FullName}.{method.Name}' is invalid: {reason}");
 
 /// <summary>Indicates that an aggregate received an event owned by another aggregate type.</summary>
 public sealed class EventOwnershipException(Type aggregateType, Type eventType)

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="EventLoom.Ordering.AppHost/EventLoom.Ordering.AppHost.csproj" />
+  <Project Path="EventLoom.Ordering.Api/EventLoom.Ordering.Api.csproj" />
+  <Project Path="EventLoom.ServiceDefaults/EventLoom.ServiceDefaults.csproj" />
+</Solution>

@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization.Metadata;
-using EventLoom;
 
 namespace EventLoom.Hosting;
 

@@ -1,4 +1,3 @@
-using EventLoom;
 using EventLoom.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -14,7 +13,9 @@ internal sealed class ProjectionWorker(
     TimeProvider timeProvider,
     ILogger<ProjectionWorker> logger) : BackgroundService
 {
-    private readonly IServiceScopeFactory scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
+    private readonly IServiceScopeFactory scopeFactory =
+        scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
+
     private readonly ProjectionRegistry registry = registry ?? throw new ArgumentNullException(nameof(registry));
     private readonly EventStoreWorkerOptions options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));

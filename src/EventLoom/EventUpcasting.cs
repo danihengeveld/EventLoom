@@ -57,7 +57,8 @@ public sealed class EventUpcasterChain
 
         if (targetVersion < fromVersion)
         {
-            throw new ArgumentOutOfRangeException(nameof(targetVersion), "Target version cannot precede source version.");
+            throw new ArgumentOutOfRangeException(nameof(targetVersion),
+                "Target version cannot precede source version.");
         }
 
         var current = payload;

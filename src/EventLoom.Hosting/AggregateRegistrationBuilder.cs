@@ -1,5 +1,3 @@
-using EventLoom;
-
 namespace EventLoom.Hosting;
 
 /// <summary>Configures persistence for one aggregate type.</summary>

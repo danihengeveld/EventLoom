@@ -1,3 +1,4 @@
+using System.Data.Common;
 using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using Microsoft.Data.Sqlite;
@@ -32,7 +33,7 @@ public sealed class EventStoreSqliteTests
 internal static class SqliteConnectionExtensions
 {
     public static async Task<IReadOnlyList<string>> QueryAsync(
-        this System.Data.Common.DbConnection connection,
+        this DbConnection connection,
         string sql)
     {
         await using var command = connection.CreateCommand();

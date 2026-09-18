@@ -156,7 +156,7 @@ public sealed class OutboxStore(EventStoreDbContext context, TimeProvider timePr
         var entity = await context.Outbox.SingleOrDefaultAsync(
             value => value.MessageId == message.MessageId,
             cancellationToken) ?? throw new InvalidOperationException(
-                $"Outbox message '{message.MessageId}' does not exist.");
+            $"Outbox message '{message.MessageId}' does not exist.");
         if (entity.TenantId != message.TenantId)
         {
             throw new InvalidOperationException("The outbox message tenant does not match the supplied message.");
@@ -263,7 +263,7 @@ public sealed class OutboxStore(EventStoreDbContext context, TimeProvider timePr
     }
 
     /// <summary>Gets the stable lease name used by tenant outbox publishers.</summary>
-    public static string GetLeaseName() => "outbox:publisher";
+    public const string OutboxPublisherLeaseName = "outbox:publisher";
 
     private async Task VerifyLeaseAsync(
         string tenantId,
@@ -273,7 +273,7 @@ public sealed class OutboxStore(EventStoreDbContext context, TimeProvider timePr
         var active = await context.ProjectionLeases.AsNoTracking().SingleOrDefaultAsync(
             value =>
                 value.TenantId == tenantId &&
-                value.LeaseName == GetLeaseName() &&
+                value.LeaseName == OutboxPublisherLeaseName &&
                 value.OwnerId == lease.OwnerId &&
                 value.FencingToken == lease.FencingToken,
             cancellationToken);
@@ -307,6 +307,6 @@ public sealed class OutboxStore(EventStoreDbContext context, TimeProvider timePr
                 entity.CausationId,
                 entity.Actor,
                 JsonSerializer.Deserialize<Dictionary<string, string>>(entity.Headers)
-                    ?? throw new InvalidOperationException(
-                        $"Outbox message '{entity.MessageId}' has invalid metadata headers."));
+                ?? throw new InvalidOperationException(
+                    $"Outbox message '{entity.MessageId}' has invalid metadata headers."));
 }

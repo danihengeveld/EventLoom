@@ -1,7 +1,5 @@
 namespace EventLoom.EntityFrameworkCore;
 
-using EventLoom;
-
 /// <summary>
 /// Controls the names and schema used by the EventLoom event-store tables.
 /// </summary>

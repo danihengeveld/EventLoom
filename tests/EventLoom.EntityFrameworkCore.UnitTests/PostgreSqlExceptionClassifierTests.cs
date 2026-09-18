@@ -18,8 +18,10 @@ public sealed class PostgreSqlExceptionClassifierTests
     {
         await Assert.That(PostgreSqlExceptionClassifier.Classify(new NpgsqlException("connection failed")))
             .IsEqualTo(PostgreSqlExceptionClassification.Transient);
-        await Assert.That(PostgreSqlExceptionClassifier.IsTransient(PostgreSqlExceptionClassification.Deadlock)).IsTrue();
-        await Assert.That(PostgreSqlExceptionClassifier.IsTransient(PostgreSqlExceptionClassification.UniqueViolation)).IsFalse();
+        await Assert.That(PostgreSqlExceptionClassifier.IsTransient(PostgreSqlExceptionClassification.Deadlock))
+            .IsTrue();
+        await Assert.That(PostgreSqlExceptionClassifier.IsTransient(PostgreSqlExceptionClassification.UniqueViolation))
+            .IsFalse();
     }
 
     private static PostgreSqlExceptionClassification Classify(string sqlState) =>

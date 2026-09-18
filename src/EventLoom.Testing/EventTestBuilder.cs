@@ -15,9 +15,9 @@ public sealed class EventTestBuilder<TEvent>
     public TEvent Build() =>
         value ?? throw new InvalidOperationException($"No {typeof(TEvent).Name} was configured.");
 
-    public string Serialize(EventLoom.EventSerializer serializer) =>
+    public string Serialize(EventSerializer serializer) =>
         serializer.Serialize(Build());
 
-    public JsonDocument SerializeToDocument(EventLoom.EventSerializer serializer) =>
+    public JsonDocument SerializeToDocument(EventSerializer serializer) =>
         JsonDocument.Parse(Serialize(serializer));
 }

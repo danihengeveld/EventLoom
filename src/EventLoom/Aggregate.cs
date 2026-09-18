@@ -90,7 +90,7 @@ public abstract class Aggregate<TId> : Aggregate
     private void ApplyEvent(object @event)
     {
         var owner = DomainEventContract.GetAggregateType(@event.GetType());
-        if (owner is null || !owner.IsAssignableFrom(GetType()))
+        if (owner is null || !owner.IsInstanceOfType(this))
         {
             throw new EventOwnershipException(GetType(), @event.GetType());
         }
@@ -125,7 +125,8 @@ public abstract class Aggregate<TId> : Aggregate
             {
                 if (method.IsStatic || method.IsAbstract || method.ContainsGenericParameters)
                 {
-                    throw new InvalidApplyHandlerException(method, "handlers must be non-static, non-generic, and concrete");
+                    throw new InvalidApplyHandlerException(method,
+                        "handlers must be non-static, non-generic, and concrete");
                 }
 
                 var parameters = method.GetParameters();

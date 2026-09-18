@@ -23,6 +23,14 @@
         "resolved": "2.17.4",
         "contentHash": "Vd2o9UgoV199HvZ2FuW1W/pZ2nwAr1tsGqE+g4++GjoDmK4Lla/OCXRaUpj86JX6idlapc0L9BHOR26tYibguA=="
       },
+      "Microsoft.Build.Tasks.Git": {
+        "type": "Transitive",
+        "resolved": "10.0.400",
+        "contentHash": "uXJ/eBDqAo9HlyPjvvvynjHb59KXQWG9txpBzyI1drO6MV3Lhndt2yhxuMKvIga4kND2UKc3xCNXlXBhWU8Hlg==",
+        "dependencies": {
+          "System.IO.Hashing": "10.0.11"
+        }
+      },
       "Microsoft.EntityFrameworkCore.Abstractions": {
         "type": "Transitive",
         "resolved": "10.0.4",
@@ -95,6 +103,11 @@
           "Microsoft.Extensions.Compliance.Abstractions": "10.8.0"
         }
       },
+      "Microsoft.SourceLink.Common": {
+        "type": "Transitive",
+        "resolved": "10.0.400",
+        "contentHash": "Knli3Y2k/rdBqUlQ8TP+Sbd0J0jV/0kvgLsxieowoVayioZ0JGfqb9go+/dQJqtU53i6IpZzRxAPxbBT5UJBNg=="
+      },
       "OpenTelemetry.Api": {
         "type": "Transitive",
         "resolved": "1.18.0",
@@ -129,13 +142,22 @@
           "Polly.Core": "8.4.2"
         }
       },
+      "System.IO.Hashing": {
+        "type": "Transitive",
+        "resolved": "10.0.11",
+        "contentHash": "OzKDcIRkeNJeC8qAsbn8yJXnfTLP1dtkWILe+T56Gf/z+IkAASi7sMqLqJQat08j5z/mRN5xVtoAwbkMNMoBUQ=="
+      },
       "eventloom": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.SourceLink.GitHub": "[10.0.400, )"
+        }
       },
       "eventloom.aspnetcore": {
         "type": "Project",
         "dependencies": {
-          "EventLoom.Hosting": "[0.1.0-alpha.0, )"
+          "EventLoom.Hosting": "[0.1.0-alpha.0, )",
+          "Microsoft.SourceLink.GitHub": "[10.0.400, )"
         }
       },
       "eventloom.entityframeworkcore": {
@@ -143,7 +165,8 @@
         "dependencies": {
           "EventLoom": "[0.1.0-alpha.0, )",
           "Microsoft.EntityFrameworkCore": "[10.0.4, )",
-          "Microsoft.EntityFrameworkCore.Relational": "[10.0.4, )"
+          "Microsoft.EntityFrameworkCore.Relational": "[10.0.4, )",
+          "Microsoft.SourceLink.GitHub": "[10.0.400, )"
         }
       },
       "eventloom.entityframeworkcore.postgresql": {
@@ -151,6 +174,7 @@
         "dependencies": {
           "EventLoom.EntityFrameworkCore": "[0.1.0-alpha.0, )",
           "EventLoom.Hosting": "[0.1.0-alpha.0, )",
+          "Microsoft.SourceLink.GitHub": "[10.0.400, )",
           "Npgsql.EntityFrameworkCore.PostgreSQL": "[10.0.1, )"
         }
       },
@@ -158,6 +182,7 @@
         "type": "Project",
         "dependencies": {
           "EventLoom.EntityFrameworkCore": "[0.1.0-alpha.0, )",
+          "Microsoft.SourceLink.GitHub": "[10.0.400, )",
           "OpenTelemetry": "[1.18.0, )"
         }
       },
@@ -209,6 +234,17 @@
         "contentHash": "OflwReySDxjF/zVe2mo0ZqmZjVVPCJ68CoT91CG+j+gjeK4nByslvr8LFd7DcOs2VKHZZsKxfIejcysjEMG3Ng==",
         "dependencies": {
           "Microsoft.Extensions.ServiceDiscovery.Abstractions": "10.8.0"
+        }
+      },
+      "Microsoft.SourceLink.GitHub": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.400, )",
+        "resolved": "10.0.400",
+        "contentHash": "N1Ut0+EmMb2Tma9spHxAgpCspkln4gst1RWYc1PYPn8LA4KJWDSiggKpE183lfR98TNG2C+XnJ71zSYtuCSsqA==",
+        "dependencies": {
+          "Microsoft.Build.Tasks.Git": "10.0.400",
+          "Microsoft.SourceLink.Common": "10.0.400",
+          "System.IO.Hashing": "10.0.11"
         }
       },
       "Npgsql": {

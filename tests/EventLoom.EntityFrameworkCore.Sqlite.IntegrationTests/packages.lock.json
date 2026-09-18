@@ -39,6 +39,14 @@
         "resolved": "2.23.0",
         "contentHash": "nWArUZTdU7iqZLycLKWe0TDms48KKGE6pONH2terYNa8REXiqixrMOkf1sk5DHGMaUTqONU2YkS4SAXBhLStgw=="
       },
+      "Microsoft.Build.Tasks.Git": {
+        "type": "Transitive",
+        "resolved": "10.0.400",
+        "contentHash": "uXJ/eBDqAo9HlyPjvvvynjHb59KXQWG9txpBzyI1drO6MV3Lhndt2yhxuMKvIga4kND2UKc3xCNXlXBhWU8Hlg==",
+        "dependencies": {
+          "System.IO.Hashing": "10.0.11"
+        }
+      },
       "Microsoft.DiaSymReader": {
         "type": "Transitive",
         "resolved": "2.2.10",
@@ -200,6 +208,11 @@
         "resolved": "10.0.11",
         "contentHash": "SXcz+kF+4Oo9b1+55zntpJFYfwb1jw66ioxptyNOOTDc8g2FHnBFWjZpsWfCvZIhzr0x+4e2trVTs4OKwQfBtw=="
       },
+      "Microsoft.SourceLink.Common": {
+        "type": "Transitive",
+        "resolved": "10.0.400",
+        "contentHash": "Knli3Y2k/rdBqUlQ8TP+Sbd0J0jV/0kvgLsxieowoVayioZ0JGfqb9go+/dQJqtU53i6IpZzRxAPxbBT5UJBNg=="
+      },
       "Microsoft.Testing.Extensions.CodeCoverage": {
         "type": "Transitive",
         "resolved": "18.10.0",
@@ -281,6 +294,11 @@
           "SQLitePCLRaw.core": "2.1.13"
         }
       },
+      "System.IO.Hashing": {
+        "type": "Transitive",
+        "resolved": "10.0.11",
+        "contentHash": "OzKDcIRkeNJeC8qAsbn8yJXnfTLP1dtkWILe+T56Gf/z+IkAASi7sMqLqJQat08j5z/mRN5xVtoAwbkMNMoBUQ=="
+      },
       "TUnit.Assertions": {
         "type": "Transitive",
         "resolved": "1.68.4",
@@ -303,14 +321,18 @@
         }
       },
       "eventloom": {
-        "type": "Project"
+        "type": "Project",
+        "dependencies": {
+          "Microsoft.SourceLink.GitHub": "[10.0.400, )"
+        }
       },
       "eventloom.entityframeworkcore": {
         "type": "Project",
         "dependencies": {
           "EventLoom": "[0.1.0-alpha.0, )",
           "Microsoft.EntityFrameworkCore": "[10.0.4, )",
-          "Microsoft.EntityFrameworkCore.Relational": "[10.0.4, )"
+          "Microsoft.EntityFrameworkCore.Relational": "[10.0.4, )",
+          "Microsoft.SourceLink.GitHub": "[10.0.400, )"
         }
       },
       "eventloom.entityframeworkcore.sqlite": {
@@ -319,6 +341,7 @@
           "EventLoom.EntityFrameworkCore": "[0.1.0-alpha.0, )",
           "EventLoom.Hosting": "[0.1.0-alpha.0, )",
           "Microsoft.EntityFrameworkCore.Sqlite.Core": "[10.0.4, )",
+          "Microsoft.SourceLink.GitHub": "[10.0.400, )",
           "SQLitePCLRaw.bundle_e_sqlite3": "[2.1.13, )"
         }
       },
@@ -329,6 +352,7 @@
           "Microsoft.Extensions.DependencyInjection": "[10.0.11, )",
           "Microsoft.Extensions.Diagnostics.HealthChecks": "[10.0.11, )",
           "Microsoft.Extensions.Hosting.Abstractions": "[10.0.11, )",
+          "Microsoft.SourceLink.GitHub": "[10.0.400, )",
           "OpenTelemetry": "[1.18.0, )"
         }
       },
@@ -403,6 +427,17 @@
           "Microsoft.Extensions.Diagnostics.Abstractions": "10.0.11",
           "Microsoft.Extensions.FileProviders.Abstractions": "10.0.11",
           "Microsoft.Extensions.Logging.Abstractions": "10.0.11"
+        }
+      },
+      "Microsoft.SourceLink.GitHub": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.400, )",
+        "resolved": "10.0.400",
+        "contentHash": "N1Ut0+EmMb2Tma9spHxAgpCspkln4gst1RWYc1PYPn8LA4KJWDSiggKpE183lfR98TNG2C+XnJ71zSYtuCSsqA==",
+        "dependencies": {
+          "Microsoft.Build.Tasks.Git": "10.0.400",
+          "Microsoft.SourceLink.Common": "10.0.400",
+          "System.IO.Hashing": "10.0.11"
         }
       },
       "OpenTelemetry": {

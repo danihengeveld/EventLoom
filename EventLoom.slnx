@@ -13,6 +13,7 @@
     <Project Path="samples/EventLoom.Ordering.AppHost/EventLoom.Ordering.AppHost.csproj" />
     <Project Path="samples/EventLoom.Ordering.Api/EventLoom.Ordering.Api.csproj" />
     <Project Path="samples/EventLoom.ServiceDefaults/EventLoom.ServiceDefaults.csproj" />
+    <File Path="samples/EventLoom.Samples.slnx"/>
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/EventLoom.Analyzers.Tests/EventLoom.Analyzers.Tests.csproj" />
@@ -20,5 +21,10 @@
     <Project Path="tests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests.csproj" />
     <Project Path="tests/EventLoom.EntityFrameworkCore.UnitTests/EventLoom.EntityFrameworkCore.UnitTests.csproj" />
     <Project Path="tests/EventLoom.UnitTests/EventLoom.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/solution/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
   </Folder>
 </Solution>

@@ -19,7 +19,9 @@ internal sealed class OutboxPublisherWorker(
     TimeProvider timeProvider,
     ILogger<OutboxPublisherWorker> logger) : BackgroundService
 {
-    private readonly IServiceScopeFactory scopeFactory = scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
+    private readonly IServiceScopeFactory scopeFactory =
+        scopeFactory ?? throw new ArgumentNullException(nameof(scopeFactory));
+
     private readonly OutboxOptions options = options ?? throw new ArgumentNullException(nameof(options));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     private readonly ILogger<OutboxPublisherWorker> logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -62,7 +64,7 @@ internal sealed class OutboxPublisherWorker(
         var leases = services.GetRequiredService<WorkerLeaseStore>();
         var lease = await leases.TryAcquireAsync(
             tenantId,
-            OutboxStore.GetLeaseName(),
+            OutboxStore.OutboxPublisherLeaseName,
             options.InstanceId,
             options.LeaseDuration,
             cancellationToken);
@@ -79,7 +81,7 @@ internal sealed class OutboxPublisherWorker(
                 progressed |= await PublishAsync(services, store, message, lease, cancellationToken);
                 lease = await leases.TryAcquireAsync(
                     tenantId,
-                    OutboxStore.GetLeaseName(),
+                    OutboxStore.OutboxPublisherLeaseName,
                     options.InstanceId,
                     options.LeaseDuration,
                     cancellationToken) ?? throw new OutboxLeaseLostException(tenantId);
