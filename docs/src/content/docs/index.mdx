@@ -3,29 +3,49 @@ title: EventLoom
 description: Event sourcing for .NET 10 applications using EF Core.
 ---
 
-EventLoom is an opinionated event-sourcing library for .NET 10. It provides
-immutable, versioned events; aggregate replay; a dedicated EF Core event store;
-and safe PostgreSQL and SQLite persistence paths.
+EventLoom is an opinionated event-sourcing library for .NET 10 and EF Core 10.
+It gives .NET applications an explicit event model, a dedicated relational
+event store, aggregate repositories, snapshots, projections, and a
+transactional outbox.
 
-## Choose your path
+```mermaid
+flowchart LR
+    App[Application] --> Domain[Aggregates and events]
+    Domain --> Store[EventLoom event store]
+    Store --> Postgres[PostgreSQL<br/>distributed production]
+    Store --> Sqlite[SQLite<br/>local or single process]
+    Store --> Workers[Projections and outbox]
+```
 
-- **New to EventLoom?** Start with [Installation](/getting-started/installation)
-  and [Build your first aggregate](/getting-started/first-aggregate).
-- **Adding EventLoom to an application?** Read
-  [Configure the event store](/guides/configure-ef-core), then
-  [Append and read events](/guides/append-and-read).
-- **Building a service?** The [Ordering API sample](/guides/ordering-api)
-  demonstrates scoped tenancy, aggregate commands, metadata, idempotency keys,
-  snapshots, and an asynchronous order-summary projection.
-- **Preparing a PostgreSQL deployment?** Follow
-  [Production deployment](/guides/production-deployment).
+## Choose your next step
 
-## What EventLoom provides today
+| I want to... | Start here |
+| --- | --- |
+| Evaluate EventLoom from this repository | [Installation](/getting-started/installation) |
+| Learn the event-sourcing programming model | [Build your first aggregate](/getting-started/first-aggregate) |
+| Decide where and how to persist events | [Architecture](/concepts/architecture) |
+| Understand correctness and delivery guarantees | [Tenancy and ordering](/concepts/tenancy-and-ordering) and [Delivery model](/concepts/delivery-model) |
+| Add EventLoom to an application | [Configure the event store](/guides/configure-ef-core) |
+| Build read models or external integration | [Projections](/guides/projections) and [Outbox and application integration](/guides/outbox) |
+| Run EventLoom in production | [Production deployment](/guides/production-deployment) |
+
+## The developer model
+
+1. Model business facts as immutable, versioned events.
+2. Change aggregate state only by applying those events.
+3. Append an event batch atomically with an expected stream version.
+4. Build read models and external integration from the committed event log.
+
+The [Aggregates and events](/concepts/aggregates-and-events) concept explains
+why these boundaries matter. The [Ordering API sample](/guides/ordering-api)
+shows the complete application path in an ASP.NET Core service.
+
+## What EventLoom provides
 
 - `Aggregate<TId>` for event-only state changes and replay through typed
   `Apply(TEvent)` methods.
 - Stable event names and versions through `[EventType]`, explicit registration,
-  and `System.Text.Json` serialization.
+  and JSON serialization.
 - Deterministic JSON upcaster chains for changing persisted event schemas.
 - Transactional append and bounded read APIs with expected-version checks,
   UUIDv7 event IDs, and authoritative per-tenant offsets.
@@ -37,11 +57,11 @@ and safe PostgreSQL and SQLite persistence paths.
 - Checkpointed asynchronous projections, atomic EF projection handlers, and
   explicitly registered inline projections.
 
-## Current scope
+## Current status
 
-EventLoom is pre-release software and NuGet packages are not published yet.
-The current source tree and sample are the supported way to evaluate it.
-Snapshot capture/replay and projections are available; outbox publishing and
-public package-release automation are not yet available. See the
-[implementation roadmap](/reference/roadmap)
-for the staged plan.
+EventLoom is pre-release software and its NuGet packages are not published
+yet. Use this repository to evaluate it; package names in examples describe
+the planned public distribution surface. Check the
+[packages and compatibility reference](/reference/packages) and
+[configuration reference](/reference/configuration) before relying on a
+feature that affects persisted data or operational behavior.

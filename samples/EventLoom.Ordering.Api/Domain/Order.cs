@@ -12,7 +12,7 @@ internal sealed record OrderCancelled(string Reason) : IDomainEvent<Order>;
 internal sealed record OrderItem(string Sku, int Quantity);
 
 [SnapshotType("ordering.order", Version = 1)]
-internal sealed record OrderSnapshot(string Status, IReadOnlyList<OrderItem> Items) : IAggregateSnapshot;
+internal sealed record OrderSnapshot(string Status, IReadOnlyList<OrderItem> Items) : IAggregateSnapshot<Order>;
 
 internal sealed class Order(Guid id) : Aggregate<Guid>(id)
 {
@@ -46,7 +46,9 @@ internal sealed class Order(Guid id) : Aggregate<Guid>(id)
         Raise(new OrderCancelled(reason));
     }
 
-    public void Restore(OrderSnapshot snapshot)
+    private OrderSnapshot CreateSnapshot() => new(Status, Items.ToArray());
+
+    private void RestoreSnapshot(OrderSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         _items.Clear();

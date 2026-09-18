@@ -1,88 +1,91 @@
 ---
 title: Aggregates and events
-description: Model state changes as immutable domain events and replay them safely.
+description: Model business decisions as durable facts and make live behavior replay exactly like history.
 ---
 
-## Events are persisted contracts
+An aggregate is a small consistency boundary. Its public methods decide whether
+a business action is valid; its events record that an accepted action happened.
+EventLoom uses the same event application code both immediately and during
+rehydration.
 
-An EventLoom event implements `IDomainEvent<TAggregate>` and carries an
-`[EventType]` attribute:
+```mermaid
+sequenceDiagram
+    participant C as Command handler
+    participant A as Aggregate
+    participant R as Repository
+    participant S as Event store
+    C->>A: Place("coffee", 2)
+    A->>A: Raise(OrderPlaced)
+    A->>A: Apply(OrderPlaced)
+    A-->>C: PendingEvents
+    C->>R: SaveAsync(order)
+    R->>S: append batch
+    S-->>R: persisted envelopes
+    R-->>A: clear pending events
+```
+
+## An event is a persisted contract
+
+Use an immutable type, a stable event name, a positive schema version, and an
+explicit aggregate owner:
 
 ```csharp
 [EventType("orders.order-placed", Version = 1)]
 public sealed record OrderPlaced(string Sku, int Quantity) : IDomainEvent<Order>;
 ```
 
-Every event belongs to one aggregate. This explicit link lets EventLoom's
-analyzer verify its `Apply` handler and reject attempts to raise it from a
-different aggregate.
+The CLR type name is not part of the stored identity. You may rename
+`OrderPlaced` later without rewriting data when the stable event name and its
+serialized shape stay compatible.
 
-The name is a permanent storage contract. Choose a business-oriented,
-lowercase, namespaced name; do not derive it from a namespace or CLR type.
-Renaming `OrderPlaced` later does not require a migration when the stable event
-name remains unchanged.
+Keep stream ID, tenant ID, event ID, versions, timestamps, and technical
+transport data out of the payload. Those are immutable envelope fields supplied
+by EventLoom.
 
-The event payload should not contain technical stream, tenant, or event
-identity. EventLoom writes that information in the envelope.
-
-## Aggregate lifecycle
+## An aggregate applies its own events
 
 ```csharp
 public sealed class Order(Guid id) : Aggregate<Guid>(id)
 {
-    public string Status { get; private set; } = "new";
+    public string Status { get; private set; } = "draft";
 
-    public void Place() => Raise(new OrderPlaced("coffee", 2));
+    public void Place(string sku, int quantity)
+    {
+        if (Status != "draft" || quantity <= 0)
+        {
+            throw new InvalidOperationException("Only a draft order can be placed.");
+        }
+
+        Raise(new OrderPlaced(sku, quantity));
+    }
 
     private void Apply(OrderPlaced @event) => Status = "placed";
 }
 ```
 
-`Raise` applies an event to the current aggregate and exposes it through
-`PendingEvents`. `ApplyHistory` applies stored events without making them
-pending. `AggregateRepository.SaveAsync` persists pending events and clears
-them only after a non-idempotent successful append.
+`Raise` immediately applies the event, increments the aggregate version, and
+adds it to `PendingEvents`. `ApplyHistory` replays stored events without adding
+them to `PendingEvents`.
 
-Use the aggregate's public behavior to enforce business invariants. Do not
-change aggregate state outside `Apply` methods, or replay will produce a
-different result from the live command path.
+`Apply` handlers must be instance methods that are private or protected, take
+exactly one event parameter, and return `void`. EventLoom validates this shape
+and validates that an aggregate raises only events it owns.
 
-## Event registration
+## Persist aggregates through a configured repository
 
-EventLoom does not scan assemblies by default:
-
-```csharp
-services
-    .AddEventLoom()
-    .UsePostgreSql(connectionString)
-    .AddEvent<OrderPlaced>()
-    .AddEvent<OrderCancelled>();
-```
-
-Explicit registration makes the persisted event surface visible at startup and
-fails early for missing or duplicate stable event names. Use
-`AddEventsFromAssemblyContaining<T>()` only when the application deliberately
-accepts convention-based discovery.
-
-## Strongly typed IDs
-
-Aggregates can use any identifier type:
+Configure the aggregate's durable identity once:
 
 ```csharp
-public readonly record struct OrderId(Guid Value);
-
-public sealed class Order(OrderId id) : Aggregate<OrderId>(id);
-```
-
-At the persistence boundary, configure one canonical stream conversion:
-
-```csharp
-eventLoom.AddAggregate<Order, OrderId>(aggregate => aggregate
+eventLoom.AddAggregate<Order, Guid>(aggregate => aggregate
     .ConstructWith(id => new Order(id))
-    .UseStream("order", id => id.Value.ToString("N")));
+    .UseStream("order", id => id.ToString("D")));
 ```
 
-The conversion must be stable for the lifetime of the stream. EventLoom
-includes `GuidIdConverter` and `StringIdConverter` for code that needs
-bidirectional canonical conversion; the configured repository requires only
-the forward stream-ID conversion.
+Both the aggregate type string and stream-ID conversion are persisted
+contracts. Keep them stable after writing data. The configured repository then
+loads by ID, replays the stream, derives optimistic concurrency expectations,
+and saves the events raised by normal domain methods.
+
+Use `EventStore` directly only when background, import, repair, or integration
+code must provide an explicit stream identity. See [Append and read
+events](/guides/append-and-read).

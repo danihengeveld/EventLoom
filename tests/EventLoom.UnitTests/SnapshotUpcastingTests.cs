@@ -5,17 +5,16 @@ namespace EventLoom.UnitTests;
 public sealed class SnapshotUpcastingTests
 {
     [Test]
-    public async Task Adapter_upcasts_a_historical_snapshot_before_restoring()
+    public async Task Snapshot_upcaster_chain_transforms_a_historical_snapshot()
     {
-        SnapshotV2? restored = null;
-        var adapter = new AggregateSnapshotAdapter<object, SnapshotV2>(
-            _ => new SnapshotV2(0, "EUR"),
-            (_, snapshot) => restored = snapshot,
-            upcasters: [new SnapshotV1ToV2()]);
+        var chain = new SnapshotUpcasterChain("tests.counter", [new SnapshotV1ToV2()]);
+        var payload = chain.Upcast(JsonSerializer.SerializeToElement(new { value = 5 }), 1, 2);
 
-        adapter.Restore(new object(), 1, """{"value":5}""");
+        var snapshot = JsonSerializer.Deserialize<SnapshotV2>(
+            payload.GetRawText(),
+            new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
-        await Assert.That(restored).IsEqualTo(new SnapshotV2(5, "EUR"));
+        await Assert.That(snapshot).IsEqualTo(new SnapshotV2(5, "EUR"));
     }
 
     [Test]
@@ -37,7 +36,9 @@ public sealed class SnapshotUpcastingTests
     }
 
     [SnapshotType("tests.counter", Version = 2)]
-    private sealed record SnapshotV2(int Value, string Currency) : IAggregateSnapshot;
+    private sealed record SnapshotV2(int Value, string Currency) : IAggregateSnapshot<SnapshotAggregate>;
+
+    private sealed class SnapshotAggregate(Guid id) : Aggregate<Guid>(id);
 
     private sealed class SnapshotV1ToV2 : ISnapshotUpcaster
     {

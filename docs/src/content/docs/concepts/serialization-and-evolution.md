@@ -1,60 +1,50 @@
 ---
 title: Serialization and event evolution
-description: Register stable event schemas, opt into source-generated JSON, and evolve historical payloads.
+description: Treat event JSON as a versioned public contract and evolve historical data with deterministic upcasters.
 ---
 
-EventLoom serializes registered events with `System.Text.Json`. A stored event
-is located by its stable event name and schema version, never by its CLR type
-name.
+Once an event is stored, its name, version, and JSON shape become durable
+application data. EventLoom locates an event by its stable `[EventType]` name
+and schema version, never by its CLR type name.
 
-## Default serialization
-
-Reflection serialization is enabled by default:
-
-```csharp
-services
-    .AddEventLoom()
-    .UsePostgreSql(connectionString)
-    .AddEvent<OrderPlaced>();
+```mermaid
+flowchart LR
+    V1[orders.order-placed v1 JSON] --> Upcaster[V1 to V2 upcaster]
+    Upcaster --> V2[orders.order-placed v2 JSON]
+    V2 --> Current[Current OrderPlaced CLR type]
 ```
 
-This is the simplest option for ordinary server applications.
+## What can change safely
 
-## Source-generated metadata
+| Change | Safe without data migration? | Requirement |
+| --- | --- | --- |
+| Rename a CLR event type or move its namespace | Yes | Keep the stable event name and compatible JSON contract. |
+| Add a new event type | Yes | Register a new unique event name. |
+| Change an event payload shape | Not directly | Increase the event version and register a complete upcaster chain. |
+| Change JSON naming, converters, reference handling, or number handling | Usually no | Treat the serializer setting as a stored-data compatibility change. |
+| Remove a historical event type | Yes | Keep one current type and upcast historical JSON to it. |
 
-For trimming or Native AOT-oriented applications, generate metadata in your
-application and register its context:
+## Default JSON serialization
+
+EventLoom uses camel-case property names, strict number handling, and
+case-sensitive property names by default. Explicitly register every persisted
+event:
 
 ```csharp
-[JsonSerializable(typeof(OrderPlaced))]
-[JsonSerializable(typeof(OrderCancelled))]
-public partial class OrderingJsonContext : JsonSerializerContext;
-
-services
-    .AddEventLoom()
-    .UsePostgreSql(connectionString)
-    .AddJsonSerializerContext(OrderingJsonContext.Default)
+eventLoom
     .AddEvent<OrderPlaced>()
     .AddEvent<OrderCancelled>();
 ```
 
-Register every event type that can be persisted or deserialized. EventLoom
-currently retains reflection fallback; strict source-generated-only execution
-is available from `EventSerializer` construction for advanced composition.
+Use `ConfigureEventSerialization(...)` to add converters or change these
+defaults. Treat each setting as a persisted-data compatibility decision.
 
-## Evolve an event without retaining old CLR types
+## Evolve payloads one version at a time
 
-Increase `EventType.Version` when a serialized payload changes. Keep one
-current CLR event type and register deterministic upcasters for each historical
-step:
+Increase `EventType.Version` for a payload change. An `IEventUpcaster` receives
+JSON and transforms exactly one version to the next:
 
 ```csharp
-using System.Text.Json;
-
-[EventType("orders.order-placed", Version = 2)]
-public sealed record OrderPlaced(string Sku, int Quantity, string Currency)
-    : IDomainEvent<Order>;
-
 public sealed class OrderPlacedV1ToV2 : IEventUpcaster
 {
     public string EventName => "orders.order-placed";
@@ -63,28 +53,21 @@ public sealed class OrderPlacedV1ToV2 : IEventUpcaster
 
     public JsonElement Upcast(JsonElement payload)
     {
-        var fields = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
+        var values = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
             payload.GetRawText())
             ?? throw new InvalidOperationException("The v1 payload was empty.");
-        fields["currency"] = JsonSerializer.SerializeToElement("EUR");
-        return JsonSerializer.SerializeToElement(fields);
+
+        values["currency"] = JsonSerializer.SerializeToElement("EUR");
+        return JsonSerializer.SerializeToElement(values);
     }
 }
 ```
 
-Register the current event and each upcaster:
+Upcasters must be deterministic, side-effect-free, and complete from every
+stored version to the current version. Do not read a database, clock, network,
+or runtime configuration while upcasting. EventLoom rejects incomplete,
+ambiguous, and non-sequential chains.
 
-```csharp
-eventLoom
-    .AddEvent<OrderPlaced>()
-    .AddUpcaster(new OrderPlacedV1ToV2());
-```
-
-Upcasters must advance exactly one version, be deterministic, and have no
-database, clock, network, or other external side effects. EventLoom rejects
-ambiguous chains and throws if a stored payload cannot reach the current
-version.
-
-Do not modify the meaning of an existing serialized field in place. Add a new
-event when the business fact itself changes; use an upcaster only to preserve
-the meaning of an existing fact.
+Snapshots use the same principle but are only a replay cache: an unusable
+snapshot can fall back to event replay. An unreadable event payload cannot be
+silently skipped, because it is part of authoritative history.

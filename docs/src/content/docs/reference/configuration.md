@@ -1,100 +1,161 @@
 ---
 title: Configuration reference
-description: Reference for EventLoom hosting, storage, tenancy, worker, and repository configuration.
+description: Complete reference for EventLoom composition methods, options, defaults, and validation rules.
 ---
 
-## Composition methods
+This page is a lookup reference for the public configuration surface. For
+worked examples, use the [configuration guide](/guides/configure-ef-core), the
+[projections guide](/guides/projections), or the
+[outbox guide](/guides/outbox).
+
+## Start from one of these configurations
+
+Use these as minimal, complete composition baselines. Add aggregate,
+projection, snapshot, and outbox registrations after choosing the provider.
+
+### PostgreSQL service
+
+```csharp
+builder.Services.AddEventLoom(eventLoom => eventLoom
+    .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
+    .UseSingleTenancy()
+    .AddEvent<OrderPlaced>()
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D"))));
+```
+
+### Multi-tenant PostgreSQL service
+
+```csharp
+builder.Services.AddEventLoom(eventLoom => eventLoom
+    .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
+    .UseMultiTenancy<AuthenticatedTenantAccessor>()
+    .AddEvent<OrderPlaced>());
+```
+
+### Local or single-process SQLite application
+
+```csharp
+builder.Services.AddEventLoom(eventLoom => eventLoom
+    .UseSqlite("Data Source=eventloom.db")
+    .UseSingleTenancy()
+    .AddEvent<OrderPlaced>());
+```
+
+Choose one provider per application. Use PostgreSQL when separate processes
+can write, project, or publish against the same event store; SQLite is limited
+to a controlled single process.
+
+## Service composition
 
 | Method | Purpose |
 | --- | --- |
-| `AddEventLoom()` | Starts fluent EventLoom service registration. Exactly one provider must be selected. |
-| `AddEvent<TEvent>()` | Registers one persisted event type explicitly. |
-| `AddEventsFromAssemblyContaining<T>()` | Opt-in registration of every concrete event in an assembly. |
-| `AddJsonSerializerContext(context)` | Adds source-generated `System.Text.Json` metadata. |
-| `ConfigureEventSerialization(configure)` | Configures resolver composition, reflection fallback, JSON naming, converters, number handling, and reference handling. |
-| `AddUpcaster(upcaster)` | Adds one deterministic historical-payload transformation. |
-| `UseSingleTenancy(tenantId)` | Uses one stable internal tenant; this is the default. |
-| `UseMultiTenancy<TAccessor>()` | Enables scoped multi-tenancy and registers its accessor. |
-| `ConfigureEventStore(configure)` | Sets schema and table-prefix options. |
-| `ConfigureWorkers(configure)` | Sets projection worker lease and retry values. |
-| `ConfigureSnapshotRetention(policy)` | Retains the requested number of recent snapshots per aggregate stream. |
-| `ConfigureProjectionModel(configure)` | Maps EF read-model entities used by transactional projections. |
-| `AddProjection(name, configure, version)` | Registers named asynchronous, transactional, or inline handlers that share one durable identity. |
-| `AddProjection<THandler, TEvent>(name, version)` | Registers an asynchronous at-least-once handler and its worker. |
-| `AddEfProjection<THandler, TEvent>(name, version)` | Registers a handler whose read-model update and checkpoint are atomic. |
-| `AddInlineProjection<THandler, TEvent>(name, version)` | Registers a handler inside the event append transaction. |
-| `AddOutboxPublisher<TPublisher>(configure)` | Enables transactional outbox writes and starts the publisher worker; optionally configures its instance identity, polling, batch size, lease, retry, and successful-delivery retention (the default deletes immediately). |
-| `UseTimeProvider(provider)` | Replaces the system clock for deterministic behavior. |
-| `UsePostgreSql(connectionString)` | Selects PostgreSQL, schemas, and retry policy. |
-| `UseSqlite(connectionString)` | Selects SQLite and disables schemas. |
+| `services.AddEventLoom()` | Starts fluent registration and returns an `EventLoomBuilder`. |
+| `services.AddEventLoom(configure)` | Runs configuration and validates it before returning the service collection. |
+| `AddEvent<TEvent>()` | Registers one concrete persisted event. |
+| `AddEventsFromAssembly(assembly)` / `AddEventsFromAssemblyContaining<T>()` | Registers concrete event types from an assembly. |
+| `AddUpcaster(upcaster)` | Registers one deterministic event-payload upcaster. |
+| `ConfigureEventSerialization(configure)` | Configures JSON serialization for persisted events. |
+| `UseSingleTenancy(tenantId)` | Uses one stable tenant; defaults to `default`. |
+| `UseMultiTenancy<TAccessor>()` | Enables multi-tenancy and registers a scoped `ITenantAccessor`. |
+| `ConfigureTenancy(mode)` | Selects a tenancy mode when the application registers `ITenantAccessor` itself. |
+| `ConfigureEventStore(configure)` | Configures table prefix, schema, and tenancy options. |
+| `ConfigureWorkers(configure)` | Configures asynchronous projection workers. |
+| `ConfigureSnapshotRetention(policy)` | Sets the default snapshot retention policy. |
+| `ConfigureProjectionModel(configure)` | Adds EF Core mappings for transactional projection read models. |
+| `AddProjection(name, configure, version)` | Registers one named projection with one or more handlers. |
+| `AddProjection<THandler, TEvent>(name, version)` | Registers an asynchronous projection handler. |
+| `AddEfProjection<THandler, TEvent>(name, version)` | Registers a transactional EF projection handler. |
+| `AddInlineProjection<THandler, TEvent>(name, version)` | Registers a handler inside the append transaction. |
+| `AddOutboxPublisher<TPublisher>(configure)` | Enables transactional outbox messages and registers the publisher worker. |
+| `UseTimeProvider(provider)` | Replaces the system clock; useful for deterministic tests. |
+
+`AddProjection(name, configure, version)` is the preferred projection API. Its
+registration builder makes the durable projection name and version explicit and
+chooses `Asynchronous`, `Transactional`, or `Inline` per handler.
+
+## Provider selection
+
+Select exactly one storage provider.
+
+| Method | Effect |
+| --- | --- |
+| `UsePostgreSql(connectionString[, configure])` | Configures PostgreSQL, enables schemas, and installs the PostgreSQL retry policy. |
+| `UsePostgreSql(connectionFactory[, configure])` | Uses a scoped `DbConnection`; required when sharing an application transaction. |
+| `UseSqlite(connectionString[, configure])` | Configures SQLite, initializes its bundled native dependency, and disables schemas. |
+| `UseSqlite(connectionFactory[, configure])` | Uses a scoped SQLite `DbConnection`; required when sharing an application transaction. |
+
+The optional provider callback configures the normal EF Core provider options.
+Provider selection owns `UseSchema`: PostgreSQL enables it and SQLite disables
+it. Do not override that setting in `ConfigureEventStore`.
 
 ## `EventStoreOptions`
 
+| Property | Default | Rules and guidance |
+| --- | --- | --- |
+| `TenancyMode` | `SingleTenant` | Use `MultiTenant` only with a scoped tenant accessor. |
+| `SingleTenantId` | `default` | Stable persisted identity for single-tenant applications. |
+| `Schema` | `eventloom` | PostgreSQL schema name. Change only through a data migration after data exists. |
+| `TablePrefix` | `eventloom_` | Prefix for every EventLoom table. Keep stable after storage is created. |
+| `UseSchema` | `false` | Provider-managed: `true` for PostgreSQL and `false` for SQLite. |
+
 ## `EventSerializationOptions`
 
-| Property | Default | Guidance |
+| Property | Default | Rules and guidance |
 | --- | --- | --- |
-| `Contexts` | Empty | Add source-generated contexts in deterministic order; all contexts are composed. |
-| `TypeInfoResolver` | `null` | Adds one resolver after registered contexts. |
-| `ReflectionFallback` | `true` | Set `false` for trimming/AOT deployments and register metadata for every event. |
-| `PropertyNamingPolicy` | `CamelCase` | Keep stable for persisted payload compatibility. |
-| `PropertyNameCaseInsensitive` | `false` | Keep strict to detect payload contract drift. |
-| `NumberHandling` | `Strict` | Avoid permissive named floating-point literals or quoted numbers unless required. |
-| `ReferenceHandler` | `null` | Events should normally be acyclic; opt into reference metadata only for an intentional contract. |
+| `Converters` | Empty | Applied in registration order. Keep each converter compatible with every persisted payload it handles. |
+| `PropertyNamingPolicy` | `CamelCase` | Treat as persisted payload compatibility. |
+| `PropertyNameCaseInsensitive` | `false` | Strict matching exposes payload drift. |
+| `NumberHandling` | `Strict` | Do not loosen without a deliberate stored-data compatibility decision. |
+| `ReferenceHandler` | `null` | Events should normally be acyclic; reference metadata changes the payload contract. |
 
-EventLoom validates every registered event during `AddEventLoom(...)`. If strict
-source generation is enabled without metadata, startup fails with the stable
-event name, version, CLR type, and remediation guidance.
-
-| Property | Default | Valid use |
-| --- | --- | --- |
-| `TenancyMode` | `SingleTenant` | Use `MultiTenant` with a scoped `ITenantAccessor`. |
-| `SingleTenantId` | `default` | Stable persisted tenant identity for a single-tenant application. |
-| `Schema` | `eventloom` | PostgreSQL schema name. |
-| `TablePrefix` | `eventloom_` | Prefix for all EventLoom tables. |
-| `UseSchema` | `false` | Provider-managed; do not override after provider selection. |
-
-## `OutboxOptions`
-
-| Property | Default | Valid use |
-| --- | --- | --- |
-| `SuccessfulDeliveryRetention` | `TimeSpan.Zero` | Keep successful messages and attempts for a non-negative duration before bounded cleanup. |
+EventLoom validates registered events during configuration. Treat every
+serializer option and converter as part of the persisted-data contract.
 
 ## `EventStoreWorkerOptions`
 
-| Property | Default | Constraint |
+`ConfigureWorkers` applies only to asynchronous projection workers.
+
+| Property | Default | Validation |
 | --- | --- | --- |
-| `InstanceId` | Machine name | Nonempty, unique per active process. |
+| `InstanceId` | Generated process identity | Nonempty and unique for each active process. |
 | `PollInterval` | 1 second | Positive. |
 | `BatchSize` | 100 | 1 through 10,000. |
-| `LeaseDuration` | 30 seconds | Positive and longer than renewal interval. |
-| `LeaseRenewalInterval` | 10 seconds | Positive and shorter than lease duration. |
+| `LeaseDuration` | 30 seconds | Positive and longer than `LeaseRenewalInterval`. |
+| `LeaseRenewalInterval` | 10 seconds | Positive and shorter than `LeaseDuration`. |
 | `MaxRetryAttempts` | 5 | 0 through 100. |
 
-## Repository registrations
+## `OutboxOptions`
 
-Use the short application path:
+Pass these options to `AddOutboxPublisher`. They do not inherit
+`ConfigureWorkers` settings.
 
-```csharp
-eventLoom.AddAggregate<Order, OrderId>(aggregate => aggregate
-    .ConstructWith(id => new Order(id))
-    .UseStream("order", id => id.Value.ToString("N")));
-```
+| Property | Default | Validation |
+| --- | --- | --- |
+| `InstanceId` | Generated process identity | Nonempty and unique for each active process. |
+| `PollInterval` | 1 second | Positive. |
+| `BatchSize` | 100 | 1 through 10,000. |
+| `LeaseDuration` | 30 seconds | Positive and longer than `LeaseRenewalInterval`. |
+| `LeaseRenewalInterval` | 10 seconds | Positive and shorter than `LeaseDuration`. |
+| `MaxRetryAttempts` | 5 | 0 through 100. |
+| `SuccessfulDeliveryRetention` | `TimeSpan.Zero` | Non-negative. Zero deletes a successfully delivered message and its attempts immediately. |
 
-The configured repository uses EventLoom's internal tenant in single-tenant
-mode. In multi-tenant mode, `LoadAsync(id)` and `SaveAsync(aggregate)` require
-the configured scoped accessor. Explicit tenant overloads remain available for
-background and administrative operations.
+## Snapshot configuration
 
-## Defaults worth preserving
+Declare an immutable snapshot DTO as `IAggregateSnapshot<TAggregate>`, then
+call `UseSnapshots<TSnapshot>(...)` in the aggregate registration. The
+aggregate must supply private `CreateSnapshot(): TSnapshot` and
+`RestoreSnapshot(TSnapshot)` methods. The typed builder accepts:
 
-- Event names and aggregate type strings are stable persisted contracts.
-- Event schema version defaults to `1`.
-- Reflection JSON serialization is enabled unless advanced composition
-  constructs `EventSerializer` in strict source-generated mode.
-- Snapshot-enabled repositories capture every 100 events by default, and the
-  store retains the latest snapshot unless `ConfigureSnapshotRetention` changes it.
-- Projection names and versions are durable checkpoint identities. Increment a
-  version to rebuild against a new or shadow read model.
-- PostgreSQL retries only classified transient conditions.
-- SQLite is not a distributed-worker provider.
+| Method | Effect |
+| --- | --- |
+| `Every(interval)` | Captures every positive number of events. |
+| `UsePolicy(policy)` | Uses custom snapshot cadence. |
+| `KeepLatest(count)` | Retains a positive number of recent snapshots. |
+| `UseRetention(policy)` | Uses custom retention. |
+| `UseUpcasters(upcasters)` | Registers deterministic migrations for earlier snapshot schemas. |
+| `UseInvalidator(invalidator)` | Removes an unusable snapshot after EventLoom safely falls back to full replay. |
+
+The default capture cadence is every 100 events. The default retention policy
+keeps the latest snapshot for each tenant and aggregate stream.

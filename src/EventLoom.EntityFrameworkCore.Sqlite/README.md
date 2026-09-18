@@ -7,6 +7,10 @@ storage without schemas.
 Use this as the application entry point for local, embedded, test, or one
 controlled-process scenarios:
 
+> **Planned package command:** EventLoom packages are not published to NuGet
+> yet. Use the [installation guide](../../docs/src/content/docs/getting-started/installation.md)
+> to reference projects from a checkout.
+
 ```bash
 dotnet add package EventLoom.EntityFrameworkCore.Sqlite --prerelease
 ```

@@ -1,10 +1,13 @@
 using System.Text.Json;
-using System.Text.Json.Serialization.Metadata;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace EventLoom;
 
 /// <summary>Marks an immutable, versioned DTO used to restore aggregate state.</summary>
-public interface IAggregateSnapshot;
+/// <typeparam name="TAggregate">The aggregate whose state this snapshot represents.</typeparam>
+public interface IAggregateSnapshot<TAggregate>
+    where TAggregate : Aggregate;
 
 /// <summary>Associates a stable persisted name and schema version with an aggregate snapshot DTO.</summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited = false)]
@@ -23,23 +26,6 @@ public sealed class SnapshotTypeAttribute(string name) : Attribute
             ? value
             : throw new ArgumentOutOfRangeException(nameof(value), "Snapshot schema version must be positive.");
     } = 1;
-}
-
-/// <summary>Captures and restores an aggregate using an application-owned versioned snapshot DTO.</summary>
-/// <typeparam name="TAggregate">The aggregate type restored by the adapter.</typeparam>
-public interface IAggregateSnapshotAdapter<TAggregate>
-{
-    /// <summary>Gets the stable persisted snapshot type.</summary>
-    string SnapshotType { get; }
-
-    /// <summary>Gets the current snapshot schema version.</summary>
-    int SchemaVersion { get; }
-
-    /// <summary>Captures aggregate state as a serialized snapshot payload.</summary>
-    string Capture(TAggregate aggregate);
-
-    /// <summary>Restores aggregate state from a serialized snapshot payload.</summary>
-    void Restore(TAggregate aggregate, int schemaVersion, string payload);
 }
 
 /// <summary>Transforms one persisted snapshot payload version into its immediate successor.</summary>
@@ -130,15 +116,8 @@ public sealed class SnapshotUpcasterChain
     }
 }
 
-/// <summary>Provides an adapter for an explicit aggregate snapshot DTO.</summary>
-/// <typeparam name="TAggregate">The aggregate type.</typeparam>
-/// <typeparam name="TSnapshot">The immutable application-owned snapshot DTO type.</typeparam>
-public sealed class AggregateSnapshotAdapter<TAggregate, TSnapshot>(
-    Func<TAggregate, TSnapshot> capture,
-    Action<TAggregate, TSnapshot> restore,
-    JsonTypeInfo<TSnapshot>? jsonTypeInfo = null,
-    IEnumerable<ISnapshotUpcaster>? upcasters = null) : IAggregateSnapshotAdapter<TAggregate>
-    where TSnapshot : IAggregateSnapshot
+internal sealed class AggregateSnapshotDispatcher<TAggregate>
+    where TAggregate : Aggregate
 {
     private static readonly JsonSerializerOptions DefaultJsonOptions = new()
     {
@@ -146,26 +125,33 @@ public sealed class AggregateSnapshotAdapter<TAggregate, TSnapshot>(
         PropertyNameCaseInsensitive = false
     };
 
-    private readonly Func<TAggregate, TSnapshot> capture = capture ?? throw new ArgumentNullException(nameof(capture));
+    private readonly Type snapshotType;
+    private readonly SnapshotTypeAttribute metadata;
+    private readonly Func<TAggregate, object> capture;
+    private readonly Action<TAggregate, object> restore;
+    private readonly SnapshotUpcasterChain? upcasterChain;
 
-    private readonly Action<TAggregate, TSnapshot>
-        restore = restore ?? throw new ArgumentNullException(nameof(restore));
+    public AggregateSnapshotDispatcher(Type snapshotType, IEnumerable<ISnapshotUpcaster>? upcasters)
+    {
+        ArgumentNullException.ThrowIfNull(snapshotType);
+        if (!typeof(IAggregateSnapshot<TAggregate>).IsAssignableFrom(snapshotType))
+        {
+            throw new InvalidOperationException(
+                $"Snapshot type '{snapshotType.FullName}' must implement IAggregateSnapshot<{typeof(TAggregate).Name}>.");
+        }
 
-    private readonly SnapshotTypeAttribute metadata = typeof(TSnapshot)
+        this.snapshotType = snapshotType;
+        metadata = snapshotType
         .GetCustomAttributes(typeof(SnapshotTypeAttribute), false)
         .OfType<SnapshotTypeAttribute>()
         .SingleOrDefault() ?? throw new InvalidOperationException(
-        $"Snapshot type '{typeof(TSnapshot).FullName}' is missing SnapshotTypeAttribute.");
-
-    private readonly SnapshotUpcasterChain? upcasterChain = upcasters is null
-        ? null
-        : new SnapshotUpcasterChain(
-            typeof(TSnapshot).GetCustomAttributes(typeof(SnapshotTypeAttribute), false)
-                .OfType<SnapshotTypeAttribute>()
-                .SingleOrDefault()?.Name
-            ?? throw new InvalidOperationException(
-                $"Snapshot type '{typeof(TSnapshot).FullName}' is missing SnapshotTypeAttribute."),
-            upcasters);
+        $"Snapshot type '{snapshotType.FullName}' is missing SnapshotTypeAttribute.");
+        capture = CreateCaptureDelegate(snapshotType);
+        restore = CreateRestoreDelegate(snapshotType);
+        upcasterChain = upcasters is null
+            ? null
+            : new SnapshotUpcasterChain(metadata.Name, upcasters);
+    }
 
     /// <inheritdoc />
     public string SnapshotType => metadata.Name;
@@ -179,9 +165,7 @@ public sealed class AggregateSnapshotAdapter<TAggregate, TSnapshot>(
     public string Capture(TAggregate aggregate)
     {
         ArgumentNullException.ThrowIfNull(aggregate);
-        return jsonTypeInfo is null
-            ? JsonSerializer.Serialize(capture(aggregate), DefaultJsonOptions)
-            : JsonSerializer.Serialize(capture(aggregate), jsonTypeInfo);
+        return JsonSerializer.Serialize(capture(aggregate), snapshotType, DefaultJsonOptions);
     }
 
     /// <inheritdoc />
@@ -209,15 +193,58 @@ public sealed class AggregateSnapshotAdapter<TAggregate, TSnapshot>(
                     .GetRawText();
             }
 
-            var snapshot = jsonTypeInfo is null
-                ? JsonSerializer.Deserialize<TSnapshot>(normalizedPayload, DefaultJsonOptions)
-                : JsonSerializer.Deserialize(normalizedPayload, jsonTypeInfo);
+            var snapshot = JsonSerializer.Deserialize(normalizedPayload, snapshotType, DefaultJsonOptions);
             restore(aggregate, snapshot ?? throw new SnapshotDeserializationException(SnapshotType));
         }
         catch (JsonException exception)
         {
             throw new SnapshotDeserializationException(SnapshotType, exception);
         }
+    }
+
+    private static Func<TAggregate, object> CreateCaptureDelegate(Type snapshotType)
+    {
+        var method = typeof(TAggregate).GetMethod(
+            "CreateSnapshot",
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            null,
+            Type.EmptyTypes,
+            null);
+        if (method is null || method.ReturnType != snapshotType || !method.IsPrivate)
+        {
+            throw new InvalidOperationException(
+                $"Aggregate '{typeof(TAggregate).FullName}' requires a private CreateSnapshot() method that returns '{snapshotType.FullName}'.");
+        }
+
+        var aggregate = Expression.Parameter(typeof(TAggregate), "aggregate");
+        return Expression.Lambda<Func<TAggregate, object>>(
+            Expression.Convert(Expression.Call(aggregate, method), typeof(object)),
+            aggregate).Compile();
+    }
+
+    private static Action<TAggregate, object> CreateRestoreDelegate(Type snapshotType)
+    {
+        var method = typeof(TAggregate).GetMethod(
+            "RestoreSnapshot",
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            null,
+            [snapshotType],
+            null);
+        if (method is null || method.ReturnType != typeof(void) || !method.IsPrivate)
+        {
+            throw new InvalidOperationException(
+                $"Aggregate '{typeof(TAggregate).FullName}' requires a private RestoreSnapshot({snapshotType.FullName}) method.");
+        }
+
+        var aggregate = Expression.Parameter(typeof(TAggregate), "aggregate");
+        var snapshot = Expression.Parameter(typeof(object), "snapshot");
+        return Expression.Lambda<Action<TAggregate, object>>(
+            Expression.Call(
+                aggregate,
+                method,
+                Expression.Convert(snapshot, snapshotType)),
+            aggregate,
+            snapshot).Compile();
     }
 }
 

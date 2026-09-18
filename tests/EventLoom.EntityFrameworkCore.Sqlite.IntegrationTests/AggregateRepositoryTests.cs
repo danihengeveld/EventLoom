@@ -80,9 +80,7 @@ public sealed class AggregateRepositoryTests
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
-        var adapter = new AggregateSnapshotAdapter<Counter, CounterSnapshot>(
-            aggregate => new CounterSnapshot(aggregate.Value),
-            (aggregate, snapshot) => aggregate.Restore(snapshot));
+        var snapshotType = typeof(CounterSnapshot);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
             id => new Counter(id),
@@ -90,7 +88,7 @@ public sealed class AggregateRepositoryTests
             id => id.ToString("D"),
             new TestTenantAccessor("tenant-a"),
             snapshots,
-            adapter,
+            snapshotType,
             new EveryNEventsSnapshotPolicy(2));
         var aggregate = new Counter(Guid.NewGuid());
 
@@ -127,9 +125,7 @@ public sealed class AggregateRepositoryTests
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
-        var adapter = new AggregateSnapshotAdapter<Counter, CounterSnapshot>(
-            aggregate => new CounterSnapshot(aggregate.Value),
-            (aggregate, snapshot) => aggregate.Restore(snapshot));
+        var snapshotType = typeof(CounterSnapshot);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
             id => new Counter(id),
@@ -137,7 +133,7 @@ public sealed class AggregateRepositoryTests
             id => id.ToString("D"),
             new TestTenantAccessor("tenant-a"),
             snapshots,
-            adapter,
+            snapshotType,
             new EveryNEventsSnapshotPolicy(100));
         var aggregate = new Counter(Guid.NewGuid());
         aggregate.Increment(2);
@@ -173,9 +169,7 @@ public sealed class AggregateRepositoryTests
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
-        var adapter = new AggregateSnapshotAdapter<Counter, CounterSnapshot>(
-            aggregate => new CounterSnapshot(aggregate.Value),
-            (aggregate, snapshot) => aggregate.Restore(snapshot));
+        var snapshotType = typeof(CounterSnapshot);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
             id => new Counter(id),
@@ -183,7 +177,7 @@ public sealed class AggregateRepositoryTests
             id => id.ToString("D"),
             new TestTenantAccessor("tenant-a"),
             snapshots,
-            adapter);
+            snapshotType);
         var aggregate = new Counter(Guid.NewGuid());
         aggregate.Increment(5);
         await repository.SaveAsync(aggregate);
@@ -216,9 +210,7 @@ public sealed class AggregateRepositoryTests
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
-        var adapter = new AggregateSnapshotAdapter<Counter, CounterSnapshot>(
-            aggregate => new CounterSnapshot(aggregate.Value),
-            (aggregate, snapshot) => aggregate.Restore(snapshot));
+        var snapshotType = typeof(CounterSnapshot);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
             id => new Counter(id),
@@ -226,7 +218,7 @@ public sealed class AggregateRepositoryTests
             id => id.ToString("D"),
             new TestTenantAccessor("tenant-a"),
             snapshots,
-            adapter,
+            snapshotType,
             snapshotInvalidator: new AlwaysInvalidateSnapshots());
         var aggregate = new Counter(Guid.NewGuid());
         aggregate.Increment(5);
@@ -327,9 +319,7 @@ public sealed class AggregateRepositoryTests
         var registry = new EventRegistry().RegisterEvent<Incremented>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
-        var adapter = new AggregateSnapshotAdapter<Counter, CounterSnapshot>(
-            aggregate => new CounterSnapshot(aggregate.Value),
-            (aggregate, snapshot) => aggregate.Restore(snapshot));
+        var snapshotType = typeof(CounterSnapshot);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
             id => new Counter(id),
@@ -337,7 +327,7 @@ public sealed class AggregateRepositoryTests
             id => id.ToString("D"),
             new TestTenantAccessor("tenant-a"),
             new SnapshotStore(context, TimeProvider.System),
-            adapter,
+            snapshotType,
             new EveryNEventsSnapshotPolicy(1));
         var aggregate = new Counter(Guid.NewGuid());
         aggregate.Increment(5);
@@ -361,11 +351,13 @@ public sealed class AggregateRepositoryTests
 
         private void Apply(Incremented @event) => Value += @event.Amount;
 
-        public void Restore(CounterSnapshot snapshot) => Value = snapshot.Value;
+        private CounterSnapshot CreateSnapshot() => new(Value);
+
+        private void RestoreSnapshot(CounterSnapshot snapshot) => Value = snapshot.Value;
     }
 
     [SnapshotType("tests.counter", Version = 1)]
-    private sealed record CounterSnapshot(int Value) : IAggregateSnapshot;
+    private sealed record CounterSnapshot(int Value) : IAggregateSnapshot<Counter>;
 
     private sealed class TestTenantAccessor(string tenant) : ITenantAccessor
     {

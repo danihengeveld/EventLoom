@@ -19,7 +19,7 @@ public sealed class EventLoomHostingTests
         var services = new ServiceCollection();
 
         services.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<CounterIncremented>()
+            .AddEvent<CounterIncremented>()
             .UseSqlite("Data Source=:memory:")
             .AddAggregate<Counter, Guid>(aggregate => aggregate
                 .ConstructWith(id => new Counter(id))
@@ -105,7 +105,7 @@ public sealed class EventLoomHostingTests
     {
         var sqliteServices = new ServiceCollection();
         sqliteServices.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<CounterIncremented>()
+            .AddEvent<CounterIncremented>()
             .ConfigureEventStore(options => options.UseSchema = true)
             .UseSqlite("Data Source=:memory:"));
 
@@ -114,7 +114,7 @@ public sealed class EventLoomHostingTests
 
         var postgreSqlServices = new ServiceCollection();
         postgreSqlServices.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<CounterIncremented>()
+            .AddEvent<CounterIncremented>()
             .ConfigureEventStore(options => options.UseSchema = false)
             .UsePostgreSql("Host=localhost;Database=eventloom;Username=eventloom;Password=eventloom"));
 
@@ -130,14 +130,13 @@ public sealed class EventLoomHostingTests
         var services = new ServiceCollection();
 
         services.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<CounterIncremented>()
+            .AddEvent<CounterIncremented>()
             .UseSqlite("Data Source=:memory:")
             .ConfigureSnapshotRetention(new KeepLatestSnapshotsPolicy(2))
             .AddAggregate<Counter, Guid>(aggregate => aggregate
                 .ConstructWith(id => new Counter(id))
                 .UseStream("counter", id => id.ToString("D"))
-                .UseSnapshots(snapshot => snapshot
-                    .UseAdapter(new CounterSnapshotAdapter())
+                .UseSnapshots<CounterSnapshot>(snapshot => snapshot
                     .UseInvalidator(new AlwaysInvalidateSnapshots()))));
 
         using var serviceProvider = services.BuildServiceProvider();
@@ -155,13 +154,12 @@ public sealed class EventLoomHostingTests
         var services = new ServiceCollection();
 
         services.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<CounterIncremented>()
+            .AddEvent<CounterIncremented>()
             .UseSqlite("Data Source=:memory:")
             .AddAggregate<Counter, Guid>(aggregate => aggregate
                 .ConstructWith(id => new Counter(id))
                 .UseStream("counter", id => id.ToString("D"))
-                .UseSnapshots(snapshot => snapshot
-                    .UseAdapter(new CounterSnapshotAdapter())
+                .UseSnapshots<CounterSnapshot>(snapshot => snapshot
                     .Every(2)
                     .KeepLatest(3)
                     .UseInvalidator(new AlwaysInvalidateSnapshots()))));
@@ -181,7 +179,7 @@ public sealed class EventLoomHostingTests
         var services = new ServiceCollection();
         services.AddScoped<DbConnection>(_ => connection);
         services.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<CounterIncremented>()
+            .AddEvent<CounterIncremented>()
             .UseSqlite(provider => provider.GetRequiredService<DbConnection>()));
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
@@ -197,7 +195,7 @@ public sealed class EventLoomHostingTests
         var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
         var services = new ServiceCollection();
         services.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<CounterIncremented>()
+            .AddEvent<CounterIncremented>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}"));
         var provider = services.BuildServiceProvider();
@@ -236,21 +234,17 @@ public sealed class EventLoomHostingTests
             Task.CompletedTask;
     }
 
-    private sealed class Counter(Guid id) : Aggregate<Guid>(id);
-
-    [SnapshotType("tests.counter", Version = 1)]
-    private sealed record CounterSnapshot : IAggregateSnapshot;
-
-    private sealed class CounterSnapshotAdapter : IAggregateSnapshotAdapter<Counter>
+    private sealed class Counter(Guid id) : Aggregate<Guid>(id)
     {
-        public string SnapshotType => "tests.counter";
-        public int SchemaVersion => 1;
-        public string Capture(Counter aggregate) => "{}";
+        private CounterSnapshot CreateSnapshot() => new();
 
-        public void Restore(Counter aggregate, int schemaVersion, string payload)
+        private void RestoreSnapshot(CounterSnapshot snapshot)
         {
         }
     }
+
+    [SnapshotType("tests.counter", Version = 1)]
+    private sealed record CounterSnapshot : IAggregateSnapshot<Counter>;
 
     private sealed class AlwaysInvalidateSnapshots : ISnapshotInvalidator
     {

@@ -15,6 +15,11 @@ public sealed class DomainEventContractAnalyzer : DiagnosticAnalyzer
     public const string InvalidApplyHandlerDiagnosticId = "EL0003";
     public const string AmbiguousApplyHandlerDiagnosticId = "EL0004";
     public const string WrongAggregateOwnerDiagnosticId = "EL0005";
+    public const string MissingSnapshotTypeDiagnosticId = "EL0006";
+    public const string MissingSnapshotCreateDiagnosticId = "EL0007";
+    public const string InvalidSnapshotCreateDiagnosticId = "EL0008";
+    public const string MissingSnapshotRestoreDiagnosticId = "EL0009";
+    public const string InvalidSnapshotRestoreDiagnosticId = "EL0010";
 
     private static readonly DiagnosticDescriptor MissingEventType = new(
         MissingEventTypeDiagnosticId,
@@ -61,13 +66,58 @@ public sealed class DomainEventContractAnalyzer : DiagnosticAnalyzer
         isEnabledByDefault: true,
         description: "An aggregate may only raise events linked to itself or one of its base aggregate types.");
 
+    private static readonly DiagnosticDescriptor MissingSnapshotType = new(
+        MissingSnapshotTypeDiagnosticId,
+        "Aggregate snapshot requires a persisted identity",
+        "Aggregate snapshot '{0}' must declare SnapshotTypeAttribute",
+        "EventLoom",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor MissingSnapshotCreate = new(
+        MissingSnapshotCreateDiagnosticId,
+        "Aggregate snapshot requires a creation method",
+        "Aggregate '{0}' must declare private {1} CreateSnapshot()",
+        "EventLoom",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor InvalidSnapshotCreate = new(
+        InvalidSnapshotCreateDiagnosticId,
+        "Aggregate snapshot creation method has an invalid signature",
+        "CreateSnapshot on aggregate '{0}' must be a private, non-static, non-generic method returning {1} with no parameters",
+        "EventLoom",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor MissingSnapshotRestore = new(
+        MissingSnapshotRestoreDiagnosticId,
+        "Aggregate snapshot requires a restoration method",
+        "Aggregate '{0}' must declare private void RestoreSnapshot({1})",
+        "EventLoom",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    private static readonly DiagnosticDescriptor InvalidSnapshotRestore = new(
+        InvalidSnapshotRestoreDiagnosticId,
+        "Aggregate snapshot restoration method has an invalid signature",
+        "RestoreSnapshot on aggregate '{0}' must be a private, non-static, non-generic void method accepting {1}",
+        "EventLoom",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
         ImmutableArray.Create(
             MissingEventType,
             MissingApplyHandler,
             InvalidApplyHandler,
             AmbiguousApplyHandler,
-            WrongAggregateOwner);
+            WrongAggregateOwner,
+            MissingSnapshotType,
+            MissingSnapshotCreate,
+            InvalidSnapshotCreate,
+            MissingSnapshotRestore,
+            InvalidSnapshotRestore);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -77,14 +127,18 @@ public sealed class DomainEventContractAnalyzer : DiagnosticAnalyzer
         {
             var domainEvent = startContext.Compilation.GetTypeByMetadataName("EventLoom.IDomainEvent`1");
             var eventTypeAttribute = startContext.Compilation.GetTypeByMetadataName("EventLoom.EventTypeAttribute");
+            var snapshotTypeAttribute = startContext.Compilation.GetTypeByMetadataName("EventLoom.SnapshotTypeAttribute");
             var aggregate = startContext.Compilation.GetTypeByMetadataName("EventLoom.Aggregate`1");
-            if (domainEvent is null || eventTypeAttribute is null || aggregate is null)
+            var aggregateSnapshot = startContext.Compilation.GetTypeByMetadataName("EventLoom.IAggregateSnapshot`1");
+            if (domainEvent is null || eventTypeAttribute is null || snapshotTypeAttribute is null ||
+                aggregate is null || aggregateSnapshot is null)
             {
                 return;
             }
 
             startContext.RegisterSymbolAction(
-                innerContext => AnalyzeNamedType(innerContext, domainEvent, eventTypeAttribute, aggregate),
+                innerContext => AnalyzeNamedType(
+                    innerContext, domainEvent, eventTypeAttribute, aggregate, aggregateSnapshot, snapshotTypeAttribute),
                 SymbolKind.NamedType);
             startContext.RegisterSymbolAction(
                 innerContext => AnalyzeMethod(innerContext, domainEvent, aggregate),
@@ -99,7 +153,9 @@ public sealed class DomainEventContractAnalyzer : DiagnosticAnalyzer
         SymbolAnalysisContext context,
         INamedTypeSymbol domainEvent,
         INamedTypeSymbol eventTypeAttribute,
-        INamedTypeSymbol aggregate)
+        INamedTypeSymbol aggregate,
+        INamedTypeSymbol aggregateSnapshot,
+        INamedTypeSymbol snapshotTypeAttribute)
     {
         var type = (INamedTypeSymbol)context.Symbol;
         if (type.TypeKind is not (TypeKind.Class or TypeKind.Struct) || type.IsAbstract)
@@ -110,6 +166,7 @@ public sealed class DomainEventContractAnalyzer : DiagnosticAnalyzer
         var eventContract = GetEventContract(type, domainEvent);
         if (eventContract is null)
         {
+            AnalyzeSnapshot(type, aggregateSnapshot, snapshotTypeAttribute, context);
             return;
         }
 
@@ -156,6 +213,69 @@ public sealed class DomainEventContractAnalyzer : DiagnosticAnalyzer
                 type.Name));
         }
     }
+
+    private static void AnalyzeSnapshot(
+        INamedTypeSymbol snapshot,
+        INamedTypeSymbol aggregateSnapshot,
+        INamedTypeSymbol snapshotTypeAttribute,
+        SymbolAnalysisContext context)
+    {
+        var contract = snapshot.AllInterfaces.FirstOrDefault(interfaceType =>
+            SymbolEqualityComparer.Default.Equals(interfaceType.OriginalDefinition, aggregateSnapshot));
+        if (contract is null || contract.TypeArguments[0] is not INamedTypeSymbol owner)
+        {
+            return;
+        }
+
+        var location = snapshot.Locations.FirstOrDefault(value => value.IsInSource);
+        if (location is null)
+        {
+            return;
+        }
+
+        if (!snapshot.GetAttributes().Any(attribute =>
+                SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, snapshotTypeAttribute)))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(MissingSnapshotType, location, snapshot.Name));
+        }
+
+        var createMethods = owner.GetMembers("CreateSnapshot").OfType<IMethodSymbol>().ToArray();
+        if (createMethods.Length == 0)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(MissingSnapshotCreate, location, owner.Name, snapshot.Name));
+        }
+        else if (createMethods.Any(method => !IsValidSnapshotCreate(method, snapshot)))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(InvalidSnapshotCreate, location, owner.Name, snapshot.Name));
+        }
+
+        var restoreMethods = owner.GetMembers("RestoreSnapshot").OfType<IMethodSymbol>().ToArray();
+        if (restoreMethods.Length == 0)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(MissingSnapshotRestore, location, owner.Name, snapshot.Name));
+        }
+        else if (restoreMethods.Any(method => !IsValidSnapshotRestore(method, snapshot)))
+        {
+            context.ReportDiagnostic(Diagnostic.Create(InvalidSnapshotRestore, location, owner.Name, snapshot.Name));
+        }
+    }
+
+    private static bool IsValidSnapshotCreate(IMethodSymbol method, INamedTypeSymbol snapshot) =>
+        method.MethodKind == MethodKind.Ordinary &&
+        !method.IsStatic &&
+        !method.IsGenericMethod &&
+        method.DeclaredAccessibility == Accessibility.Private &&
+        method.Parameters.Length == 0 &&
+        SymbolEqualityComparer.Default.Equals(method.ReturnType, snapshot);
+
+    private static bool IsValidSnapshotRestore(IMethodSymbol method, INamedTypeSymbol snapshot) =>
+        method.MethodKind == MethodKind.Ordinary &&
+        !method.IsStatic &&
+        !method.IsGenericMethod &&
+        method.DeclaredAccessibility == Accessibility.Private &&
+        method.ReturnsVoid &&
+        method.Parameters.Length == 1 &&
+        SymbolEqualityComparer.Default.Equals(method.Parameters[0].Type, snapshot);
 
     private static void AnalyzeMethod(
         SymbolAnalysisContext context,

@@ -1,5 +1,5 @@
 ---
-title: Outbox and application integration
+title: Publish integration messages
 description: Reliably publish integration messages after an EventLoom append.
 ---
 

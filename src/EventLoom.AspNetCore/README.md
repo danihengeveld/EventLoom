@@ -6,6 +6,10 @@ endpoint conventions.
 
 Install it alongside exactly one EventLoom storage provider:
 
+> **Planned package command:** EventLoom packages are not published to NuGet
+> yet. Use the [installation guide](../../docs/src/content/docs/getting-started/installation.md)
+> to reference projects from a checkout.
+
 ```bash
 dotnet add package EventLoom.AspNetCore --prerelease
 ```
@@ -49,3 +53,9 @@ requires a non-empty named policy and therefore refuses anonymous or
 fallback-policy-only administration. Both endpoints return aggregate counts and
 schema compatibility state only; they never expose tenants, event IDs, stream
 IDs, payloads, metadata, or exception details.
+
+Packages are currently pre-release and not published to NuGet. See the
+[configuration guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/configure-ef-core.md),
+[observability guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/observability.md),
+and [production deployment guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/production-deployment.md)
+for application setup and operational guidance.

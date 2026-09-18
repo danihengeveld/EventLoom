@@ -1,5 +1,5 @@
 ---
-title: Projections
+title: Build projections
 description: Build recoverable asynchronous read models with checkpoints, leases, failure recovery, and explicit inline projections.
 ---
 

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace EventLoom;
 
@@ -10,22 +9,15 @@ public sealed class EventSerializer
     private readonly JsonSerializerOptions options;
     private readonly IReadOnlyDictionary<string, EventUpcasterChain> upcasterChains;
 
-    /// <summary>
-    /// Initializes an event serializer.
-    /// </summary>
-    /// <param name="registry">The registry used to resolve stable event identities.</param>
-    /// <param name="contexts">Optional source-generated JSON contexts.</param>
-    /// <param name="reflectionFallback">Whether reflection metadata is available when no context is supplied.</param>
-    /// <param name="upcasterChains">Optional deterministic upcaster chains keyed by event name.</param>
-    public EventSerializer(
-        EventRegistry registry,
-        IEnumerable<JsonSerializerContext>? contexts = null,
-        bool reflectionFallback = true,
-        IEnumerable<EventUpcasterChain>? upcasterChains = null)
-        : this(
-            registry,
-            CreateOptions(contexts, reflectionFallback),
-            upcasterChains)
+    /// <summary>Initializes an event serializer with default JSON serialization settings.</summary>
+    public EventSerializer(EventRegistry registry)
+        : this(registry, new EventSerializationOptions(), null)
+    {
+    }
+
+    /// <summary>Initializes an event serializer with default JSON settings and event upcasters.</summary>
+    public EventSerializer(EventRegistry registry, IEnumerable<EventUpcasterChain>? upcasterChains)
+        : this(registry, new EventSerializationOptions(), upcasterChains)
     {
     }
 
@@ -156,24 +148,6 @@ public sealed class EventSerializer
     /// <param name="Payload">The JSON event payload.</param>
     public sealed record SerializedEventPayload(string EventName, int Version, string Payload);
 
-    private static EventSerializationOptions CreateOptions(
-        IEnumerable<JsonSerializerContext>? contexts,
-        bool reflectionFallback)
-    {
-        var serializationOptions = new EventSerializationOptions
-        {
-            ReflectionFallback = reflectionFallback
-        };
-        if (contexts is not null)
-        {
-            foreach (var context in contexts)
-            {
-                serializationOptions.Contexts.Add(context);
-            }
-        }
-
-        return serializationOptions;
-    }
 }
 
 /// <summary>Indicates that a stored event payload could not be materialized as its registered event type.</summary>
@@ -192,7 +166,7 @@ public sealed class EventSerializationValidationException : InvalidOperationExce
         : base(
             $"Event '{registration.Name}' version {registration.Version} ({registration.ClrType.FullName}) " +
             "cannot be serialized and deserialized with the configured EventSerializationOptions. " +
-            "Register its source-generated JsonSerializerContext or enable reflection fallback.",
+            "Use serializable event contracts with supported JSON shapes.",
             innerException)
     {
     }

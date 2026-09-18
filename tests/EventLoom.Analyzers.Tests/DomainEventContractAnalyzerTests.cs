@@ -23,6 +23,12 @@ public sealed class DomainEventContractAnalyzerTests
             {
                 public EventTypeAttribute(string name) { }
             }
+
+            public interface IAggregateSnapshot<out TAggregate> where TAggregate : Aggregate { }
+            public sealed class SnapshotTypeAttribute : System.Attribute
+            {
+                public SnapshotTypeAttribute(string name) { }
+            }
         }
 
         """;
@@ -160,6 +166,48 @@ public sealed class DomainEventContractAnalyzerTests
 
         await Assert.That(diagnostics.Select(value => value.Id))
             .Contains(DomainEventContractAnalyzer.WrongAggregateOwnerDiagnosticId);
+    }
+
+    [Test]
+    public async Task ReportsMissingPrivateSnapshotMethods()
+    {
+        var diagnostics = await AnalyzeAsync(
+            Framework +
+            """
+            public sealed class Counter : EventLoom.Aggregate<int>
+            {
+                public Counter(int id) : base(id) { }
+            }
+
+            [EventLoom.SnapshotType("tests.counter")]
+            public sealed record CounterSnapshot : EventLoom.IAggregateSnapshot<Counter>;
+            """);
+
+        await Assert.That(diagnostics.Select(value => value.Id)).IsEquivalentTo(
+            [
+                DomainEventContractAnalyzer.MissingSnapshotCreateDiagnosticId,
+                DomainEventContractAnalyzer.MissingSnapshotRestoreDiagnosticId
+            ]);
+    }
+
+    [Test]
+    public async Task AcceptsSnapshotWithPrivateCreationAndRestoreMethods()
+    {
+        var diagnostics = await AnalyzeAsync(
+            Framework +
+            """
+            public sealed class Counter : EventLoom.Aggregate<int>
+            {
+                public Counter(int id) : base(id) { }
+                private CounterSnapshot CreateSnapshot() => new();
+                private void RestoreSnapshot(CounterSnapshot snapshot) { }
+            }
+
+            [EventLoom.SnapshotType("tests.counter")]
+            public sealed record CounterSnapshot : EventLoom.IAggregateSnapshot<Counter>;
+            """);
+
+        await Assert.That(diagnostics).IsEmpty();
     }
 
     private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(string source)

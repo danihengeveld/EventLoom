@@ -16,7 +16,7 @@ public sealed class OutboxPublisherWorkerTests
         var services = new ServiceCollection();
         services.AddSingleton(recorder);
         services.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<ItemAdded>()
+            .AddEvent<ItemAdded>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
             .AddOutboxPublisher<IdempotentPublisher>(options =>
@@ -69,7 +69,7 @@ public sealed class OutboxPublisherWorkerTests
         var services = new ServiceCollection();
         services.AddSingleton(recorder);
         services.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<ItemAdded>()
+            .AddEvent<ItemAdded>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
             .AddOutboxPublisher<SuccessfulPublisher>(options =>
@@ -111,7 +111,7 @@ public sealed class OutboxPublisherWorkerTests
         var services = new ServiceCollection();
         services.AddSingleton(recorder);
         services.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<ItemAdded>()
+            .AddEvent<ItemAdded>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
             .AddOutboxPublisher<SuccessfulPublisher>(options =>
@@ -155,7 +155,7 @@ public sealed class OutboxPublisherWorkerTests
         var services = new ServiceCollection();
         services.AddSingleton(recorder);
         services.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<ItemAdded>()
+            .AddEvent<ItemAdded>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
             .AddOutboxPublisher<FailingPublisher>(options =>

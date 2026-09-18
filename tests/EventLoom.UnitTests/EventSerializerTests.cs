@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace EventLoom.UnitTests;
 
@@ -57,31 +56,6 @@ public sealed partial class EventSerializerTests
         await Assert.That(exception.Message).DoesNotContain("{");
     }
 
-    [Test]
-    public async Task Strict_mode_rejects_events_without_source_generated_metadata()
-    {
-        var registry = new EventRegistry().RegisterEvent<SerializedEvent>();
-        var serializer = new EventSerializer(registry, reflectionFallback: false);
-
-        await Assert.That(() => serializer.Serialize(new SerializedEvent("abc", 4)))
-            .Throws<NotSupportedException>();
-    }
-
-    [Test]
-    public async Task Multiple_source_generated_contexts_can_be_combined()
-    {
-        var registry = new EventRegistry().RegisterEvent<GeneratedEvent>();
-        var serializer = new EventSerializer(
-            registry,
-            [GeneratedEventJsonContext.Default, GeneratedEventJsonContext.Default],
-            reflectionFallback: false);
-
-        var payload = serializer.Serialize(new GeneratedEvent("abc"));
-        var result = serializer.Deserialize("tests.generated", 1, payload);
-
-        await Assert.That(result).IsEqualTo(new GeneratedEvent("abc"));
-    }
-
     [EventType("tests.serialized")]
     private sealed record SerializedEvent(string Name, int Quantity) : IDomainEvent<TestAggregate>;
 
@@ -103,9 +77,6 @@ public sealed partial class EventSerializerTests
             JsonSerializer.SerializeToElement(new { name = payload.GetProperty("name").GetString(), quantity = 1 });
     }
 
-    [EventType("tests.generated")]
-    public sealed record GeneratedEvent(string Name) : IDomainEvent<TestAggregate>;
-
     public sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
     {
         private void Apply(SerializedEvent @event)
@@ -120,11 +91,5 @@ public sealed partial class EventSerializerTests
         {
         }
 
-        private void Apply(GeneratedEvent @event)
-        {
-        }
     }
-
-    [JsonSerializable(typeof(GeneratedEvent))]
-    private partial class GeneratedEventJsonContext : JsonSerializerContext;
 }

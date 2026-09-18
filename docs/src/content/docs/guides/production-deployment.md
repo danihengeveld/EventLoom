@@ -1,5 +1,5 @@
 ---
-title: Production deployment
+title: Deploy and recover
 description: Operate the current EventLoom event store safely in a PostgreSQL application.
 ---
 

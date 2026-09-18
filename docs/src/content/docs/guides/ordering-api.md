@@ -1,5 +1,5 @@
 ---
-title: Ordering API sample
+title: Explore the Ordering API sample
 description: Run an ASP.NET Core sample using scoped tenants, aggregate commands, snapshots, projections, and an outbox publisher.
 ---
 

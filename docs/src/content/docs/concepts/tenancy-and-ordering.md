@@ -1,89 +1,84 @@
 ---
-title: Tenancy and ordering
-description: Configure tenant isolation, idempotent command retries, expected versions, and tenant offsets.
+title: Tenancy, concurrency, and ordering
+description: Understand tenant isolation, optimistic concurrency, retry identity, and the two orders every event has.
 ---
 
-## Tenancy modes
+Every EventLoom event belongs to one stream and one tenant. These scopes solve
+different problems: stream versions protect an aggregate decision, while tenant
+offsets provide the committed order consumed by projections and background
+readers.
 
-Single-tenancy is the default. EventLoom supplies a stable internal tenant,
-so normal repository operations need no application tenant accessor. For a
-tenant-aware application, explicitly configure a scoped accessor:
+```mermaid
+flowchart TD
+    Tenant[tenant: acme] --> OrderA[order-42]
+    Tenant --> OrderB[order-77]
+    OrderA --> A1[stream version 1]
+    OrderA --> A2[stream version 2]
+    OrderB --> B1[stream version 1]
+    A1 --> T1[tenant offset 1]
+    B1 --> T2[tenant offset 2]
+    A2 --> T3[tenant offset 3]
+```
+
+## Tenant scope
+
+Single tenancy is the default. EventLoom uses the stable persisted tenant ID
+`default`, so ordinary repository calls need no tenant plumbing.
+
+Use multi-tenancy only when the application can resolve a trusted, scoped
+tenant:
 
 ```csharp
-services
-    .AddEventLoom()
+services.AddEventLoom(eventLoom => eventLoom
+    .UseMultiTenancy<AuthenticatedTenantAccessor>()
     .UsePostgreSql(connectionString)
-    .UseMultiTenancy<RequestTenantAccessor>()
-    .AddEvent<OrderPlaced>();
+    .AddEvent<OrderPlaced>());
 ```
 
-In multi-tenant mode, EventLoom normalizes tenant IDs and rejects operations with no
-tenant or an explicit tenant that differs from the scoped accessor. Keep tenant
-resolution at the trusted application boundary, such as authentication
-middleware. Never use an unvalidated client header as a production trust
-decision; the sample uses `X-Tenant-ID` only to make the mechanism observable.
+In multi-tenant mode, EventLoom rejects missing scoped tenants and explicit
+tenant IDs that disagree with the accessor. It cannot authenticate a tenant for
+you: resolve it from a trusted authentication, authorization, or routing
+boundary, not an unvalidated client header.
 
-Short repository operations resolve the scoped tenant:
+## Optimistic concurrency
 
-```csharp
-await repository.SaveAsync(order);
-var order = await repository.LoadAsync(orderId);
-```
+An append states the stream condition it expects:
 
-Administrative or background code can use the explicit repository overloads
-and must supply the intended tenant:
-
-```csharp
-await repository.SaveAsync(
-    tenantId: "acme",
-    streamId: orderId.ToString("D"),
-    aggregateType: "order",
-    aggregate: order,
-    metadata: new EventMetadata(Actor: "maintenance"));
-```
-
-## Expected versions and concurrency
-
-Every append uses an expected version:
-
-| Expectation | Meaning |
+| Expectation | Use when |
 | --- | --- |
-| `ExpectedVersion.NoStream` | Create only when the stream does not exist. |
-| `ExpectedVersion.Exact(version)` | Append only when the stream is at that version. |
-| `ExpectedVersion.StreamExists` | Append only to an existing stream. |
-| `ExpectedVersion.Any` | Do not perform an application-level version check. |
+| `ExpectedVersion.NoStream` | Creating a stream that must not already exist. |
+| `ExpectedVersion.Exact(version)` | Updating a stream after reading a known version. |
+| `ExpectedVersion.StreamExists` | Appending when any existing stream version is acceptable. |
+| `ExpectedVersion.Any` | Performing an explicit low-level append without an application-level check. |
 
-The aggregate repository derives the exact expectation from the aggregate's
-replayed version. With PostgreSQL, concurrent conflicts are surfaced as
-`WrongExpectedVersionException` or `EventStoreConcurrencyException`; handlers
-should reload, reevaluate the command, and retry only when that is valid for
-the business operation.
+Configured aggregate repositories derive the exact expected version from the
+aggregate they loaded. A visible `WrongExpectedVersionException` or
+`EventStoreConcurrencyException` means another writer changed the stream.
+Reload the aggregate, reassess the business decision, and retry only if that
+decision still makes sense.
 
-## Append IDs
+## Retry identity is not concurrency
 
-An `AppendId` identifies one caller-owned command attempt across a tenant. Use
-the exact same ID when retrying after an ambiguous timeout or connection
-failure:
+`AppendId` identifies one caller-owned command within a tenant. Preserve the
+same value only when retrying after an ambiguous outcome such as a timeout:
 
 ```csharp
-await repository.SaveAsync(
-    order,
-    appendId: commandId);
+await repository.SaveAsync(order, appendId: commandId);
 ```
 
-If the original append committed, the retry returns the persisted envelopes
-with `WasIdempotentReplay` set to `true`. EventLoom does not invent command
-identity: generating a new append ID on each retry defeats idempotency.
+If the original append committed, retrying with the same append ID returns the
+original envelopes with `WasIdempotentReplay` set. Generating a new append ID
+for every retry creates a second command; reusing one for different commands is
+invalid.
 
-## Authoritative read order
+## Read the right order
 
-Every event has:
+- **Stream version** orders facts in one aggregate stream. Use it for replay
+  and optimistic concurrency.
+- **Tenant offset** orders committed facts across all streams in one tenant.
+  Use it for projections and tenant-log readers.
+- **Event ID** is a stable UUIDv7 identity for a specific event. It is not the
+  authoritative ordering mechanism.
 
-- a **stream version**, which orders facts within one aggregate stream;
-- a **tenant offset**, which orders committed events for a tenant.
-
-Use `ReadStreamAsync` to rebuild one aggregate and `ReadTenantOffsetsAsync` to
-read a bounded tenant sequence. Event IDs are UUIDv7 for locality and
-diagnostics, but they are not the authoritative ordering mechanism. PostgreSQL
-serializes tenant offset allocation transactionally so a reader cannot skip a
-late commit by advancing its checkpoint.
+Never compare tenant offsets across tenants. A checkpoint is always scoped to
+one tenant and one projection version.

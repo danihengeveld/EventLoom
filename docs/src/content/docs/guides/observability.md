@@ -1,5 +1,5 @@
 ---
-title: Observability
+title: Add observability
 description: Opt into EventLoom OpenTelemetry tracing and metrics.
 ---
 

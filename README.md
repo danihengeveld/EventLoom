@@ -92,7 +92,7 @@ multi-instance or distributed-worker behavior.
 - **Projections and outbox:** asynchronous, at-least-once delivery is the
   default. Consumers must be idempotent; EventLoom does not promise general
   exactly-once external delivery.
-- **Snapshots:** application-owned, explicit versioned DTOs reduce replay work
+- **Snapshots:** aggregate-owned, explicit versioned state reduces replay work
   without replacing event history.
 - **Telemetry:** EventLoom exposes dependency-free `ActivitySource` and
   `Meter` instrumentation and excludes payloads and identifiers from default
@@ -105,8 +105,7 @@ Start with the [documentation site](docs/README.md), especially the
 [first aggregate](docs/src/content/docs/getting-started/first-aggregate.md),
 [EF Core configuration](docs/src/content/docs/guides/configure-ef-core.md),
 and [production deployment](docs/src/content/docs/guides/production-deployment.md)
-guides. Architectural choices are recorded in
-[docs/architecture/decisions](docs/architecture/decisions).
+guides.
 
 The Ordering API sample runs PostgreSQL and the API through Aspire:
 

@@ -6,8 +6,8 @@ description: Set up EventLoom from source and choose the appropriate storage pro
 ## Status and prerequisites
 
 EventLoom currently targets **.NET 10** and is pre-release. Its NuGet packages
-are not published yet, so add project references from a checkout when evaluating
-or contributing to the library.
+are not published yet, so use a checkout when evaluating or contributing to
+the library.
 
 You need:
 
@@ -73,15 +73,3 @@ installations where the Ryuk resource-reaper image cannot run. Do not set it
 globally without arranging normal container cleanup.
 
 Next, [build your first aggregate](/getting-started/first-aggregate).
-
-## Start from the API template
-
-After installing the template package, create a single-tenant SQLite starter:
-
-```bash
-dotnet new eventloom-api --name MyEventLoomApi
-```
-
-The generated app uses `EventLoom.AspNetCore`, explicit Development-only schema
-initialization, standard health mapping, and EventLoom contract analyzers.
-Replace SQLite with PostgreSQL before deploying multiple instances.

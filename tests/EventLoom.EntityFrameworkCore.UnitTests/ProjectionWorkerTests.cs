@@ -98,7 +98,7 @@ public sealed class ProjectionWorkerTests
         var services = new ServiceCollection();
         Batteries_V2.Init();
         services.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<ItemAdded>()
+            .AddEvent<ItemAdded>()
             .UseSingleTenancy("tenant-a")
             .ConfigureProjectionModel(modelBuilder =>
             {
@@ -139,7 +139,7 @@ public sealed class ProjectionWorkerTests
         var services = new ServiceCollection();
         Batteries_V2.Init();
         services.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<ItemAdded>()
+            .AddEvent<ItemAdded>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
             .AddProjection("tests.inline", projection => projection
@@ -181,7 +181,7 @@ public sealed class ProjectionWorkerTests
         services.AddEventLoom(eventLoom =>
         {
             eventLoom
-                .RegisterEvent<ItemAdded>()
+                .AddEvent<ItemAdded>()
                 .UseSingleTenancy("tenant-a")
                 .ConfigureWorkers(options =>
                 {

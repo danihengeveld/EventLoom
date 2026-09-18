@@ -1,5 +1,5 @@
 ---
-title: Configure the event store
+title: Configure event storage
 description: Register EventLoom with PostgreSQL or SQLite and customize event-store storage.
 ---
 

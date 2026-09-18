@@ -19,7 +19,7 @@ public sealed class EventLoomHealthCheckTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddEventLoom(eventLoom => eventLoom
-            .RegisterEvent<ItemAdded>()
+            .AddEvent<ItemAdded>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
             .AddProjection<RecordingProjection, ItemAdded>("tests.health")

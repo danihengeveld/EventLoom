@@ -1,49 +1,43 @@
-# Starlight Starter Kit: Basics
+# EventLoom documentation
 
-[![Built with Starlight](https://astro.badg.es/v2/built-with-starlight/tiny.svg)](https://starlight.astro.build)
+This directory contains the EventLoom documentation site, built with
+[Astro Starlight](https://starlight.astro.build/).
 
+## Information architecture
+
+The site uses four intentional content types:
+
+- **Start here** is an ordered onboarding path for developers new to
+  EventLoom.
+- **Core concepts** explain durable ideas and trade-offs. They answer *what* and
+  *why*, rather than presenting a recipe.
+- **Guides** help a developer accomplish one concrete task. They should
+  include prerequisites, a smallest complete example, safety constraints, and
+  a verification or recovery path where relevant.
+- **Reference** documents exact, stable facts such as configuration defaults
+  and support boundaries.
+
+Keep guides in the order a developer is likely to adopt capabilities:
+configuration, append/read, snapshots, projections, outbox, testing,
+observability, and deployment. Do not classify a feature by an arbitrary
+"build" versus "operate" boundary: snapshots, projections, and outbox all
+have design-time and runtime concerns, so each belongs in the same guide
+sequence with its operations and recovery behavior.
+
+## Local development
+
+Run these commands from this directory:
+
+```bash
+pnpm install
+pnpm dev
+pnpm build
+pnpm preview
 ```
-pnpm create astro@latest -- --template starlight
-```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+`pnpm dev` starts the site at `http://localhost:4321`. `pnpm build` writes the
+production output to `dist/` and is the required validation for documentation
+changes.
 
-## 🚀 Project Structure
-
-Inside of your Astro + Starlight project, you'll see the following folders and files:
-
-```
-.
-├── public/
-├── src/
-│   ├── assets/
-│   ├── content/
-│   │   └── docs/
-│   └── content.config.ts
-├── astro.config.mjs
-├── package.json
-└── tsconfig.json
-```
-
-Starlight looks for `.md` or `.mdx` files in the `src/content/docs/` directory. Each file is exposed as a route based on its file name.
-
-Images can be added to `src/assets/` and embedded in Markdown with a relative link.
-
-Static assets, like favicons, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Check out [Starlight’s docs](https://starlight.astro.build/), read [the Astro documentation](https://docs.astro.build), or jump into the [Astro Discord server](https://astro.build/chat).
+Source pages live in `src/content/docs/`; their paths become site routes.
+Navigation is maintained explicitly in `astro.config.mjs`.

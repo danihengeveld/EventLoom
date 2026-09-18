@@ -14,7 +14,7 @@ public sealed class AggregateRepository<TAggregate, TId>
     private readonly Func<TId, string>? streamId;
     private readonly ITenantAccessor? tenantAccessor;
     private readonly SnapshotStore? snapshotStore;
-    private readonly IAggregateSnapshotAdapter<TAggregate>? snapshotAdapter;
+    private readonly AggregateSnapshotDispatcher<TAggregate>? snapshotDispatcher;
     private readonly ISnapshotPolicy? snapshotPolicy;
     private readonly ISnapshotInvalidator? snapshotInvalidator;
     private readonly ISnapshotRetentionPolicy? snapshotRetentionPolicy;
@@ -42,10 +42,11 @@ public sealed class AggregateRepository<TAggregate, TId>
         Func<TId, string> streamId,
         ITenantAccessor? tenantAccessor = null,
         SnapshotStore? snapshotStore = null,
-        IAggregateSnapshotAdapter<TAggregate>? snapshotAdapter = null,
+        Type? snapshotType = null,
         ISnapshotPolicy? snapshotPolicy = null,
         ISnapshotInvalidator? snapshotInvalidator = null,
-        ISnapshotRetentionPolicy? snapshotRetentionPolicy = null)
+        ISnapshotRetentionPolicy? snapshotRetentionPolicy = null,
+        IEnumerable<ISnapshotUpcaster>? snapshotUpcasters = null)
         : this(
             store,
             factory,
@@ -56,15 +57,17 @@ public sealed class AggregateRepository<TAggregate, TId>
         this.aggregateType = aggregateType;
         this.streamId = streamId ?? throw new ArgumentNullException(nameof(streamId));
         this.tenantAccessor = tenantAccessor;
-        if (snapshotAdapter is not null && snapshotStore is null)
+        if (snapshotType is not null && snapshotStore is null)
         {
-            throw new ArgumentException("A snapshot store is required when a snapshot adapter is configured.",
+            throw new ArgumentException("A snapshot store is required when a snapshot type is configured.",
                 nameof(snapshotStore));
         }
 
         this.snapshotStore = snapshotStore;
-        this.snapshotAdapter = snapshotAdapter;
-        this.snapshotPolicy = snapshotAdapter is null
+        snapshotDispatcher = snapshotType is null
+            ? null
+            : new AggregateSnapshotDispatcher<TAggregate>(snapshotType, snapshotUpcasters);
+        this.snapshotPolicy = snapshotDispatcher is null
             ? null
             : snapshotPolicy ?? new EveryNEventsSnapshotPolicy(100);
         this.snapshotInvalidator = snapshotInvalidator;
@@ -134,19 +137,19 @@ public sealed class AggregateRepository<TAggregate, TId>
         var startedAt = TimeProvider.System.GetTimestamp();
         long? fromVersion = null;
         var snapshotUsed = false;
-        if (snapshotStore is not null && snapshotAdapter is not null)
+        if (snapshotStore is not null && snapshotDispatcher is not null)
         {
             SnapshotEnvelope? snapshot;
             using (var snapshotActivity = EventLoomTelemetry.ActivitySource.StartActivity(
                        "eventloom.snapshot.read",
                        ActivityKind.Client))
             {
-                snapshotActivity?.SetTag("eventloom.snapshot.type", snapshotAdapter.SnapshotType);
+                snapshotActivity?.SetTag("eventloom.snapshot.type", snapshotDispatcher.SnapshotType);
                 snapshot = await snapshotStore.ReadLatestAsync(
                     tenantId,
                     streamId!(id),
                     aggregateType!,
-                    snapshotAdapter.SnapshotType,
+                    snapshotDispatcher.SnapshotType,
                     cancellationToken);
             }
 
@@ -154,7 +157,7 @@ public sealed class AggregateRepository<TAggregate, TId>
             {
                 try
                 {
-                    snapshotAdapter.Restore(aggregate, snapshot.SchemaVersion, snapshot.Payload);
+                    snapshotDispatcher.Restore(aggregate, snapshot.SchemaVersion, snapshot.Payload);
                     aggregate.RestoreSnapshotVersion(snapshot.StreamVersion);
                     fromVersion = snapshot.StreamVersion + 1;
                     snapshotUsed = true;
@@ -303,7 +306,7 @@ public sealed class AggregateRepository<TAggregate, TId>
             cancellationToken);
         if (!result.WasIdempotentReplay &&
             snapshotStore is not null &&
-            snapshotAdapter is not null &&
+            snapshotDispatcher is not null &&
             snapshotPolicy!.ShouldSnapshot(aggregate.Version))
         {
             await snapshotStore.WriteWithRetentionAsync(
@@ -312,9 +315,9 @@ public sealed class AggregateRepository<TAggregate, TId>
                     streamId!(aggregate.Id),
                     aggregateType!,
                     aggregate.Version,
-                    snapshotAdapter.SnapshotType,
-                    snapshotAdapter.SchemaVersion,
-                    snapshotAdapter.Capture(aggregate)),
+                    snapshotDispatcher.SnapshotType,
+                    snapshotDispatcher.SchemaVersion,
+                    snapshotDispatcher.Capture(aggregate)),
                 snapshotRetentionPolicy,
                 cancellationToken);
         }

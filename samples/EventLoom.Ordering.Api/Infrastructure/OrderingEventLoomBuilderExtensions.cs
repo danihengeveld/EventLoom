@@ -10,10 +10,6 @@ internal static class OrderingEventLoomBuilderExtensions
     public static EventLoomBuilder AddOrdering(this EventLoomBuilder eventLoom)
     {
         ArgumentNullException.ThrowIfNull(eventLoom);
-        var snapshots = new AggregateSnapshotAdapter<Order, OrderSnapshot>(
-            order => new OrderSnapshot(order.Status, order.Items.ToArray()),
-            (order, snapshot) => order.Restore(snapshot));
-
         return eventLoom
             .UseMultiTenancy<RequestTenantAccessor>()
             .AddEvent<OrderPlaced>()
@@ -23,7 +19,7 @@ internal static class OrderingEventLoomBuilderExtensions
             .AddAggregate<Order, Guid>(aggregate => aggregate
                 .ConstructWith(id => new Order(id))
                 .UseStream("order", id => id.ToString("D"))
-                .UseSnapshots(snapshots, new EveryNEventsSnapshotPolicy(2)))
+                .UseSnapshots<OrderSnapshot>(snapshots => snapshots.Every(2)))
             .AddOutboxPublisher<LoggingOutboxPublisher>(options =>
                 options.SuccessfulDeliveryRetention = TimeSpan.FromDays(1))
             .AddEfProjection<OrderSummaryProjection, OrderPlaced>(OrderSummaryProjection.Name)

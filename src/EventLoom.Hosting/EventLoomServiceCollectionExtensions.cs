@@ -76,15 +76,11 @@ public sealed partial class EventLoomBuilder
     /// </summary>
     /// <typeparam name="TEvent">The concrete domain-event type to register.</typeparam>
     /// <returns>This builder.</returns>
-    public EventLoomBuilder RegisterEvent<TEvent>()
+    public EventLoomBuilder AddEvent<TEvent>()
     {
         registry.RegisterEvent<TEvent>();
         return this;
     }
-
-    /// <summary>Registers a domain-event type for persistence and deserialization.</summary>
-    public EventLoomBuilder AddEvent<TEvent>() =>
-        RegisterEvent<TEvent>();
 
     /// <summary>
     /// Registers all concrete domain-event types in an assembly.
@@ -92,7 +88,7 @@ public sealed partial class EventLoomBuilder
     /// <param name="assembly">The assembly containing the event types.</param>
     /// <returns>This builder.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="assembly"/> is <see langword="null"/>.</exception>
-    public EventLoomBuilder RegisterEventsFromAssembly(Assembly assembly)
+    public EventLoomBuilder AddEventsFromAssembly(Assembly assembly)
     {
         registry.RegisterAssembly(assembly);
         return this;
@@ -100,7 +96,7 @@ public sealed partial class EventLoomBuilder
 
     /// <summary>Registers concrete domain-event types from the assembly containing <typeparamref name="TMarker"/>.</summary>
     public EventLoomBuilder AddEventsFromAssemblyContaining<TMarker>() =>
-        RegisterEventsFromAssembly(typeof(TMarker).Assembly);
+        AddEventsFromAssembly(typeof(TMarker).Assembly);
 
     /// <summary>
     /// Adds an event upcaster used when reading earlier versions of an event.
@@ -322,10 +318,11 @@ public sealed partial class EventLoomBuilder
             registration.StreamId,
             ResolveTenantAccessor(serviceProvider),
             snapshots is null ? null : serviceProvider.GetRequiredService<SnapshotStore>(),
-            snapshots?.Adapter,
+            snapshots?.SnapshotType,
             snapshots?.Policy,
             snapshots?.Invalidator,
-            snapshots?.RetentionPolicy));
+            snapshots?.RetentionPolicy,
+            snapshots?.Upcasters));
         return this;
     }
 

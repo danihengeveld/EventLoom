@@ -28,25 +28,13 @@ public sealed class AggregateRegistrationBuilder<TAggregate, TId>
     }
 
     /// <summary>Enables snapshots for the aggregate.</summary>
-    public AggregateRegistrationBuilder<TAggregate, TId> UseSnapshots(
-        IAggregateSnapshotAdapter<TAggregate> adapter,
-        ISnapshotPolicy? policy = null,
-        ISnapshotInvalidator? invalidator = null)
-    {
-        snapshotConfiguration = new AggregateSnapshotConfiguration<TAggregate>(
-            adapter ?? throw new ArgumentNullException(nameof(adapter)),
-            policy,
-            null,
-            invalidator);
-        return this;
-    }
-
-    /// <summary>Configures the complete typed snapshot behavior for the aggregate.</summary>
-    public AggregateRegistrationBuilder<TAggregate, TId> UseSnapshots(
-        Action<AggregateSnapshotBuilder<TAggregate>> configure)
+    /// <summary>Configures snapshot behavior for the aggregate's snapshot contract.</summary>
+    public AggregateRegistrationBuilder<TAggregate, TId> UseSnapshots<TSnapshot>(
+        Action<AggregateSnapshotBuilder<TAggregate, TSnapshot>> configure)
+        where TSnapshot : IAggregateSnapshot<TAggregate>
     {
         ArgumentNullException.ThrowIfNull(configure);
-        var builder = new AggregateSnapshotBuilder<TAggregate>();
+        var builder = new AggregateSnapshotBuilder<TAggregate, TSnapshot>();
         configure(builder);
         snapshotConfiguration = builder.Build();
         return this;

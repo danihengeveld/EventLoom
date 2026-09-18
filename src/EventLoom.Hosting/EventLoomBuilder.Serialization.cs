@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace EventLoom.Hosting;
 
 public sealed partial class EventLoomBuilder
@@ -19,12 +17,4 @@ public sealed partial class EventLoomBuilder
         return this;
     }
 
-    /// <summary>Adds a source-generated JSON context to the event serializer.</summary>
-    /// <param name="context">The source-generated context.</param>
-    /// <returns>This builder.</returns>
-    public EventLoomBuilder AddJsonSerializerContext(JsonSerializerContext context)
-    {
-        serializationOptions.Contexts.Add(context ?? throw new ArgumentNullException(nameof(context)));
-        return this;
-    }
 }

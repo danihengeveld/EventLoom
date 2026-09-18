@@ -7,6 +7,11 @@ transactional outbox model, and a unit-of-work API
 (`EventStore.BeginUnitOfWorkAsync`) for coordinating an append with
 application database changes in the same transaction.
 
+Snapshots are aggregate-owned state caches. Declare a snapshot as
+`IAggregateSnapshot<TAggregate>` and configure it with
+`UseSnapshots<TSnapshot>(...)`; the aggregate supplies private
+`CreateSnapshot()` and `RestoreSnapshot(TSnapshot)` methods.
+
 It is intentionally a dependency package rather than a normal application
 entry point. Install one provider package instead:
 

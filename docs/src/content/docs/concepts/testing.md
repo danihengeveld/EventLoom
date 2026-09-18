@@ -1,5 +1,5 @@
 ---
-title: Testing strategy
+title: Test an EventLoom application
 description: Test event-sourced domain behavior separately from relational and distributed storage behavior.
 ---
 

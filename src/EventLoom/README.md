@@ -3,9 +3,13 @@
 `EventLoom` is the core package for immutable, versioned domain events and
 event-sourced aggregates. It contains event contracts, stable
 `[EventType]` names, strongly typed identifiers, metadata, expected-version
-rules, aggregate dispatch, and serializer registration.
+rules, aggregate dispatch, and JSON serialization settings.
 
 Install it directly when your domain layer needs EventLoom abstractions:
+
+> **Planned package command:** EventLoom packages are not published to NuGet
+> yet. Use the [installation guide](../../docs/src/content/docs/getting-started/installation.md)
+> to reference projects from a checkout.
 
 ```bash
 dotnet add package EventLoom --prerelease
@@ -36,4 +40,4 @@ applications should add `EventLoom.AspNetCore` plus exactly one provider:
 
 Packages are currently pre-release and not published to NuGet. See the
 [getting started guide](https://github.com/danihengeveld/EventLoom/tree/main/docs/src/content/docs/getting-started)
-and [architecture documentation](https://github.com/danihengeveld/EventLoom/tree/main/docs/architecture).
+and [core concepts](https://github.com/danihengeveld/EventLoom/tree/main/docs/src/content/docs/concepts).
