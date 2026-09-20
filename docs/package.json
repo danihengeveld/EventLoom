@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@astrojs/starlight": "0.42.1",
+    "@astrojs/vercel": "11.0.10",
     "astro": "7.3.3",
     "astro-mermaid": "^2.1.0",
     "mermaid": "^11.17.2",
