@@ -2,12 +2,15 @@
   "name": "eventloom-docs",
   "type": "module",
   "version": "0.1.0-alpha.0",
+  "private": true,
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "docs:snapshot": "node scripts/version-docs.mjs snapshot",
+    "docs:validate": "node scripts/version-docs.mjs validate"
   },
   "dependencies": {
     "@astrojs/starlight": "0.42.1",

@@ -1,0 +1,72 @@
+---
+import Default from '@astrojs/starlight/components/SocialIcons.astro';
+import versionManifest from '../data/docs-versions.json';
+
+const options = [versionManifest.current, ...versionManifest.versions];
+const currentPath = Astro.url.pathname;
+const selectedPath = versionManifest.versions.find(
+    (version) => currentPath === version.path.slice(0, -1) || currentPath.startsWith(version.path),
+)?.path ?? versionManifest.current.path;
+---
+
+<div class="version-selector-container">
+    <Default />
+    <label>
+        <span class="sr-only">Documentation version</span>
+        <select class="version-selector" aria-label="Documentation version">
+            {options.map((option) => (
+                <option value={option.path} selected={option.path === selectedPath}>
+                    {option.label}
+                </option>
+            ))}
+        </select>
+    </label>
+</div>
+
+<script>
+    const versionPaths = Array.from(
+        document.querySelectorAll<HTMLSelectElement>('.version-selector option'),
+        (option) => option.value,
+    ).filter((path) => path !== '/');
+
+    for (const selector of document.querySelectorAll<HTMLSelectElement>('.version-selector')) {
+        selector.addEventListener('change', () => {
+            const currentPrefix = versionPaths.find(
+                (path) => location.pathname === path.slice(0, -1) || location.pathname.startsWith(path),
+            );
+            const relativePath = currentPrefix
+                ? location.pathname.slice(currentPrefix.length)
+                : location.pathname.slice(1);
+            const target = new URL(`${selector.value}${relativePath}`, location.origin);
+            location.assign(target);
+        });
+    }
+</script>
+
+<style>
+    .version-selector-container {
+        align-items: center;
+        display: flex;
+        gap: var(--sl-nav-gap);
+    }
+
+    .version-selector {
+        background: var(--sl-color-bg-nav);
+        border: 1px solid var(--sl-color-gray-5);
+        border-radius: 0.375rem;
+        color: var(--sl-color-text);
+        font: inherit;
+        padding: 0.25rem 1.75rem 0.25rem 0.5rem;
+    }
+
+    .sr-only {
+        height: 1px;
+        margin: -1px;
+        overflow: hidden;
+        padding: 0;
+        position: absolute;
+        width: 1px;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+    }
+</style>

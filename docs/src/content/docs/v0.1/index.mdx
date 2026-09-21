@@ -1,0 +1,68 @@
+---
+slug: v0.1
+title: EventLoom
+description: Event sourcing for .NET 10 applications using EF Core.
+---
+
+EventLoom is an opinionated event-sourcing library for .NET 10 and EF Core 10.
+It gives .NET applications an explicit event model, a dedicated relational
+event store, aggregate repositories, snapshots, projections, and a
+transactional outbox.
+
+```mermaid
+flowchart LR
+    App[Application] --> Domain[Aggregates and events]
+    Domain --> Store[EventLoom event store]
+    Store --> Postgres[PostgreSQL<br/>distributed production]
+    Store --> Sqlite[SQLite<br/>local or single process]
+    Store --> Workers[Projections and outbox]
+```
+
+## Choose your next step
+
+| I want to... | Start here |
+| --- | --- |
+| Evaluate EventLoom from this repository | [Installation](/v0.1/getting-started/installation) |
+| Learn the event-sourcing programming model | [Build your first aggregate](/v0.1/getting-started/first-aggregate) |
+| Decide where and how to persist events | [Architecture](/v0.1/concepts/architecture) |
+| Understand correctness and delivery guarantees | [Tenancy and ordering](/v0.1/concepts/tenancy-and-ordering) and [Delivery model](/v0.1/concepts/delivery-model) |
+| Add EventLoom to an application | [Configure the event store](/v0.1/guides/configure-ef-core) |
+| Build read models or external integration | [Projections](/v0.1/guides/projections) and [Outbox and application integration](/v0.1/guides/outbox) |
+| Run EventLoom in production | [Production deployment](/v0.1/guides/production-deployment) |
+
+## The developer model
+
+1. Model business facts as immutable, versioned events.
+2. Change aggregate state only by applying those events.
+3. Append an event batch atomically with an expected stream version.
+4. Build read models and external integration from the committed event log.
+
+The [Aggregates and events](/v0.1/concepts/aggregates-and-events) concept explains
+why these boundaries matter. The [Ordering API sample](/v0.1/guides/ordering-api)
+shows the complete application path in an ASP.NET Core service.
+
+## What EventLoom provides
+
+- `Aggregate<TId>` for event-only state changes and replay through typed
+  `Apply(TEvent)` methods.
+- Stable event names and versions through `[EventType]`, explicit registration,
+  and JSON serialization.
+- Deterministic JSON upcaster chains for changing persisted event schemas.
+- Transactional append and bounded read APIs with expected-version checks,
+  UUIDv7 event IDs, and authoritative per-tenant offsets.
+- A PostgreSQL provider for multi-instance deployments and a SQLite provider
+  for local, embedded, and controlled single-node use.
+- Optional required tenancy with a scoped `ITenantAccessor`.
+- A configured `AggregateRepository<TAggregate, TId>` path that keeps tenant,
+  aggregate type, and stream-ID plumbing out of normal command handlers.
+- Checkpointed asynchronous projections, atomic EF projection handlers, and
+  explicitly registered inline projections.
+
+## Current status
+
+EventLoom is pre-release software and its NuGet packages are not published
+yet. Use this repository to evaluate it; package names in examples describe
+the planned public distribution surface. Check the
+[packages and compatibility reference](/v0.1/reference/packages) and
+[configuration reference](/v0.1/reference/configuration) before relying on a
+feature that affects persisted data or operational behavior.

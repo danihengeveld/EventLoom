@@ -1,5 +1,8 @@
 # EventLoom
 
+[![CI](https://github.com/danihengeveld/EventLoom/actions/workflows/ci.yml/badge.svg)](https://github.com/danihengeveld/EventLoom/actions/workflows/ci.yml)
+[![Security](https://github.com/danihengeveld/EventLoom/actions/workflows/security.yml/badge.svg)](https://github.com/danihengeveld/EventLoom/actions/workflows/security.yml)
+
 <p align="center">
   <img src="assets/eventloom-icon.svg" width="128" alt="EventLoom" />
 </p>

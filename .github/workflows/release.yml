@@ -1,0 +1,154 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build release
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate tag and main ancestry
+        id: version
+        shell: bash
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          VERSION="${TAG#v}"
+          if [[ "$TAG" != "v$VERSION" || ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "::error::'$TAG' is not a supported release tag."
+            exit 1
+          fi
+          git fetch origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+            echo "::error::Release tags must point to a commit on main."
+            exit 1
+          }
+          node docs/scripts/version-docs.mjs validate "$VERSION"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$VERSION" == *-* ]]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Restore
+        run: dotnet restore EventLoom.slnx --locked-mode
+      - name: Build
+        run: dotnet build EventLoom.slnx --configuration Release --no-restore -p:EventLoomPackageVersion=${{ steps.version.outputs.version }}
+      - name: Run core tests
+        run: dotnet run --project tests/EventLoom.UnitTests --configuration Release --no-build -p:EventLoomPackageVersion=${{ steps.version.outputs.version }}
+      - name: Run analyzer tests
+        run: dotnet run --project tests/EventLoom.Analyzers.Tests --configuration Release --no-build -p:EventLoomPackageVersion=${{ steps.version.outputs.version }}
+      - name: Run EF Core and hosting tests
+        run: dotnet run --project tests/EventLoom.EntityFrameworkCore.UnitTests --configuration Release --no-build -p:EventLoomPackageVersion=${{ steps.version.outputs.version }}
+      - name: Run SQLite integration tests
+        run: dotnet run --project tests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests --configuration Release --no-build -p:EventLoomPackageVersion=${{ steps.version.outputs.version }}
+      - name: Verify Docker
+        run: docker version
+      - name: Run PostgreSQL integration tests
+        run: dotnet run --project tests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests --configuration Release --no-build -p:EventLoomPackageVersion=${{ steps.version.outputs.version }}
+      - name: Pack
+        shell: bash
+        run: ./scripts/pack.sh '${{ steps.version.outputs.version }}'
+      - name: Verify package contents
+        shell: bash
+        run: ./scripts/verify-packages.sh '${{ steps.version.outputs.version }}'
+      - name: Validate package consumer and template
+        shell: bash
+        run: ./scripts/validate-packages.sh '${{ steps.version.outputs.version }}'
+      - name: Set up pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 12.4.2
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: docs/pnpm-lock.yaml
+      - name: Install documentation dependencies
+        run: pnpm --dir docs install --frozen-lockfile
+      - name: Build documentation
+        run: pnpm --dir docs build
+      - name: Upload release packages
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: eventloom-${{ steps.version.outputs.version }}
+          path: |
+            artifacts/packages/*.nupkg
+            artifacts/packages/*.snupkg
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish to NuGet
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: nuget-release
+    permissions:
+      id-token: write
+      contents: write
+      attestations: write
+    steps:
+      - name: Download release packages
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: eventloom-${{ needs.build.outputs.version }}
+          path: artifacts/packages
+      - name: Attest package provenance
+        uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a # v3.1.0
+        with:
+          subject-path: |
+            artifacts/packages/*.nupkg
+            artifacts/packages/*.snupkg
+      - name: Authenticate to NuGet
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.0.0
+        id: login
+        with:
+          user: ${{ vars.NUGET_USER }}
+      - name: Publish packages
+        shell: bash
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: |
+          dotnet nuget push 'artifacts/packages/*.nupkg' \
+            --source https://api.nuget.org/v3/index.json \
+            --api-key "$NUGET_API_KEY" \
+            --skip-duplicate
+      - name: Create GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          args=(release create "$TAG" artifacts/packages/* --generate-notes --verify-tag --title "$TAG")
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--prerelease)
+          fi
+          gh "${args[@]}"

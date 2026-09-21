@@ -1,10 +1,14 @@
 # Contributing to EventLoom
 
-Use the .NET SDK selected by `global.json` and pnpm for the documentation site. Before opening a pull request, run:
+Use the .NET SDK selected by `global.json` and pnpm for the documentation site.
+Before opening a pull request, run the smallest relevant validation locally.
+The full pull-request checks are defined in `.github/workflows/ci.yml` and
+`.github/workflows/security.yml`.
 
 ```bash
-dotnet build EventLoom.slnx
-dotnet run --project tests/EventLoom.UnitTests
+dotnet restore EventLoom.slnx --locked-mode
+dotnet build EventLoom.slnx --configuration Release --no-restore
+dotnet run --project tests/EventLoom.UnitTests --configuration Release --no-build
 pnpm --dir docs build
 ```
 
@@ -12,14 +16,40 @@ Changes to persistence guarantees, public APIs, or operational behavior require 
 
 ## Public API and package validation
 
-The six supported library packages maintain nullable-aware public API baselines
-in their `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` files. Until the
-first published package version, public APIs belong in the unshipped baseline.
-Move intentional, published contract signatures to the shipped baseline as part
-of a release; do not remove or alter shipped signatures without an explicitly
-documented compatibility decision.
+The eight supported packages have public API regression tests in the core and
+EF Core test projects. Update those snapshots only for deliberate API changes.
+After the first stable release, do not remove or alter a shipped signature
+without an explicitly documented compatibility decision.
 
-CI packs only the supported library projects and restores
+CI packs exactly the supported projects and restores
 `tests/EventLoom.PackageConsumerTests` from that local package feed. Keep the
 consumer scenario independent of project references so it continues to verify
-the actual NuGet dependency graph.
+the actual NuGet dependency graph. Reproduce the package checks with:
+
+```bash
+./scripts/pack.sh 0.1.0-alpha.0
+./scripts/verify-packages.sh 0.1.0-alpha.0
+./scripts/validate-packages.sh 0.1.0-alpha.0
+```
+
+The validation script uses an isolated NuGet package cache so a locally cached
+package with the same version cannot hide a packaging error.
+
+## Documentation release lines
+
+The root of the documentation site describes the next release. Published
+release lines are committed snapshots:
+
+- pre-1.0 versions use a minor line such as `/v0.1/`;
+- stable versions use a major line such as `/v1/`.
+
+Before preparing a release, refresh its snapshot and review the resulting diff:
+
+```bash
+pnpm --dir docs docs:snapshot 0.1.0-alpha.1
+pnpm --dir docs build
+```
+
+The release workflow refuses to publish if the tag's release line is absent
+from `docs/src/data/docs-versions.json` or its committed content directory.
+See `RELEASING.md` for the complete release and repository setup process.

@@ -23,6 +23,9 @@ export default defineConfig({
                 alt: 'EventLoom',
                 replacesTitle: false,
             },
+            components: {
+                SocialIcons: './src/components/VersionSelector.astro',
+            },
             sidebar: [
                 {
                     label: 'Start here',
@@ -63,6 +66,12 @@ export default defineConfig({
                         { label: 'Configuration', slug: 'reference/configuration' },
                         { label: 'Guarantees and operational APIs', slug: 'reference/guarantees' },
                         { label: 'Glossary', slug: 'reference/glossary' },
+                    ],
+                },
+                {
+                    label: 'Archived documentation',
+                    items: [
+                        { autogenerate: { directory: 'v0.1' } },
                     ],
                 },
             ],

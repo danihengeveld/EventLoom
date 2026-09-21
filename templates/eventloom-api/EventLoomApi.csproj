@@ -5,8 +5,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="EventLoom.AspNetCore" Version="0.1.0-alpha.0" />
-    <PackageReference Include="EventLoom.Analyzers" Version="0.1.0-alpha.0" PrivateAssets="all" />
-    <PackageReference Include="EventLoom.EntityFrameworkCore.Sqlite" Version="0.1.0-alpha.0" />
+    <PackageReference Include="EventLoom.AspNetCore" Version="EventLoomPackageVersion" />
+    <PackageReference Include="EventLoom.Analyzers" Version="EventLoomPackageVersion" PrivateAssets="all" />
+    <PackageReference Include="EventLoom.EntityFrameworkCore.Sqlite" Version="EventLoomPackageVersion" />
   </ItemGroup>
 </Project>

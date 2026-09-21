@@ -1,0 +1,66 @@
+name: Prepare release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SemVer without the leading v (for example, 0.1.0-alpha.1)
+        required: true
+        type: string
+
+permissions:
+  actions: write
+  contents: write
+
+concurrency:
+  group: prepare-release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    name: Validate and tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Validate version and release line
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "$GITHUB_REF" != 'refs/heads/main' ]]; then
+            echo "::error::Prepare release must be run from the main branch."
+            exit 1
+          fi
+          if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+            echo "::error::'$VERSION' is not a supported SemVer version."
+            exit 1
+          fi
+          git fetch origin main:refs/remotes/origin/main --tags
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" || {
+            echo "::error::The workflow must run from the current main commit."
+            exit 1
+          }
+          ! git rev-parse --verify --quiet "refs/tags/v$VERSION" || {
+            echo "::error::Tag v$VERSION already exists."
+            exit 1
+          }
+          node docs/scripts/version-docs.mjs validate "$VERSION"
+      - name: Create annotated release tag
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git tag --annotate "v$VERSION" --message "Release v$VERSION"
+          git push origin "v$VERSION"
+      - name: Start tagged release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: gh workflow run release.yml --ref "v$VERSION"

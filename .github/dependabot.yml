@@ -4,11 +4,23 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    labels: [dependencies, dotnet]
+    groups:
+      dotnet-dependencies:
+        patterns: ["*"]
   - package-ecosystem: npm
     directory: /docs
     schedule:
       interval: weekly
+    labels: [dependencies, documentation]
+    groups:
+      documentation-dependencies:
+        patterns: ["*"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    labels: [dependencies, github-actions]
+    groups:
+      github-actions:
+        patterns: ["*"]

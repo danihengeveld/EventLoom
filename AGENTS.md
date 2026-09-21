@@ -105,9 +105,11 @@ locally packed packages.
 
 ### Documentation (`docs/`)
 
-The documentation site uses Astro 7 and Starlight, with pnpm. Content lives in
-`docs/src/content/docs/`; navigation is explicit in `docs/astro.config.mjs`.
-Follow `docs/AGENTS.md` as well as this file for any work under `docs/`.
+The documentation site uses Astro 7 and Starlight, with pnpm. Current content
+lives directly in `docs/src/content/docs/`; committed release-line snapshots
+live below version directories such as `docs/src/content/docs/v0.1/`.
+Navigation is explicit in `docs/astro.config.mjs`. Follow `docs/AGENTS.md` as
+well as this file for any work under `docs/`.
 
 The content types are intentional:
 
@@ -270,11 +272,18 @@ the intended navigation.
 
 ### Packages, consumer, and template
 
-For big package-facing changes, reproduce the `packages` job in
-`.github/workflows/validate.yml`: build Release, pack all projects under
-`src/` into `artifacts/packages`, verify the exact package set and package
-contents, restore/run `EventLoom.PackageConsumerTests` against that local
-feed, then install and build a generated `eventloom-api` template.
+For package-facing changes, build Release and run:
+
+```bash
+./scripts/pack.sh 0.1.0-alpha.0
+./scripts/verify-packages.sh 0.1.0-alpha.0
+./scripts/validate-packages.sh 0.1.0-alpha.0
+```
+
+The scripts reproduce the package job in `.github/workflows/ci.yml` and use an
+isolated NuGet cache for consumer and template validation. They restore and run
+`EventLoom.PackageConsumerTests` against that local feed, then install and
+build a generated `eventloom-api` template.
 
 Prefer the workflow as the source of truth instead of copying its shell loop
 into new scripts or documentation. If validation commands change, update CI,
