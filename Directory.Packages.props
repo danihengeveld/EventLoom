@@ -20,9 +20,9 @@
     <PackageVersion Include="OpenTelemetry" Version="1.19.1" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.19.1" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.19.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.19.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.19.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.19.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.19.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.19.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.19.0" />
     <PackageVersion Include="Microsoft.Data.Sqlite.Core" Version="10.0.12" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.12" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
