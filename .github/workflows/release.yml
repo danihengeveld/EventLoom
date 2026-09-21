@@ -142,6 +142,7 @@ jobs:
       - name: Create GitHub Release
         shell: bash
         env:
+          GH_REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
           PRERELEASE: ${{ needs.build.outputs.prerelease }}
           TAG: ${{ github.ref_name }}
