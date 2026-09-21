@@ -60,20 +60,13 @@ package versions only. The workflow filename is configured without the
 ### Configure Vercel
 
 Keep Vercel connected to `main`, use `docs` as the project root, run
-`pnpm build`, and deploy the generated Astro output. A single production build
-contains both the current docs and every committed release-line snapshot.
+`pnpm build`, and deploy the generated Astro output.
 
 ## Prepare a release
 
 1. Update current documentation and package-facing release notes.
-2. Refresh the release-line snapshot:
-
-   ```bash
-   pnpm --dir docs docs:snapshot 0.1.0-alpha.1
-   pnpm --dir docs build
-   ```
-
-3. Commit the snapshot and merge it to `main`.
+2. Build the documentation with `pnpm --dir docs build`.
+3. Commit the release changes and merge them to `main`.
 4. Confirm all required checks on `main` are successful.
 5. Run the `Prepare release` workflow from `main` and enter the SemVer version
    without `v`.
@@ -82,9 +75,9 @@ Supported tags are `vX.Y.Z` and SemVer prereleases such as
 `vX.Y.Z-alpha.N`, `vX.Y.Z-beta.N`, and `vX.Y.Z-rc.N`.
 
 The preparation workflow verifies the version, confirms it is running against
-the current `main`, verifies the docs snapshot, creates an annotated tag, and
-dispatches the tagged release. The tag is the authoritative package version;
-no version-only commit is required.
+the current `main`, creates an annotated tag, and dispatches the tagged
+release. The tag is the authoritative package version; no version-only commit
+is required.
 
 ## Approve and verify publishing
 
@@ -105,4 +98,4 @@ workflow for the same immutable tag; never create a replacement tag.
 
 Verify the resulting package versions on NuGet.org, the GitHub Release
 artifacts, their attestations with `gh attestation verify`, and the deployed
-documentation release line.
+documentation.

@@ -35,21 +35,4 @@ the actual NuGet dependency graph. Reproduce the package checks with:
 The validation script uses an isolated NuGet package cache so a locally cached
 package with the same version cannot hide a packaging error.
 
-## Documentation release lines
-
-The root of the documentation site describes the next release. Published
-release lines are committed snapshots:
-
-- pre-1.0 versions use a minor line such as `/v0.1/`;
-- stable versions use a major line such as `/v1/`.
-
-Before preparing a release, refresh its snapshot and review the resulting diff:
-
-```bash
-pnpm --dir docs docs:snapshot 0.1.0-alpha.1
-pnpm --dir docs build
-```
-
-The release workflow refuses to publish if the tag's release line is absent
-from `docs/src/data/docs-versions.json` or its committed content directory.
 See `RELEASING.md` for the complete release and repository setup process.

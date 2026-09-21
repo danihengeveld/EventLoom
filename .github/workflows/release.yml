@@ -44,7 +44,6 @@ jobs:
             echo "::error::Release tags must point to a commit on main."
             exit 1
           }
-          node docs/scripts/version-docs.mjs validate "$VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if [[ "$VERSION" == *-* ]]; then
             echo "prerelease=true" >> "$GITHUB_OUTPUT"

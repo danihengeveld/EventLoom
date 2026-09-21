@@ -105,11 +105,9 @@ locally packed packages.
 
 ### Documentation (`docs/`)
 
-The documentation site uses Astro 7 and Starlight, with pnpm. Current content
-lives directly in `docs/src/content/docs/`; committed release-line snapshots
-live below version directories such as `docs/src/content/docs/v0.1/`.
-Navigation is explicit in `docs/astro.config.mjs`. Follow `docs/AGENTS.md` as
-well as this file for any work under `docs/`.
+The documentation site uses Astro 7 and Starlight, with pnpm. Content lives in
+`docs/src/content/docs/`; navigation is explicit in `docs/astro.config.mjs`.
+Follow `docs/AGENTS.md` as well as this file for any work under `docs/`.
 
 The content types are intentional:
 
