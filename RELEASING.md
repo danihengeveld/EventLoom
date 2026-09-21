@@ -25,10 +25,16 @@ Prevent branch deletion and force pushes. Require review from the owners in
 
 ### Protect release tags
 
-Create a tag ruleset targeting `v*` that prevents updates and deletion and
-restricts creation. Permit the GitHub Actions app to bypass creation only so
-the `Prepare release` workflow can create the validated tag. Maintainers must
-not move or recreate a published tag.
+Create a tag ruleset targeting `v*` that prevents updates and deletion. Do not
+enable **Restrict creations**: the built-in `GITHUB_TOKEN` used by the
+`Prepare release` workflow cannot be selected as a ruleset bypass actor.
+
+Tag creation remains protected by the release process: the preparation
+workflow accepts only SemVer versions and tags the current `main` commit, the
+release workflow verifies the tag and its `main` ancestry, and NuGet publishing
+requires approval through the `nuget-release` environment. Maintainers must
+not create release tags outside this workflow or move or recreate a published
+tag.
 
 ### Configure the `nuget-release` environment
 
