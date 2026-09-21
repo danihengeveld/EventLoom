@@ -1,5 +1,9 @@
 # Security Policy
 
-Do not report vulnerabilities through public issues. Until a dedicated reporting address is published, report potential vulnerabilities privately to the repository owner.
+Do not report vulnerabilities through public issues. Until a dedicated
+reporting address is published, report potential vulnerabilities privately to
+the repository owner.
 
-EventLoom has not released a supported version yet. Security support policy and disclosure contact details will be finalized before the first public package release.
+EventLoom is currently pre-release. Security fixes are provided for the latest
+published prerelease only; users should upgrade to the newest available
+version. This policy will be revisited before the first stable release.

@@ -13,6 +13,12 @@ applications:
   `ManualTimeProvider`) and event identifiers (`SequentialEventIdGenerator`)
   for integration tests that exercise real persistence.
 
+Install it in a test project:
+
+```bash
+dotnet add package EventLoom.Testing --prerelease
+```
+
 ## Aggregate scenarios
 
 ```csharp

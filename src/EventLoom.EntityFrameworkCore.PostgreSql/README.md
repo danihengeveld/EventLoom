@@ -6,10 +6,6 @@ classification, and fenced worker leases for multi-instance deployments.
 
 Use this as the normal application entry point for EventLoom persistence:
 
-> **Planned package command:** EventLoom packages are not published to NuGet
-> yet. Use the [installation guide](../../docs/src/content/docs/getting-started/installation.md)
-> to reference projects from a checkout.
-
 ```bash
 dotnet add package EventLoom.EntityFrameworkCore.PostgreSql --prerelease
 ```
@@ -42,7 +38,7 @@ PostgreSQL for any production application that runs multiple instances, uses
 distributed projection or outbox workers, or needs the provider's distributed
 correctness guarantees.
 
-Packages are currently pre-release and not published to NuGet. Follow the
+EventLoom is currently pre-release. Follow the
 [EF Core configuration guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/configure-ef-core.md)
 and [production deployment guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/production-deployment.md)
 for schema, tenancy, and recovery requirements.

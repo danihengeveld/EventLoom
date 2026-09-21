@@ -4,8 +4,7 @@ description: Operate the current EventLoom event store safely in a PostgreSQL ap
 ---
 
 This guide describes the production boundary supported by the current
-pre-release. It does not imply that public package-release tooling is
-available.
+pre-release packages.
 
 ## Use PostgreSQL and one provider configuration
 

@@ -37,16 +37,6 @@ one contract family still receive all relevant diagnostics.
 
 Reference the package as an analyzer:
 
-> **Planned package reference:** EventLoom packages are not published to NuGet
-> yet. Reference the analyzer project from a checkout while evaluating the
-> library:
-
-```xml
-<ProjectReference Include="../EventLoom/src/EventLoom.Analyzers/EventLoom.Analyzers.csproj"
-                  OutputItemType="Analyzer"
-                  ReferenceOutputAssembly="false" />
-```
-
 ```xml
 <PackageReference Include="EventLoom.Analyzers" Version="0.1.0-alpha.0"
                   PrivateAssets="all" />

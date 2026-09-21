@@ -7,10 +7,6 @@ storage without schemas.
 Use this as the application entry point for local, embedded, test, or one
 controlled-process scenarios:
 
-> **Planned package command:** EventLoom packages are not published to NuGet
-> yet. Use the [installation guide](../../docs/src/content/docs/getting-started/installation.md)
-> to reference projects from a checkout.
-
 ```bash
 dotnet add package EventLoom.EntityFrameworkCore.Sqlite --prerelease
 ```
@@ -42,6 +38,6 @@ one event store. Use
 `EventLoom.EntityFrameworkCore.PostgreSql` for production distributed
 deployments.
 
-Packages are currently pre-release and not published to NuGet. See the
+EventLoom is currently pre-release. See the
 [EF Core configuration guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/configure-ef-core.md)
 for provider setup and migration boundaries.

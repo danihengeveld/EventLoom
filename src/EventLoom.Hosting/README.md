@@ -24,7 +24,7 @@ builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => metrics.AddEventLoomInstrumentation());
 ```
 
-Packages are currently pre-release and not published to NuGet. See the
+EventLoom is currently pre-release. See the
 [observability guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/observability.md)
 and [production deployment guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/production-deployment.md)
 for operational boundaries.

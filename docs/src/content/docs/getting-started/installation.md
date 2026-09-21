@@ -1,13 +1,13 @@
 ---
 title: Installation
-description: Set up EventLoom from source and choose the appropriate storage provider.
+description: Install EventLoom from NuGet and choose the appropriate storage provider.
 ---
 
 ## Status and prerequisites
 
-EventLoom currently targets **.NET 10** and is pre-release. Its NuGet packages
-are not published yet, so use a checkout when evaluating or contributing to
-the library.
+EventLoom `0.1.0-alpha.0` targets **.NET 10** and is available from NuGet.
+Because it is pre-release, APIs and persistence contracts may change before
+the first stable release.
 
 You need:
 
@@ -18,31 +18,28 @@ You need:
   Ordering API sample;
 - pnpm only when building the documentation site.
 
-## Add EventLoom from this checkout
+## Install EventLoom
 
-Reference the ASP.NET Core application package and one provider project:
+Install the ASP.NET Core application package and exactly one provider. For
+PostgreSQL:
 
-```xml
-<ItemGroup>
-  <ProjectReference Include="../EventLoom/src/EventLoom.AspNetCore/EventLoom.AspNetCore.csproj" />
-  <ProjectReference Include="../EventLoom/src/EventLoom.EntityFrameworkCore.PostgreSql/EventLoom.EntityFrameworkCore.PostgreSql.csproj" />
-</ItemGroup>
+```bash
+dotnet add package EventLoom.AspNetCore --version 0.1.0-alpha.0
+dotnet add package EventLoom.EntityFrameworkCore.PostgreSql --version 0.1.0-alpha.0
+dotnet add package EventLoom.Analyzers --version 0.1.0-alpha.0
 ```
 
-For SQLite instead, reference:
+For SQLite:
 
-```xml
-<ProjectReference Include="../EventLoom/src/EventLoom.AspNetCore/EventLoom.AspNetCore.csproj" />
-<ProjectReference Include="../EventLoom/src/EventLoom.EntityFrameworkCore.Sqlite/EventLoom.EntityFrameworkCore.Sqlite.csproj" />
+```bash
+dotnet add package EventLoom.AspNetCore --version 0.1.0-alpha.0
+dotnet add package EventLoom.EntityFrameworkCore.Sqlite --version 0.1.0-alpha.0
+dotnet add package EventLoom.Analyzers --version 0.1.0-alpha.0
 ```
 
 The provider projects bring in the provider-neutral EF Core event store. Choose
 one provider for an application. The [Ordering API sample](/guides/ordering-api)
 uses PostgreSQL through .NET Aspire to demonstrate the production path.
-
-When EventLoom packages are published, use the corresponding
-`EventLoom.AspNetCore` and one provider package from NuGet instead of project
-references.
 
 ## Choose a provider
 
@@ -54,17 +51,19 @@ references.
 PostgreSQL is the production provider. SQLite is intentionally not a substitute
 for PostgreSQL concurrency testing or a distributed deployment.
 
-## Verify the checkout
+## Build from source
 
-From the repository root:
+Use a repository checkout when contributing to EventLoom itself. From the
+repository root:
 
 ```bash
-dotnet build EventLoom.slnx
-dotnet run --project tests/EventLoom.UnitTests
-dotnet run --project tests/EventLoom.EntityFrameworkCore.UnitTests
-dotnet run --project tests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests
+dotnet restore EventLoom.slnx --locked-mode
+dotnet build EventLoom.slnx --configuration Release --no-restore
+dotnet run --project tests/EventLoom.UnitTests --configuration Release --no-build
+dotnet run --project tests/EventLoom.EntityFrameworkCore.UnitTests --configuration Release --no-build
+dotnet run --project tests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests --configuration Release --no-build
 TESTCONTAINERS_RYUK_DISABLED=true \
-  dotnet run --project tests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests
+  dotnet run --project tests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests --configuration Release --no-build
 pnpm --dir docs build
 ```
 

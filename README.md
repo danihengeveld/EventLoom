@@ -16,8 +16,9 @@ transactional outbox.
 PostgreSQL is the distributed production provider. SQLite supports local,
 embedded, and controlled single-node applications.
 
-> **Pre-release:** EventLoom packages are not published to NuGet yet. The
-> package names and commands below describe the planned public surface.
+> **Pre-release:** EventLoom `0.1.0-alpha.0` is available on
+> [NuGet](https://www.nuget.org/profiles/danihengeveld). APIs and persistence
+> contracts may change before the first stable release.
 
 ## Choose a package
 
@@ -38,7 +39,7 @@ dependencies with it.
 
 ## Quick start
 
-After the first package release, a PostgreSQL application will start with:
+A PostgreSQL application starts with:
 
 ```bash
 dotnet add package EventLoom.AspNetCore --prerelease

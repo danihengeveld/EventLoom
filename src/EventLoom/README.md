@@ -7,10 +7,6 @@ rules, aggregate dispatch, and JSON serialization settings.
 
 Install it directly when your domain layer needs EventLoom abstractions:
 
-> **Planned package command:** EventLoom packages are not published to NuGet
-> yet. Use the [installation guide](../../docs/src/content/docs/getting-started/installation.md)
-> to reference projects from a checkout.
-
 ```bash
 dotnet add package EventLoom --prerelease
 ```
@@ -38,6 +34,6 @@ applications should add `EventLoom.AspNetCore` plus exactly one provider:
 `EventLoom.EntityFrameworkCore.PostgreSql` for distributed production or
 `EventLoom.EntityFrameworkCore.Sqlite` for local and single-node use.
 
-Packages are currently pre-release and not published to NuGet. See the
+EventLoom is currently pre-release. See the
 [getting started guide](https://github.com/danihengeveld/EventLoom/tree/main/docs/src/content/docs/getting-started)
 and [core concepts](https://github.com/danihengeveld/EventLoom/tree/main/docs/src/content/docs/concepts).
