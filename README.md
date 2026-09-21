@@ -17,7 +17,7 @@ PostgreSQL is the distributed production provider. SQLite supports local,
 embedded, and controlled single-node applications.
 
 > **Pre-release:** EventLoom `0.1.0-alpha.0` is available on
-> [NuGet](https://www.nuget.org/profiles/danihengeveld). APIs and persistence
+> [NuGet](https://www.nuget.org/packages/EventLoom.AspNetCore/0.1.0-alpha.0). APIs and persistence
 > contracts may change before the first stable release.
 
 ## Choose a package
@@ -104,11 +104,11 @@ multi-instance or distributed-worker behavior.
 
 ## Documentation and sample
 
-Start with the [documentation site](docs/README.md), especially the
-[installation](docs/src/content/docs/getting-started/installation.md),
-[first aggregate](docs/src/content/docs/getting-started/first-aggregate.md),
-[EF Core configuration](docs/src/content/docs/guides/configure-ef-core.md),
-and [production deployment](docs/src/content/docs/guides/production-deployment.md)
+Start with the [documentation site](https://eventloom.hengeveld.dev), especially the
+[installation](https://eventloom.hengeveld.dev/getting-started/installation.md),
+[first aggregate](https://eventloom.hengeveld.dev/getting-started/first-aggregate.md),
+[EF Core configuration](https://eventloom.hengeveld.dev/guides/configure-ef-core.md),
+and [production deployment](https://eventloom.hengeveld.dev/guides/production-deployment.md)
 guides.
 
 The Ordering API sample runs PostgreSQL and the API through Aspire:
