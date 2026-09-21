@@ -36,7 +36,7 @@ public sealed class EventLoomHostingTests
         await Assert.That(context.Database.ProviderName).IsEqualTo("Microsoft.EntityFrameworkCore.Sqlite");
         await Assert.That(scope.ServiceProvider.GetRequiredService<IEventIdGenerator>())
             .IsTypeOf<UuidV7EventIdGenerator>();
-        await Assert.That(scope.ServiceProvider.GetRequiredService<TimeProviderClock>().Provider)
+        await Assert.That(scope.ServiceProvider.GetRequiredService<TimeProvider>())
             .IsEqualTo(TimeProvider.System);
         await Assert.That(scope.ServiceProvider.GetRequiredService<AggregateRepository<Counter, Guid>>()).IsNotNull();
     }
@@ -68,7 +68,7 @@ public sealed class EventLoomHostingTests
         await Assert.That(() => services.AddEventLoom(eventLoom => eventLoom
                 .AddEvent<CounterIncremented>()
                 .UseSqlite("Data Source=:memory:")
-                .ConfigureTenancy(TenancyMode.MultiTenant)))
+                .UseMultiTenancy()))
             .Throws<InvalidOperationException>();
     }
 

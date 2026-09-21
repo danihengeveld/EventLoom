@@ -12,8 +12,6 @@ applications:
   connection, with schema initialization and deterministic time (
   `ManualTimeProvider`) and event identifiers (`SequentialEventIdGenerator`)
   for integration tests that exercise real persistence.
-- **`EventTestBuilder<TEvent>`** — concise event fixtures for contract and
-  serialization tests.
 
 ## Aggregate scenarios
 

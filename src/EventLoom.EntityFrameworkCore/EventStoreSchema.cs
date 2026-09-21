@@ -58,7 +58,7 @@ public static class EventStoreSchema
     /// <param name="options">The event-store naming options.</param>
     /// <returns>The tables managed by EventLoom, in a stable order.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
-    public static string[] GetTableNames(EventStoreOptions options)
+    private static string[] GetTableNames(EventStoreOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
         return
@@ -265,27 +265,3 @@ public sealed record EventStoreSchemaValidationResult(
         MissingColumns.Count == 0 &&
         IncompatibleColumns.Count == 0;
 }
-
-/// <summary>
-/// Describes storage-provider features used by EventLoom.
-/// </summary>
-public interface IEventStoreProviderCapabilities
-{
-    /// <summary>
-    /// Gets a value indicating whether the provider supports distributed workers.
-    /// </summary>
-    bool SupportsDistributedWorkers { get; }
-
-    /// <summary>
-    /// Gets a value indicating whether the provider supports database schemas.
-    /// </summary>
-    bool SupportsSchemas { get; }
-}
-
-/// <summary>
-/// Indicates that distributed worker mode was requested for an unsupported provider.
-/// </summary>
-/// <param name="providerName">The provider name included in the exception message.</param>
-public sealed class DistributedWorkerConfigurationException(string providerName)
-    : InvalidOperationException(
-        $"Distributed worker mode is not supported by the configured EventLoom provider '{providerName}'.");

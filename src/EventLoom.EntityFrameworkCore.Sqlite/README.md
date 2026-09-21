@@ -30,7 +30,7 @@ builder.Services
 
 For an intentionally explicit empty-database initialization, resolve the
 dedicated `EventStoreDbContext` during startup and call
-`SqliteEventStoreSchema.EnsureCreatedAsync(context)`. Provider registration
+`EventStoreSchema.EnsureCreatedAsync(context)`. Provider registration
 does not create or migrate storage automatically. This operation creates the
 configured tables and table prefix, but does not evolve an existing schema.
 

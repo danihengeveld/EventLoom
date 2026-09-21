@@ -20,7 +20,7 @@ public sealed class EventStoreSqliteTests
             options,
             new EventStoreOptions { TablePrefix = "test_" });
 
-        await SqliteEventStoreSchema.EnsureCreatedAsync(context);
+        await EventStoreSchema.EnsureCreatedAsync(context);
 
         var tableNames = await context.Database
             .GetDbConnection()

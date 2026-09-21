@@ -21,7 +21,7 @@ public interface IEfProjectionHandler<TEvent>
 public sealed record ProjectionKey(string Name, int Version)
 {
     /// <summary>Validates the projection identity.</summary>
-    public void Validate()
+    internal void Validate()
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(Name);
         if (Version < 1)
@@ -69,7 +69,7 @@ public sealed record ProjectionHealthSummary(
     long MaximumLag);
 
 /// <summary>Describes the outcome of attempting one projection delivery.</summary>
-public enum ProjectionDeliveryResult
+internal enum ProjectionDeliveryResult
 {
     /// <summary>The event handler and checkpoint transaction committed.</summary>
     Processed,
@@ -82,12 +82,12 @@ public enum ProjectionDeliveryResult
 }
 
 /// <summary>Indicates that a projection worker lost its fenced lease before committing work.</summary>
-public sealed class ProjectionLeaseLostException(string tenantId, ProjectionKey key)
+internal sealed class ProjectionLeaseLostException(string tenantId, ProjectionKey key)
     : InvalidOperationException(
         $"Projection '{key.Name}' version {key.Version} lost its lease for tenant '{tenantId}'.");
 
 /// <summary>Persists checkpoints and failures and coordinates transactional EF projection work.</summary>
-public sealed class ProjectionStore(EventStoreDbContext context, TimeProvider timeProvider)
+internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider timeProvider)
 {
     private readonly EventStoreDbContext context = context ?? throw new ArgumentNullException(nameof(context));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));

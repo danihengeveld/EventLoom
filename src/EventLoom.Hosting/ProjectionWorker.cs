@@ -192,9 +192,14 @@ internal sealed class ProjectionWorker(
 }
 
 /// <summary>Provides explicit administration operations for a tenant-scoped projection.</summary>
-public sealed class ProjectionAdministration(ProjectionStore store)
+public sealed class ProjectionAdministration
 {
-    private readonly ProjectionStore store = store ?? throw new ArgumentNullException(nameof(store));
+    private readonly ProjectionStore store;
+
+    internal ProjectionAdministration(ProjectionStore store)
+    {
+        this.store = store ?? throw new ArgumentNullException(nameof(store));
+    }
 
     /// <summary>Gets a projection checkpoint, if it has begun processing events.</summary>
     public Task<ProjectionCheckpoint?> GetCheckpointAsync(

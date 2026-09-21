@@ -22,7 +22,8 @@ public sealed class EventLoomHealthCheckTests
             .AddEvent<ItemAdded>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
-            .AddProjection<RecordingProjection, ItemAdded>("tests.health")
+            .AddProjection("tests.health", projection =>
+                projection.Asynchronous<RecordingProjection, ItemAdded>())
             .AddOutboxPublisher<NoopOutboxPublisher>());
         services.AddEventLoomHealthChecks(options =>
         {

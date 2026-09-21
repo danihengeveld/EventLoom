@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 namespace EventLoom.EntityFrameworkCore;
 
 /// <summary>Persists and retrieves versioned aggregate snapshots independently of immutable event history.</summary>
-public sealed class SnapshotStore(
+internal sealed class SnapshotStore(
     EventStoreDbContext context,
     TimeProvider timeProvider,
     ISnapshotRetentionPolicy? retentionPolicy = null)
@@ -123,7 +123,7 @@ public sealed class SnapshotStore(
 }
 
 /// <summary>Describes a snapshot write request.</summary>
-public sealed record SnapshotWriteRequest(
+internal sealed record SnapshotWriteRequest(
     string TenantId,
     string StreamId,
     string AggregateType,
@@ -133,7 +133,7 @@ public sealed record SnapshotWriteRequest(
     string Payload);
 
 /// <summary>Describes a persisted aggregate snapshot.</summary>
-public sealed record SnapshotEnvelope(
+internal sealed record SnapshotEnvelope(
     string TenantId,
     string StreamId,
     string AggregateType,

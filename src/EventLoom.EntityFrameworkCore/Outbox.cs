@@ -33,11 +33,11 @@ public sealed record OutboxAttempt(
 public sealed record OutboxHealthSummary(int PendingMessageCount);
 
 /// <summary>Indicates that an outbox worker lost ownership before recording delivery.</summary>
-public sealed class OutboxLeaseLostException(string tenantId)
+internal sealed class OutboxLeaseLostException(string tenantId)
     : InvalidOperationException($"The outbox publisher lost its lease for tenant '{tenantId}'.");
 
 /// <summary>Reads durable outbox messages and records their delivery outcomes.</summary>
-public sealed class OutboxStore(EventStoreDbContext context, TimeProvider timeProvider)
+internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider timeProvider)
 {
     private readonly EventStoreDbContext context = context ?? throw new ArgumentNullException(nameof(context));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));

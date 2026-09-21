@@ -6,16 +6,7 @@ namespace EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests;
 public sealed class PostgreSqlProviderTests
 {
     [Test]
-    public async Task PostgreSql_advertises_distributed_worker_and_schema_support()
-    {
-        var capabilities = new PostgreSqlProviderCapabilities();
-
-        await Assert.That(capabilities.SupportsDistributedWorkers).IsTrue();
-        await Assert.That(capabilities.SupportsSchemas).IsTrue();
-    }
-
-    [Test]
-    public async Task PostgreSql_schema_helper_creates_configured_schema_and_tables()
+    public async Task Event_store_schema_helper_creates_configured_schema_and_tables()
     {
         await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
         await container.StartAsync();
@@ -31,7 +22,7 @@ public sealed class PostgreSqlProviderTests
                 .Options,
             options);
 
-        await PostgreSqlEventStoreSchema.EnsureCreatedAsync(context);
+        await EventStoreSchema.EnsureCreatedAsync(context);
 
         var validation = await EventStoreSchema.ValidateAsync(context);
         await Assert.That(validation.IsCompatible).IsTrue();

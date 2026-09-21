@@ -22,7 +22,7 @@ public sealed class EventStoreWorkerOptions
     public int MaxRetryAttempts { get; set; } = 5;
 
     /// <summary>Validates the worker configuration.</summary>
-    public void Validate()
+    internal void Validate()
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(InstanceId);
         if (PollInterval <= TimeSpan.Zero)

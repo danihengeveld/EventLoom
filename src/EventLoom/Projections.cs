@@ -29,7 +29,7 @@ public interface IInlineProjectionHandler<TEvent>
 }
 
 /// <summary>Dispatches explicitly registered inline projections during an event append.</summary>
-public interface IInlineProjectionDispatcher
+internal interface IInlineProjectionDispatcher
 {
     /// <summary>Dispatches an event to its inline projection handlers.</summary>
     /// <param name="envelope">The persisted event envelope.</param>

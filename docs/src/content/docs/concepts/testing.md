@@ -34,8 +34,7 @@ AggregateScenario.For<Order, Guid>(id => new Order(id))
 `ThenNoEventsRaised()` asserts an idempotent no-op command, and
 `ThenThrows<TException>()` asserts that a command was rejected.
 
-`EventLoom.Testing` also includes `EventTestBuilder<TEvent>` for concise event
-fixtures. Keep tests for aggregate invariants, event payloads, registration,
+Keep tests for aggregate invariants, event payloads, registration,
 serialization, and upcasters independent of EF Core.
 
 ## Test relational behavior with real providers

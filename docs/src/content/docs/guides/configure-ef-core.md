@@ -77,20 +77,19 @@ builder.Services
 
 | `EventStoreOptions` property | Default | Notes |
 | --- | --- | --- |
-| `TenancyMode` | `SingleTenant` | Set to `MultiTenant` by `UseMultiTenancy<TAccessor>()`. |
-| `SingleTenantId` | `default` | Stable internal identity used in single-tenant mode. |
 | `Schema` | `eventloom` | PostgreSQL only. |
 | `TablePrefix` | `eventloom_` | Applied to every EventLoom table. |
-| `UseSchema` | `false` | Set automatically by the provider extension. |
 
-Call `ConfigureEventStore` before `UsePostgreSql` or `UseSqlite`. The selected
-provider owns `UseSchema`: PostgreSQL enables it, while SQLite disables it.
+Configure tenancy with `UseSingleTenancy`, `UseMultiTenancy<TAccessor>`, or
+`UseMultiTenancy()` when the application registers `ITenantAccessor` itself.
+The selected provider owns schema support: PostgreSQL enables it, while SQLite
+disables it.
 
 ## Worker and retry settings
 
-Both the projection worker and the outbox worker use `WorkerLeaseStore` for
-fenced, tenant-scoped leases, but each has its own dedicated options so their
-polling, batching, lease, and retry behavior can be tuned independently.
+Both the projection worker and the outbox worker use fenced, tenant-scoped
+leases, but each has its own dedicated options so their polling, batching,
+lease, and retry behavior can be tuned independently.
 
 Configure the projection worker with `ConfigureWorkers`:
 

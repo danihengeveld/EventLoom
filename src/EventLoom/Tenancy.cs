@@ -28,7 +28,7 @@ public interface ITenantAccessor
 }
 
 /// <summary>Controls whether EventLoom uses one configured tenant or resolves tenants per operation.</summary>
-public enum TenancyMode
+internal enum TenancyMode
 {
     /// <summary>Uses one configured tenant for normal application operations.</summary>
     SingleTenant,

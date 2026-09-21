@@ -16,8 +16,8 @@ public sealed class EventSerializer
     }
 
     /// <summary>Initializes an event serializer with default JSON settings and event upcasters.</summary>
-    public EventSerializer(EventRegistry registry, IEnumerable<EventUpcasterChain>? upcasterChains)
-        : this(registry, new EventSerializationOptions(), upcasterChains)
+    public EventSerializer(EventRegistry registry, IEnumerable<IEventUpcaster>? upcasters)
+        : this(registry, new EventSerializationOptions(), upcasters)
     {
     }
 
@@ -26,15 +26,17 @@ public sealed class EventSerializer
     /// </summary>
     /// <param name="registry">The registry used to resolve stable event identities.</param>
     /// <param name="serializationOptions">The JSON serialization settings.</param>
-    /// <param name="upcasterChains">Optional deterministic upcaster chains keyed by event name.</param>
+    /// <param name="upcasters">Optional deterministic upcasters grouped by event name.</param>
     public EventSerializer(
         EventRegistry registry,
         EventSerializationOptions serializationOptions,
-        IEnumerable<EventUpcasterChain>? upcasterChains)
+        IEnumerable<IEventUpcaster>? upcasters)
     {
         this.registry = registry ?? throw new ArgumentNullException(nameof(registry));
         ArgumentNullException.ThrowIfNull(serializationOptions);
-        this.upcasterChains = (upcasterChains ?? [])
+        this.upcasterChains = (upcasters ?? [])
+            .GroupBy(upcaster => upcaster.EventName, StringComparer.Ordinal)
+            .Select(group => new EventUpcasterChain(group.Key, group))
             .ToDictionary(chain => chain.EventName, StringComparer.Ordinal);
         options = serializationOptions.CreateSerializerOptions();
     }

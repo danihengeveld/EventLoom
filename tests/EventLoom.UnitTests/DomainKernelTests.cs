@@ -56,18 +56,6 @@ public sealed class DomainKernelTests
     }
 
     [Test]
-    public async Task Canonical_guid_conversion_round_trips_and_rejects_noncanonical_values()
-    {
-        var value = Guid.NewGuid();
-        var converter = new GuidIdConverter();
-
-        await Assert.That(converter.ConvertFromCanonicalString(converter.ConvertToCanonicalString(value)))
-            .IsEqualTo(value);
-        await Assert.That(() => converter.ConvertFromCanonicalString(value.ToString()))
-            .Throws<FormatException>();
-    }
-
-    [Test]
     public async Task Event_metadata_copies_headers()
     {
         var headers = new Dictionary<string, string> { ["key"] = "value" };
@@ -123,10 +111,10 @@ public sealed class DomainKernelTests
     }
 
     [Test]
-    public async Task Injected_clock_and_event_id_generator_are_deterministic()
+    public async Task Time_provider_and_event_id_generator_are_deterministic()
     {
         var now = new DateTimeOffset(2026, 9, 17, 8, 0, 0, TimeSpan.Zero);
-        var clock = new TimeProviderClock(new FrozenTimeProvider(now));
+        var clock = new FrozenTimeProvider(now);
         var id = Guid.Parse("0198f2c3-2c00-7000-8000-000000000001");
         var generator = new FixedEventIdGenerator(id);
 

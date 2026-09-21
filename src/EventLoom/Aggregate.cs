@@ -37,7 +37,7 @@ public abstract class Aggregate<TId> : Aggregate
     public long Version { get; private set; }
 
     /// <summary>Gets the events raised since the last successful non-idempotent save.</summary>
-    public IReadOnlyList<PendingEvent> PendingEvents => readOnlyPendingEvents;
+    internal IReadOnlyList<PendingEvent> PendingEvents => readOnlyPendingEvents;
 
     /// <summary>
     /// Raises and immediately applies a new domain event.
@@ -68,13 +68,10 @@ public abstract class Aggregate<TId> : Aggregate
     /// <summary>
     /// Applies persisted history without adding events to the pending collection.
     /// </summary>
-    public void ApplyHistory(IEnumerable<object> history) => Replay(history);
-
-    /// <summary>Gets the events raised since the last successful non-idempotent save.</summary>
-    public IReadOnlyList<PendingEvent> GetPendingEvents() => PendingEvents;
+    internal void ApplyHistory(IEnumerable<object> history) => Replay(history);
 
     /// <summary>Removes all pending events after they have been persisted.</summary>
-    public void ClearPendingEvents() => pendingEvents.Clear();
+    internal void ClearPendingEvents() => pendingEvents.Clear();
 
     internal void RestoreSnapshotVersion(long streamVersion)
     {
@@ -103,7 +100,7 @@ public abstract class Aggregate<TId> : Aggregate
     /// <summary>Describes a pending event and its aggregate version after application.</summary>
     /// <param name="Event">The raised domain event.</param>
     /// <param name="StreamVersion">The aggregate version after applying the event.</param>
-    public sealed record PendingEvent(object Event, long StreamVersion);
+    internal sealed record PendingEvent(object Event, long StreamVersion);
 
     private sealed class AggregateDispatcher
     {

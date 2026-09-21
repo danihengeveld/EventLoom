@@ -35,7 +35,7 @@ public sealed class AggregateRepository<TAggregate, TId>
     /// <summary>
     /// Initializes a repository with configured aggregate and stream identity.
     /// </summary>
-    public AggregateRepository(
+    internal AggregateRepository(
         EventStore store,
         Func<TId, TAggregate> factory,
         string aggregateType,

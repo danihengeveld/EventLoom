@@ -139,22 +139,15 @@ public sealed partial class EventLoomBuilder
     public EventLoomBuilder UseMultiTenancy<TAccessor>()
         where TAccessor : class, ITenantAccessor
     {
-        eventStoreOptions.TenancyMode = TenancyMode.MultiTenant;
         services.AddScoped<ITenantAccessor, TAccessor>();
-        return this;
+        return UseMultiTenancy();
     }
 
-    /// <summary>Configures tenancy using an accessor registered by the application.</summary>
-    /// <param name="mode">The tenancy mode.</param>
+    /// <summary>Enables multi-tenancy using an <see cref="ITenantAccessor"/> registered by the application.</summary>
     /// <returns>This builder.</returns>
-    public EventLoomBuilder ConfigureTenancy(TenancyMode mode)
+    public EventLoomBuilder UseMultiTenancy()
     {
-        if (!Enum.IsDefined(mode))
-        {
-            throw new ArgumentOutOfRangeException(nameof(mode));
-        }
-
-        eventStoreOptions.TenancyMode = mode;
+        eventStoreOptions.TenancyMode = TenancyMode.MultiTenant;
         return this;
     }
 
@@ -195,7 +188,7 @@ public sealed partial class EventLoomBuilder
     /// <param name="name">The stable projection name.</param>
     /// <param name="version">The positive projection version and checkpoint namespace.</param>
     /// <returns>This builder.</returns>
-    public EventLoomBuilder AddProjection<TProjection, TEvent>(string name, int version = 1)
+    internal EventLoomBuilder AddProjection<TProjection, TEvent>(string name, int version = 1)
         where TProjection : class, IProjectionHandler<TEvent>
     {
         var key = new ProjectionKey(name, version);
@@ -214,7 +207,7 @@ public sealed partial class EventLoomBuilder
     /// <param name="name">The stable projection name.</param>
     /// <param name="version">The positive projection version and checkpoint namespace.</param>
     /// <returns>This builder.</returns>
-    public EventLoomBuilder AddEfProjection<TProjection, TEvent>(string name, int version = 1)
+    internal EventLoomBuilder AddEfProjection<TProjection, TEvent>(string name, int version = 1)
         where TProjection : class, IEfProjectionHandler<TEvent>
     {
         var key = new ProjectionKey(name, version);
@@ -231,7 +224,7 @@ public sealed partial class EventLoomBuilder
     /// <param name="name">The stable inline projection name.</param>
     /// <param name="version">The positive inline projection version.</param>
     /// <returns>This builder.</returns>
-    public EventLoomBuilder AddInlineProjection<TProjection, TEvent>(string name, int version = 1)
+    internal EventLoomBuilder AddInlineProjection<TProjection, TEvent>(string name, int version = 1)
         where TProjection : class, IInlineProjectionHandler<TEvent>
     {
         var key = new ProjectionKey(name, version);
@@ -390,11 +383,7 @@ public sealed partial class EventLoomBuilder
         services.AddSingleton(registry);
         services.AddSingleton(_ =>
         {
-            var upcasterChains = upcasters
-                .GroupBy(upcaster => upcaster.EventName, StringComparer.Ordinal)
-                .Select(group => new EventUpcasterChain(group.Key, group))
-                .ToArray();
-            return new EventSerializer(registry, SerializationOptions, upcasterChains);
+            return new EventSerializer(registry, SerializationOptions, upcasters);
         });
         services.AddSingleton<IEventIdGenerator, UuidV7EventIdGenerator>();
         singleTenantAccessorDescriptor = ServiceDescriptor.Scoped<ITenantAccessor>(_ =>
@@ -408,7 +397,6 @@ public sealed partial class EventLoomBuilder
         });
         services.TryAdd(singleTenantAccessorDescriptor);
         services.AddSingleton(_ => timeProvider);
-        services.AddSingleton<TimeProviderClock>();
         services.AddSingleton(_ =>
         {
             ValidateConfiguration();
@@ -430,14 +418,27 @@ public sealed partial class EventLoomBuilder
             serviceProvider.GetRequiredService<DbContextOptions<EventStoreDbContext>>(),
             serviceProvider.GetRequiredService<EventStoreOptions>(),
             serviceProvider.GetRequiredService<Action<ModelBuilder>>()));
-        services.AddScoped<EventStore>();
+        services.AddScoped(serviceProvider => new EventStore(
+            serviceProvider.GetRequiredService<EventStoreDbContext>(),
+            serviceProvider.GetRequiredService<EventSerializer>(),
+            serviceProvider.GetRequiredService<IEventIdGenerator>(),
+            serviceProvider.GetRequiredService<TimeProvider>(),
+            serviceProvider.GetRequiredService<EventStoreOptions>(),
+            serviceProvider.GetService<ITenantAccessor>(),
+            serviceProvider.GetService<IEventStoreRetryPolicy>(),
+            serviceProvider.GetService<IInlineProjectionDispatcher>()));
         services.AddScoped<SnapshotStore>();
         services.AddScoped<ProjectionStore>();
-        services.AddScoped<ProjectionAdministration>();
+        services.AddScoped(serviceProvider => new ProjectionAdministration(
+            serviceProvider.GetRequiredService<ProjectionStore>()));
         services.AddScoped<WorkerLeaseStore>();
         services.AddScoped<OutboxStore>();
-        services.AddScoped<OutboxAdministration>();
-        services.AddScoped<EventLoomOperationalDiagnostics>();
+        services.AddScoped(serviceProvider => new OutboxAdministration(
+            serviceProvider.GetRequiredService<OutboxStore>()));
+        services.AddScoped(serviceProvider => new EventLoomOperationalDiagnostics(
+            serviceProvider.GetRequiredService<ProjectionStore>(),
+            serviceProvider.GetRequiredService<OutboxStore>(),
+            serviceProvider.GetRequiredService<ProjectionRegistry>()));
     }
 
     internal void ValidateConfiguration()

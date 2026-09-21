@@ -149,9 +149,14 @@ internal sealed class OutboxPublisherWorker(
 }
 
 /// <summary>Provides inspection operations for durable EventLoom outbox messages.</summary>
-public sealed class OutboxAdministration(OutboxStore store)
+public sealed class OutboxAdministration
 {
-    private readonly OutboxStore store = store ?? throw new ArgumentNullException(nameof(store));
+    private readonly OutboxStore store;
+
+    internal OutboxAdministration(OutboxStore store)
+    {
+        this.store = store ?? throw new ArgumentNullException(nameof(store));
+    }
 
     /// <summary>Gets a message by tenant-scoped stable message identifier.</summary>
     public Task<OutboxMessage?> GetAsync(

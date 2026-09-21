@@ -18,7 +18,7 @@ try
     await using var provider = services.BuildServiceProvider();
     await using var scope = provider.CreateAsyncScope();
     var context = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
-    await SqliteEventStoreSchema.EnsureCreatedAsync(context);
+    await EventStoreSchema.EnsureCreatedAsync(context);
 
     var eventStore = scope.ServiceProvider.GetRequiredService<EventStore>();
     await eventStore.AppendAsync(new AppendRequest(

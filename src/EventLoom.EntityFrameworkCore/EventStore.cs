@@ -10,27 +10,57 @@ namespace EventLoom.EntityFrameworkCore;
 /// <summary>
 /// Provides transactional append and bounded read operations for an EventLoom event store.
 /// </summary>
-public sealed class EventStore(
-    EventStoreDbContext context,
-    EventSerializer serializer,
-    IEventIdGenerator eventIdGenerator,
-    TimeProvider timeProvider,
-    EventStoreOptions? eventStoreOptions = null,
-    ITenantAccessor? tenantAccessor = null,
-    IEventStoreRetryPolicy? retryPolicy = null,
-    IInlineProjectionDispatcher? inlineProjectionDispatcher = null)
+public sealed class EventStore
 {
-    private readonly EventStoreDbContext context = context ?? throw new ArgumentNullException(nameof(context));
-    private readonly EventSerializer serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+    private readonly EventStoreDbContext context;
+    private readonly EventSerializer serializer;
+    private readonly IEventIdGenerator eventIdGenerator;
+    private readonly TimeProvider timeProvider;
+    private readonly EventStoreOptions eventStoreOptions;
+    private readonly ITenantAccessor? tenantAccessor;
+    private readonly IEventStoreRetryPolicy retryPolicy;
+    private readonly IInlineProjectionDispatcher? inlineProjectionDispatcher;
 
-    private readonly IEventIdGenerator eventIdGenerator =
-        eventIdGenerator ?? throw new ArgumentNullException(nameof(eventIdGenerator));
+    /// <summary>Initializes an event store for direct, non-inline use.</summary>
+    public EventStore(
+        EventStoreDbContext context,
+        EventSerializer serializer,
+        IEventIdGenerator eventIdGenerator,
+        TimeProvider timeProvider,
+        EventStoreOptions? eventStoreOptions = null,
+        ITenantAccessor? tenantAccessor = null,
+        IEventStoreRetryPolicy? retryPolicy = null)
+        : this(
+            context,
+            serializer,
+            eventIdGenerator,
+            timeProvider,
+            eventStoreOptions,
+            tenantAccessor,
+            retryPolicy,
+            null)
+    {
+    }
 
-    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
-    private readonly EventStoreOptions eventStoreOptions = eventStoreOptions ?? new();
-    private readonly ITenantAccessor? tenantAccessor = tenantAccessor;
-    private readonly IEventStoreRetryPolicy retryPolicy = retryPolicy ?? new NoopEventStoreRetryPolicy();
-    private readonly IInlineProjectionDispatcher? inlineProjectionDispatcher = inlineProjectionDispatcher;
+    internal EventStore(
+        EventStoreDbContext context,
+        EventSerializer serializer,
+        IEventIdGenerator eventIdGenerator,
+        TimeProvider timeProvider,
+        EventStoreOptions? eventStoreOptions,
+        ITenantAccessor? tenantAccessor,
+        IEventStoreRetryPolicy? retryPolicy,
+        IInlineProjectionDispatcher? inlineProjectionDispatcher)
+    {
+        this.context = context ?? throw new ArgumentNullException(nameof(context));
+        this.serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
+        this.eventIdGenerator = eventIdGenerator ?? throw new ArgumentNullException(nameof(eventIdGenerator));
+        this.timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+        this.eventStoreOptions = eventStoreOptions ?? new EventStoreOptions();
+        this.tenantAccessor = tenantAccessor;
+        this.retryPolicy = retryPolicy ?? new NoopEventStoreRetryPolicy();
+        this.inlineProjectionDispatcher = inlineProjectionDispatcher;
+    }
 
     /// <summary>
     /// Appends a batch atomically and returns the persisted envelopes.
@@ -416,7 +446,7 @@ public sealed class EventStore(
     /// This method is intended for registered EventLoom workers and administrative
     /// operations that do not execute in an application request scope.
     /// </remarks>
-    public Task<IReadOnlyList<EventEnvelope>> ReadTenantOffsetsForBackgroundAsync(
+    internal Task<IReadOnlyList<EventEnvelope>> ReadTenantOffsetsForBackgroundAsync(
         string tenantId,
         long afterOffset = 0,
         int limit = 100,

@@ -59,15 +59,12 @@ to a controlled single process.
 | `ConfigureEventSerialization(configure)` | Configures JSON serialization for persisted events. |
 | `UseSingleTenancy(tenantId)` | Uses one stable tenant; defaults to `default`. |
 | `UseMultiTenancy<TAccessor>()` | Enables multi-tenancy and registers a scoped `ITenantAccessor`. |
-| `ConfigureTenancy(mode)` | Selects a tenancy mode when the application registers `ITenantAccessor` itself. |
+| `UseMultiTenancy()` | Enables multi-tenancy when the application registers `ITenantAccessor` itself. |
 | `ConfigureEventStore(configure)` | Configures table prefix, schema, and tenancy options. |
 | `ConfigureWorkers(configure)` | Configures asynchronous projection workers. |
 | `ConfigureSnapshotRetention(policy)` | Sets the default snapshot retention policy. |
 | `ConfigureProjectionModel(configure)` | Adds EF Core mappings for transactional projection read models. |
 | `AddProjection(name, configure, version)` | Registers one named projection with one or more handlers. |
-| `AddProjection<THandler, TEvent>(name, version)` | Registers an asynchronous projection handler. |
-| `AddEfProjection<THandler, TEvent>(name, version)` | Registers a transactional EF projection handler. |
-| `AddInlineProjection<THandler, TEvent>(name, version)` | Registers a handler inside the append transaction. |
 | `AddOutboxPublisher<TPublisher>(configure)` | Enables transactional outbox messages and registers the publisher worker. |
 | `UseTimeProvider(provider)` | Replaces the system clock; useful for deterministic tests. |
 
@@ -94,11 +91,12 @@ it. Do not override that setting in `ConfigureEventStore`.
 
 | Property | Default | Rules and guidance |
 | --- | --- | --- |
-| `TenancyMode` | `SingleTenant` | Use `MultiTenant` only with a scoped tenant accessor. |
-| `SingleTenantId` | `default` | Stable persisted identity for single-tenant applications. |
 | `Schema` | `eventloom` | PostgreSQL schema name. Change only through a data migration after data exists. |
 | `TablePrefix` | `eventloom_` | Prefix for every EventLoom table. Keep stable after storage is created. |
-| `UseSchema` | `false` | Provider-managed: `true` for PostgreSQL and `false` for SQLite. |
+
+Tenancy and schema support are configured through `UseSingleTenancy`,
+`UseMultiTenancy`, and the selected provider rather than by mutating storage
+options.
 
 ## `EventSerializationOptions`
 

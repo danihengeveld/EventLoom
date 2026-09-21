@@ -22,7 +22,7 @@ public interface IEventUpcaster
 }
 
 /// <summary>Validates and executes a deterministic sequence of upcasters for one event name.</summary>
-public sealed class EventUpcasterChain
+internal sealed class EventUpcasterChain
 {
     private readonly IReadOnlyList<IEventUpcaster> upcasters;
 

@@ -22,8 +22,7 @@ public sealed partial class EventSerializerTests
         var registry = new EventRegistry()
             .RegisterEvent<VersionOneEvent>()
             .RegisterEvent<VersionTwoEvent>();
-        var chain = new EventUpcasterChain("tests.evolving", [new AddQuantityUpcaster()]);
-        var serializer = new EventSerializer(registry, upcasterChains: [chain]);
+        var serializer = new EventSerializer(registry, upcasters: [new AddQuantityUpcaster()]);
 
         var result = serializer.Deserialize("tests.evolving", 1, """{"name":"abc"}""");
 

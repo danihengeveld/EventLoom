@@ -53,21 +53,21 @@ public static class EventLoomTelemetry
         unit: "ms",
         description: "The duration of aggregate load operations.");
 
-    public static Counter<long> ProjectionDeliveries { get; } = Meter.CreateCounter<long>(
+    internal static Counter<long> ProjectionDeliveries { get; } = Meter.CreateCounter<long>(
         "eventloom.projection.deliveries", unit: "{delivery}");
 
-    public static Counter<long> ProjectionFailures { get; } = Meter.CreateCounter<long>(
+    internal static Counter<long> ProjectionFailures { get; } = Meter.CreateCounter<long>(
         "eventloom.projection.failures", unit: "{failure}");
 
-    public static Counter<long> ProjectionLeaseLosses { get; } = Meter.CreateCounter<long>(
+    internal static Counter<long> ProjectionLeaseLosses { get; } = Meter.CreateCounter<long>(
         "eventloom.projection.lease_losses", unit: "{loss}");
 
-    public static Counter<long> OutboxDeliveries { get; } = Meter.CreateCounter<long>(
+    internal static Counter<long> OutboxDeliveries { get; } = Meter.CreateCounter<long>(
         "eventloom.outbox.deliveries", unit: "{delivery}");
 
-    public static Counter<long> OutboxFailures { get; } = Meter.CreateCounter<long>(
+    internal static Counter<long> OutboxFailures { get; } = Meter.CreateCounter<long>(
         "eventloom.outbox.failures", unit: "{failure}");
 
-    public static Counter<long> OutboxLeaseLosses { get; } = Meter.CreateCounter<long>(
+    internal static Counter<long> OutboxLeaseLosses { get; } = Meter.CreateCounter<long>(
         "eventloom.outbox.lease_losses", unit: "{loss}");
 }

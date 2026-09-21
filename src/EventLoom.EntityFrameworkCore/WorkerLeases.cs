@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 namespace EventLoom.EntityFrameworkCore;
 
 /// <summary>Provides tenant-scoped leases for distributed EventLoom workers.</summary>
-public sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider timeProvider)
+internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider timeProvider)
 {
     private readonly EventStoreDbContext context = context ?? throw new ArgumentNullException(nameof(context));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
@@ -119,7 +119,7 @@ public sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider t
 }
 
 /// <summary>Describes an acquired tenant-scoped worker lease.</summary>
-public sealed record WorkerLease(
+internal sealed record WorkerLease(
     string TenantId,
     string LeaseName,
     string OwnerId,
@@ -128,7 +128,7 @@ public sealed record WorkerLease(
 
 /// <summary>Indicates that a worker lease was lost to a concurrent owner.</summary>
 /// <remarks>Initializes a lease conflict exception.</remarks>
-public sealed class WorkerLeaseConflictException(string tenantId, string leaseName, Exception innerException)
+internal sealed class WorkerLeaseConflictException(string tenantId, string leaseName, Exception innerException)
     : InvalidOperationException(
         $"Worker lease '{leaseName}' for tenant '{tenantId}' could not be acquired because it changed concurrently.",
         innerException);

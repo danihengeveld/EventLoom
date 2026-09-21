@@ -5,7 +5,7 @@ namespace EventLoom.EntityFrameworkCore;
 /// <summary>
 /// Provides EF Core model configuration for the EventLoom event store.
 /// </summary>
-public static class EventStoreModelBuilderExtensions
+internal static class EventStoreModelBuilderExtensions
 {
     /// <summary>
     /// Maps the event-store entities to tables using the supplied naming options.
@@ -15,7 +15,7 @@ public static class EventStoreModelBuilderExtensions
     /// <returns>The same model builder instance for fluent configuration.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="modelBuilder"/> or <paramref name="options"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">The schema or table prefix is empty.</exception>
-    public static ModelBuilder ApplyEventStoreConfiguration(
+    internal static ModelBuilder ApplyEventStoreConfiguration(
         this ModelBuilder modelBuilder,
         EventStoreOptions options)
     {

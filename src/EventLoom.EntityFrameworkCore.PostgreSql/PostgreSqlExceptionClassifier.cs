@@ -4,7 +4,7 @@ using Npgsql;
 namespace EventLoom.EntityFrameworkCore.PostgreSql;
 
 /// <summary>Classifies PostgreSQL failures relevant to EventLoom retry and conflict handling.</summary>
-public enum PostgreSqlExceptionClassification
+internal enum PostgreSqlExceptionClassification
 {
     /// <summary>The exception is not recognized as a PostgreSQL provider failure.</summary>
     Unknown,
@@ -23,7 +23,7 @@ public enum PostgreSqlExceptionClassification
 }
 
 /// <summary>Provides stable classification for PostgreSQL exceptions.</summary>
-public static class PostgreSqlExceptionClassifier
+internal static class PostgreSqlExceptionClassifier
 {
     /// <summary>
     /// Classifies an exception, including EF Core update exceptions that wrap a provider exception.

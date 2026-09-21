@@ -10,12 +10,12 @@ public sealed class EventStoreOptions
     /// <summary>
     /// Gets or sets the tenancy mode. The default is <see cref="TenancyMode.SingleTenant"/>.
     /// </summary>
-    public TenancyMode TenancyMode { get; set; } = TenancyMode.SingleTenant;
+    internal TenancyMode TenancyMode { get; set; } = TenancyMode.SingleTenant;
 
     /// <summary>
     /// Gets or sets the tenant identifier used in <see cref="TenancyMode.SingleTenant"/> mode.
     /// </summary>
-    public string SingleTenantId { get; set; } = "default";
+    internal string SingleTenantId { get; set; } = "default";
 
     /// <summary>
     /// Gets or sets the database schema name. The default is <c>eventloom</c>.
@@ -31,5 +31,5 @@ public sealed class EventStoreOptions
     /// Gets or sets a value indicating whether the configured schema is used.
     /// Set this to <see langword="false"/> for providers such as SQLite.
     /// </summary>
-    public bool UseSchema { get; set; }
+    internal bool UseSchema { get; set; }
 }

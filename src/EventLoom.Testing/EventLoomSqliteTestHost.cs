@@ -91,7 +91,7 @@ public sealed class EventLoomSqliteTestHost : IAsyncDisposable
             await using (var scope = provider.CreateAsyncScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
-                await SqliteEventStoreSchema.EnsureCreatedAsync(context, cancellationToken).ConfigureAwait(false);
+                await EventStoreSchema.EnsureCreatedAsync(context, cancellationToken).ConfigureAwait(false);
             }
 
             return new EventLoomSqliteTestHost(connection, provider, clock);

@@ -47,7 +47,7 @@ public interface ISnapshotUpcaster
 }
 
 /// <summary>Validates and executes a deterministic sequence of upcasters for one snapshot type.</summary>
-public sealed class SnapshotUpcasterChain
+internal sealed class SnapshotUpcasterChain
 {
     private readonly IReadOnlyList<ISnapshotUpcaster> upcasters;
 
