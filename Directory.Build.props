@@ -34,7 +34,7 @@
     <Authors>Dani Hengeveld</Authors>
     <Company>Dani Hengeveld</Company>
     <Copyright>Copyright (c) 2026 Dani Hengeveld</Copyright>
-    <PackageProjectUrl>https://github.com/danihengeveld/EventLoom</PackageProjectUrl>
+    <PackageProjectUrl>https://eventloom.hengeveld.dev</PackageProjectUrl>
     <RepositoryUrl>https://github.com/danihengeveld/EventLoom.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <Description>EventLoom event sourcing framework component.</Description>
