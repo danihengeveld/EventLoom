@@ -22,6 +22,9 @@
     <Project Path="tests/EventLoom.EntityFrameworkCore.UnitTests/EventLoom.EntityFrameworkCore.UnitTests.csproj" />
     <Project Path="tests/EventLoom.UnitTests/EventLoom.UnitTests.csproj" />
   </Folder>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/EventLoom.Benchmarks/EventLoom.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/solution/">
     <File Path=".editorconfig" />
     <File Path="Directory.Build.props" />

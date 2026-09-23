@@ -1,20 +1,15 @@
 using EventLoom.Hosting;
-using Microsoft.EntityFrameworkCore;
-using Testcontainers.PostgreSql;
 
 namespace EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests;
 
-public sealed class PostgreSqlConcurrencyTests
+public sealed class PostgreSqlConcurrencyTests : PostgreSqlIntegrationTest
 {
     [Test]
     public async Task Concurrent_first_appends_do_not_create_duplicate_stream_versions()
     {
-        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
-        await container.StartAsync();
-        var options = new EventStoreOptions { UseSchema = true, Schema = "eventloom_test", TablePrefix = "eventloom_" };
-        await using var firstContext = CreateContext(container.GetConnectionString(), options);
-        await using var secondContext = CreateContext(container.GetConnectionString(), options);
-        await firstContext.Database.EnsureCreatedAsync();
+        await using var database = await Server.CreateDatabaseAsync();
+        await using var firstContext = database.CreateContext();
+        await using var secondContext = database.CreateContext();
 
         var registry = new EventRegistry().RegisterEvent<Created>();
         var first = CreateStore(firstContext, registry);
@@ -34,13 +29,11 @@ public sealed class PostgreSqlConcurrencyTests
     [Test]
     public async Task Concurrent_first_appends_with_the_same_append_id_replay_one_result()
     {
-        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
-        await container.StartAsync();
         var options = new EventStoreOptions
             { UseSchema = true, Schema = "eventloom_idempotency", TablePrefix = "eventloom_" };
-        await using var firstContext = CreateContext(container.GetConnectionString(), options);
-        await using var secondContext = CreateContext(container.GetConnectionString(), options);
-        await firstContext.Database.EnsureCreatedAsync();
+        await using var database = await Server.CreateDatabaseAsync(options);
+        await using var firstContext = database.CreateContext();
+        await using var secondContext = database.CreateContext();
 
         var registry = new EventRegistry().RegisterEvent<Created>();
         var retryOptions = new EventStoreWorkerOptions { MaxRetryAttempts = 20 };
@@ -67,16 +60,13 @@ public sealed class PostgreSqlConcurrencyTests
     [Test]
     public async Task Concurrent_instances_assign_contiguous_committed_tenant_offsets()
     {
-        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
-        await container.StartAsync();
         var options = new EventStoreOptions
             { UseSchema = true, Schema = "eventloom_offsets", TablePrefix = "eventloom_" };
-        await using var setupContext = CreateContext(container.GetConnectionString(), options);
-        await setupContext.Database.EnsureCreatedAsync();
+        await using var database = await Server.CreateDatabaseAsync(options);
 
         var registry = new EventRegistry().RegisterEvent<Created>();
         var contexts = Enumerable.Range(0, 4)
-            .Select(_ => CreateContext(container.GetConnectionString(), options))
+            .Select(_ => database.CreateContext())
             .ToArray();
         try
         {
@@ -111,9 +101,6 @@ public sealed class PostgreSqlConcurrencyTests
             }
         }
     }
-
-    private static EventStoreDbContext CreateContext(string connectionString, EventStoreOptions options) =>
-        new(new DbContextOptionsBuilder<EventStoreDbContext>().UseNpgsql(connectionString).Options, options);
 
     private static EventStore CreateStore(
         EventStoreDbContext context,

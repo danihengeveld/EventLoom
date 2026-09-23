@@ -1,23 +1,12 @@
-using Microsoft.EntityFrameworkCore;
-using Testcontainers.PostgreSql;
-
 namespace EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests;
 
-public sealed class PostgreSqlEventStoreTests
+public sealed class PostgreSqlEventStoreTests : PostgreSqlIntegrationTest
 {
     [Test]
     public async Task PostgreSql_persists_an_append_and_reads_it_back()
     {
-        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
-        await container.StartAsync();
-
-        var options = new EventStoreOptions { UseSchema = true, Schema = "eventloom_test", TablePrefix = "eventloom_" };
-        await using var context = new EventStoreDbContext(
-            new DbContextOptionsBuilder<EventStoreDbContext>()
-                .UseNpgsql(container.GetConnectionString())
-                .Options,
-            options);
-        await context.Database.EnsureCreatedAsync();
+        await using var database = await Server.CreateDatabaseAsync();
+        await using var context = database.CreateContext();
 
         var registry = new EventRegistry().RegisterEvent<OrderPlaced>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),

@@ -2,6 +2,7 @@
 [Bb]in/
 [Oo]bj/
 TestResults/
+BenchmarkDotNet.Artifacts/
 artifacts/
 *.db
 *.db-shm

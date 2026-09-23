@@ -1,20 +1,12 @@
-using Microsoft.EntityFrameworkCore;
-using Testcontainers.PostgreSql;
-
 namespace EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests;
 
-public sealed class PostgreSqlLeaseTests
+public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
 {
     [Test]
     public async Task PostgreSql_lease_fencing_rejects_a_stale_owner_release()
     {
-        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
-        await container.StartAsync();
-        var options = new EventStoreOptions { UseSchema = true, Schema = "eventloom_test", TablePrefix = "eventloom_" };
-        await using var context = new EventStoreDbContext(
-            new DbContextOptionsBuilder<EventStoreDbContext>().UseNpgsql(container.GetConnectionString()).Options,
-            options);
-        await context.Database.EnsureCreatedAsync();
+        await using var database = await Server.CreateDatabaseAsync();
+        await using var context = database.CreateContext();
         var leases = new WorkerLeaseStore(context, TimeProvider.System);
 
         var first = await leases.TryAcquireAsync("tenant-a", "orders", "node-a", TimeSpan.FromMinutes(1));
@@ -28,13 +20,9 @@ public sealed class PostgreSqlLeaseTests
     [Test]
     public async Task Independent_instances_do_not_acquire_the_same_active_lease()
     {
-        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
-        await container.StartAsync();
-        var options = new EventStoreOptions { UseSchema = true, Schema = "eventloom_test", TablePrefix = "eventloom_" };
-        await using var setupContext = CreateContext(container.GetConnectionString(), options);
-        await setupContext.Database.EnsureCreatedAsync();
-        await using var firstContext = CreateContext(container.GetConnectionString(), options);
-        await using var secondContext = CreateContext(container.GetConnectionString(), options);
+        await using var database = await Server.CreateDatabaseAsync();
+        await using var firstContext = database.CreateContext();
+        await using var secondContext = database.CreateContext();
         var first = new WorkerLeaseStore(firstContext, TimeProvider.System);
         var second = new WorkerLeaseStore(secondContext, TimeProvider.System);
 
@@ -49,11 +37,8 @@ public sealed class PostgreSqlLeaseTests
     [Test]
     public async Task Stale_postgresql_lease_cannot_commit_a_projection_checkpoint()
     {
-        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
-        await container.StartAsync();
-        var options = new EventStoreOptions { UseSchema = true, Schema = "eventloom_test", TablePrefix = "eventloom_" };
-        await using var context = CreateContext(container.GetConnectionString(), options);
-        await context.Database.EnsureCreatedAsync();
+        await using var database = await Server.CreateDatabaseAsync();
+        await using var context = database.CreateContext();
         var eventStore = new EventStore(
             context,
             new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
@@ -94,8 +79,6 @@ public sealed class PostgreSqlLeaseTests
     [Test]
     public async Task Stale_postgresql_lease_cannot_record_an_outbox_delivery()
     {
-        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
-        await container.StartAsync();
         var options = new EventStoreOptions
         {
             UseSchema = true,
@@ -103,8 +86,8 @@ public sealed class PostgreSqlLeaseTests
             TablePrefix = "eventloom_",
             OutboxEnabled = true
         };
-        await using var context = CreateContext(container.GetConnectionString(), options);
-        await context.Database.EnsureCreatedAsync();
+        await using var database = await Server.CreateDatabaseAsync(options);
+        await using var context = database.CreateContext();
         var eventStore = new EventStore(
             context,
             new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
@@ -140,8 +123,6 @@ public sealed class PostgreSqlLeaseTests
     [Test]
     public async Task PostgreSql_purges_successful_outbox_messages_and_attempts()
     {
-        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
-        await container.StartAsync();
         var options = new EventStoreOptions
         {
             UseSchema = true,
@@ -149,8 +130,8 @@ public sealed class PostgreSqlLeaseTests
             TablePrefix = "eventloom_",
             OutboxEnabled = true
         };
-        await using var context = CreateContext(container.GetConnectionString(), options);
-        await context.Database.EnsureCreatedAsync();
+        await using var database = await Server.CreateDatabaseAsync(options);
+        await using var context = database.CreateContext();
         var eventStore = new EventStore(
             context,
             new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
@@ -179,9 +160,6 @@ public sealed class PostgreSqlLeaseTests
         await Assert.That(await outbox.GetAsync("tenant-a", eventId)).IsNull();
         await Assert.That(await outbox.ReadAttemptsAsync("tenant-a", eventId)).IsEmpty();
     }
-
-    private static EventStoreDbContext CreateContext(string connectionString, EventStoreOptions options) =>
-        new(new DbContextOptionsBuilder<EventStoreDbContext>().UseNpgsql(connectionString).Options, options);
 
     [EventType("tests.projection-item-added")]
     private sealed record ItemAdded : IDomainEvent<TestAggregate>;

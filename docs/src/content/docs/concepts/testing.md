@@ -73,19 +73,28 @@ await host.RunScopedAsync(async (services, cancellationToken) =>
 });
 ```
 
-This host does not include managed PostgreSQL fixtures: PostgreSQL
-integration tests exist specifically to prove distributed behavior that a
-single in-process container cannot represent, so they use Testcontainers
-directly instead of a shared managed host. See below.
+This host does not include a managed PostgreSQL fixture. The repository's
+PostgreSQL integration tests share one container through a TUnit
+assembly-scoped fixture. Each test creates its own database and independent
+contexts for simulated application instances. See below.
 
 ## Test a PostgreSQL application path
 
-Use Testcontainers for every PostgreSQL integration test that claims
-distributed correctness:
+Use Testcontainers for PostgreSQL integration tests that claim distributed
+correctness. The repository's TUnit fixture starts one container for the test
+assembly:
 
 ```csharp
-await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
-await container.StartAsync();
+private readonly PostgreSqlContainer container = new PostgreSqlBuilder("postgres:18-alpine").Build();
+
+public Task InitializeAsync() => container.StartAsync();
+```
+
+Each test requests a fresh database and creates its own context:
+
+```csharp
+await using var database = await Server.CreateDatabaseAsync();
+await using var context = database.CreateContext();
 ```
 
 Create each simulated application instance with an independent

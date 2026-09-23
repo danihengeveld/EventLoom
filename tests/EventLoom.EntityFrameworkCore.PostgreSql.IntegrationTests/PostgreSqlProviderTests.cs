@@ -1,26 +1,18 @@
-using Microsoft.EntityFrameworkCore;
-using Testcontainers.PostgreSql;
-
 namespace EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests;
 
-public sealed class PostgreSqlProviderTests
+public sealed class PostgreSqlProviderTests : PostgreSqlIntegrationTest
 {
     [Test]
     public async Task Event_store_schema_helper_creates_configured_schema_and_tables()
     {
-        await using var container = new PostgreSqlBuilder("postgres:17-alpine").Build();
-        await container.StartAsync();
         var options = new EventStoreOptions
         {
             UseSchema = true,
             Schema = "eventloom_provider_test",
             TablePrefix = "custom_"
         };
-        await using var context = new EventStoreDbContext(
-            new DbContextOptionsBuilder<EventStoreDbContext>()
-                .UseNpgsql(container.GetConnectionString())
-                .Options,
-            options);
+        await using var database = await Server.CreateDatabaseAsync(options, initializeSchema: false);
+        await using var context = database.CreateContext();
 
         await EventStoreSchema.EnsureCreatedAsync(context);
 
