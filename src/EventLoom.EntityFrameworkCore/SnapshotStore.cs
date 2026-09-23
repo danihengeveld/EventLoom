@@ -66,10 +66,10 @@ internal sealed class SnapshotStore(
         {
             await context.Snapshots
                 .Where(value => expiredSnapshotIds.Contains(value.Id))
-                .ExecuteDeleteAsync(cancellationToken);
+                .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
         }
 
-        await transaction.CommitAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Gets the latest persisted snapshot for an aggregate stream and configured snapshot type.</summary>
@@ -88,7 +88,7 @@ internal sealed class SnapshotStore(
                 value.AggregateType == aggregateType &&
                 value.SnapshotType == snapshotType)
             .OrderByDescending(value => value.StreamVersion)
-            .FirstOrDefaultAsync(cancellationToken);
+            .FirstOrDefaultAsync(cancellationToken).ConfigureAwait(false);
         return snapshot is null
             ? null
             : new SnapshotEnvelope(
@@ -118,7 +118,7 @@ internal sealed class SnapshotStore(
                 value.SchemaVersion == snapshot.SchemaVersion &&
                 value.Payload == snapshot.Payload &&
                 value.CreatedAt == snapshot.CreatedAt)
-            .ExecuteDeleteAsync(cancellationToken);
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
     }
 }
 

@@ -4,6 +4,11 @@
 PostgreSQL. It provides transactional tenant offsets, transient-failure retry
 classification, and fenced worker leases for multi-instance deployments.
 
+Transient append retries are logged at debug level through the normal
+application logging providers, without an EventLoom-specific opt-in. Retry
+logs include classification, attempt, and delay, never SQL or application
+identifiers.
+
 Use this as the normal application entry point for EventLoom persistence:
 
 ```bash

@@ -5,6 +5,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EventLoom.EntityFrameworkCore;
 
@@ -21,6 +23,7 @@ public sealed class EventStore
     private readonly ITenantAccessor? tenantAccessor;
     private readonly IEventStoreRetryPolicy retryPolicy;
     private readonly IInlineProjectionDispatcher? inlineProjectionDispatcher;
+    private readonly ILogger<EventStore> logger;
 
     /// <summary>Initializes an event store for direct, non-inline use.</summary>
     public EventStore(
@@ -51,7 +54,8 @@ public sealed class EventStore
         EventStoreOptions? eventStoreOptions,
         ITenantAccessor? tenantAccessor,
         IEventStoreRetryPolicy? retryPolicy,
-        IInlineProjectionDispatcher? inlineProjectionDispatcher)
+        IInlineProjectionDispatcher? inlineProjectionDispatcher,
+        ILogger<EventStore>? logger = null)
     {
         this.context = context ?? throw new ArgumentNullException(nameof(context));
         this.serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
@@ -61,6 +65,7 @@ public sealed class EventStore
         this.tenantAccessor = tenantAccessor;
         this.retryPolicy = retryPolicy ?? new NoopEventStoreRetryPolicy();
         this.inlineProjectionDispatcher = inlineProjectionDispatcher;
+        this.logger = logger ?? NullLogger<EventStore>.Instance;
     }
 
     /// <summary>
@@ -94,11 +99,22 @@ public sealed class EventStore
         catch (DbUpdateException exception)
         {
             RecordAppendFailure(request, startedAt, activity, exception);
+            LogAppendFailure(request, exception);
             throw new EventStoreConcurrencyException(tenantId, request.StreamId, exception);
+        }
+        catch (WrongExpectedVersionException exception)
+        {
+            RecordAppendFailure(request, startedAt, activity, exception);
+            LogAppendFailure(request, exception);
+            throw;
         }
         catch (Exception exception)
         {
             RecordAppendFailure(request, startedAt, activity, exception);
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                LogAppendFailure(request, exception);
+            }
             throw;
         }
     }
@@ -142,7 +158,13 @@ public sealed class EventStore
         }
         catch (DbUpdateException exception)
         {
+            LogAppendFailure(request, exception);
             throw new EventStoreConcurrencyException(tenantId, request.StreamId, exception);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            LogAppendFailure(request, exception);
+            throw;
         }
     }
 
@@ -167,7 +189,13 @@ public sealed class EventStore
         }
         catch (DbUpdateException exception)
         {
+            LogAppendFailure(request, exception);
             throw new EventStoreConcurrencyException(tenantId, request.StreamId, exception);
+        }
+        catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
+        {
+            LogAppendFailure(request, exception);
+            throw;
         }
     }
 
@@ -187,7 +215,8 @@ public sealed class EventStore
     /// <returns>A unit of work scoped to a new transaction on this event store's connection.</returns>
     public async Task<EventLoomUnitOfWork> BeginUnitOfWorkAsync(CancellationToken cancellationToken = default)
     {
-        var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        var transaction = await context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken)
+            .ConfigureAwait(false);
         return new EventLoomUnitOfWork(this, context, transaction);
     }
 
@@ -351,7 +380,7 @@ public sealed class EventStore
         parameter.ParameterName = "tenantId";
         parameter.Value = tenantId;
         command.Parameters.Add(parameter);
-        var currentOffset = await command.ExecuteScalarAsync(cancellationToken);
+        var currentOffset = await command.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
         if (currentOffset is not long value)
         {
             throw new InvalidOperationException("The tenant offset lock did not return an offset.");
@@ -397,6 +426,19 @@ public sealed class EventStore
         EventLoomTelemetry.AppendFailures.Add(1, tags);
         EventLoomTelemetry.AppendDuration.Record(timeProvider.GetElapsedTime(startedAt).TotalMilliseconds, tags);
         activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);
+    }
+
+    private void LogAppendFailure(AppendRequest request, Exception exception)
+    {
+        var exceptionType = exception.GetType().FullName ?? exception.GetType().Name;
+        if (exception is DbUpdateException or WrongExpectedVersionException)
+        {
+            logger.AppendRejected(request.AggregateType, exceptionType);
+        }
+        else
+        {
+            logger.AppendFailed(request.AggregateType, exceptionType);
+        }
     }
 
 
@@ -447,7 +489,7 @@ public sealed class EventStore
         CancellationToken cancellationToken = default)
     {
         tenantId = ResolveTenant(tenantId);
-        return await ReadTenantOffsetsCoreAsync(tenantId, afterOffset, limit, cancellationToken);
+        return await ReadTenantOffsetsCoreAsync(tenantId, afterOffset, limit, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

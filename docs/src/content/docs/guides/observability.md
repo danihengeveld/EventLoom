@@ -1,11 +1,37 @@
 ---
 title: Add observability
-description: Opt into EventLoom OpenTelemetry tracing and metrics.
+description: Use default .NET logging and optionally add OpenTelemetry tracing and metrics.
 ---
 
 EventLoom emits standard .NET activities and metrics. They are inert unless an
 application registers a listener. Event sourcing, snapshots, projections, and
 outbox delivery work normally without any telemetry configuration.
+
+## Logs
+
+EventLoom uses `Microsoft.Extensions.Logging` by default. `AddEventLoom()`
+registers the logging services; no EventLoom logging opt-in or OpenTelemetry
+integration is needed. Logs go to the providers configured by the application.
+ASP.NET Core and generic hosts normally configure providers already; an
+application that builds a bare service collection must add its own provider
+if it wants logs to go anywhere. Control verbosity with the host's normal
+logging configuration, for example:
+
+```csharp
+builder.Logging.AddFilter("EventLoom", LogLevel.Warning);
+```
+
+The `EventLoom.*` logger categories include the EF Core store, PostgreSQL
+retry policy, and hosted workers. Warnings report a projection paused after
+persisted failures, an outbox delivery cycle that exhausted retries, and
+snapshot fallback to event history. An outbox message remains pending after
+its delivery cycle fails. An unexpected append failure logs at error level.
+Debug logs describe transient PostgreSQL retries, intermediate worker
+delivery retries, lease loss, and rejected appends. Successful projection
+resume, skip, and replay operations log once at information level. Ordinary
+appends, reads, successful deliveries, and empty worker polls do not log.
+Health checks and operational summaries remain the way to inspect current
+lag and backlog.
 
 `EventLoom.Hosting` includes optional convenience extensions for applications
 using the OpenTelemetry SDK:
@@ -62,12 +88,16 @@ and application headers from default span and metric attributes. Add
 application-specific enrichment only after evaluating its cardinality and
 sensitivity.
 
-The projection and outbox workers log lease loss at debug level and bounded
-delivery failures at warning level. Failure records include only the
-projection name/version or outbox message ID, retry attempt, and exception
-type. They never add exception messages, payloads, headers, tenants, stream
-IDs, or correlation identifiers as log properties. Configure log providers
-with the same application-data safeguards.
+Default EventLoom logs include only stable operation metadata (such as
+projection or aggregate type, attempt count, snapshot schema, and exception
+type). They do not contain exception objects or messages, event payloads,
+headers, tenant IDs, stream IDs, event or outbox message IDs, or correlation
+identifiers. Persisted projection failures and outbox attempt histories
+remain available through their authorized tenant-scoped administration APIs.
+Projection skip and replay logs are not a substitute for an application audit
+record with an authenticated actor and authorized tenant. Configure logging
+providers with the same application-data safeguards; EF Core's sensitive-data
+logging is separately controlled by the application.
 
 ## Health checks
 

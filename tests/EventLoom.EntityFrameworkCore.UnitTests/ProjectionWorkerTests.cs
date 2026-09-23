@@ -4,6 +4,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using SQLitePCL;
 
 namespace EventLoom.EntityFrameworkCore.UnitTests;
@@ -68,6 +69,8 @@ public sealed class ProjectionWorkerTests
         var recorder = new ProjectionRecorder();
         var failures = new ProjectionFailureRecorder();
         var services = CreateServices(databasePath, recorder, failures);
+        var logs = new RecordingLogger<ProjectionWorker>();
+        services.AddSingleton<ILogger<ProjectionWorker>>(logs);
         var provider = services.BuildServiceProvider();
         var worker = provider.GetServices<IHostedService>().Single();
 
@@ -98,6 +101,15 @@ public sealed class ProjectionWorkerTests
             await Assert.That(successfulCheckpoint!.Status).IsEqualTo(ProjectionStatus.Running);
             await Assert.That(successfulCheckpoint.TenantOffset).IsEqualTo(1);
             await Assert.That(persistedFailures.Single().AttemptCount).IsEqualTo(2);
+            var paused = await logs.WaitForAsync(3002);
+            await Assert.That(paused.Level).IsEqualTo(LogLevel.Warning);
+            await Assert.That(paused.Properties["ProjectionName"]).IsEqualTo("tests.failing");
+            await Assert.That(paused.Properties["Attempts"]).IsEqualTo(2);
+            await Assert.That(paused.Exception).IsNull();
+            await Assert.That(paused.Message.Contains(persistedFailures.Single().EventId.ToString(), StringComparison.Ordinal)).IsFalse();
+            await Assert.That(paused.Message.Contains("tenant-a", StringComparison.Ordinal)).IsFalse();
+            await Assert.That(paused.Properties.ContainsKey("EventId")).IsFalse();
+            await Assert.That(logs.Entries.Count(entry => entry.EventId == 3001)).IsEqualTo(1);
         }
         finally
         {

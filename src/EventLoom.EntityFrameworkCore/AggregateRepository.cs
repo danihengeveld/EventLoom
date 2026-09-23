@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EventLoom.EntityFrameworkCore;
 
@@ -18,6 +20,7 @@ public sealed class AggregateRepository<TAggregate, TId>
     private readonly ISnapshotPolicy? snapshotPolicy;
     private readonly ISnapshotInvalidator? snapshotInvalidator;
     private readonly ISnapshotRetentionPolicy? snapshotRetentionPolicy;
+    private readonly ILogger<AggregateRepository<TAggregate, TId>> logger;
 
     /// <summary>Initializes a repository with explicit persistence delegates.</summary>
     public AggregateRepository(
@@ -30,6 +33,7 @@ public sealed class AggregateRepository<TAggregate, TId>
         this.factory = factory ?? throw new ArgumentNullException(nameof(factory));
         this.pendingEvents = pendingEvents ?? throw new ArgumentNullException(nameof(pendingEvents));
         this.version = version ?? throw new ArgumentNullException(nameof(version));
+        logger = NullLogger<AggregateRepository<TAggregate, TId>>.Instance;
     }
 
     /// <summary>
@@ -46,7 +50,8 @@ public sealed class AggregateRepository<TAggregate, TId>
         ISnapshotPolicy? snapshotPolicy = null,
         ISnapshotInvalidator? snapshotInvalidator = null,
         ISnapshotRetentionPolicy? snapshotRetentionPolicy = null,
-        IEnumerable<ISnapshotUpcaster>? snapshotUpcasters = null)
+        IEnumerable<ISnapshotUpcaster>? snapshotUpcasters = null,
+        ILogger<AggregateRepository<TAggregate, TId>>? logger = null)
         : this(
             store,
             factory,
@@ -72,6 +77,7 @@ public sealed class AggregateRepository<TAggregate, TId>
             : snapshotPolicy ?? new EveryNEventsSnapshotPolicy(100);
         this.snapshotInvalidator = snapshotInvalidator;
         this.snapshotRetentionPolicy = snapshotRetentionPolicy;
+        this.logger = logger ?? NullLogger<AggregateRepository<TAggregate, TId>>.Instance;
     }
 
     /// <summary>Loads an aggregate from its complete stream history, or creates a new instance when absent.</summary>
@@ -164,17 +170,17 @@ public sealed class AggregateRepository<TAggregate, TId>
                 }
                 catch (SnapshotDeserializationException)
                 {
-                    await InvalidateSnapshotAsync(snapshot, SnapshotInvalidationReason.Corrupt, cancellationToken);
+                    await LogSnapshotFallbackAsync(snapshot, SnapshotInvalidationReason.Corrupt, cancellationToken);
                     aggregate = factory(id);
                 }
                 catch (SnapshotIncompatibleException)
                 {
-                    await InvalidateSnapshotAsync(snapshot, SnapshotInvalidationReason.Incompatible, cancellationToken);
+                    await LogSnapshotFallbackAsync(snapshot, SnapshotInvalidationReason.Incompatible, cancellationToken);
                     aggregate = factory(id);
                 }
                 catch (SnapshotUpcastException)
                 {
-                    await InvalidateSnapshotAsync(snapshot, SnapshotInvalidationReason.UpcastFailed, cancellationToken);
+                    await LogSnapshotFallbackAsync(snapshot, SnapshotInvalidationReason.UpcastFailed, cancellationToken);
                     aggregate = factory(id);
                 }
             }
@@ -352,13 +358,20 @@ public sealed class AggregateRepository<TAggregate, TId>
         }
     }
 
-    private Task InvalidateSnapshotAsync(
+    private async Task LogSnapshotFallbackAsync(
         SnapshotEnvelope snapshot,
         SnapshotInvalidationReason reason,
-        CancellationToken cancellationToken) =>
-        snapshotInvalidator?.ShouldInvalidate(snapshot.SnapshotType, snapshot.SchemaVersion, reason) == true
-            ? snapshotStore!.InvalidateAsync(snapshot, cancellationToken)
-            : Task.CompletedTask;
+        CancellationToken cancellationToken)
+    {
+        var invalidated = snapshotInvalidator?.ShouldInvalidate(
+            snapshot.SnapshotType, snapshot.SchemaVersion, reason) == true;
+        if (invalidated)
+        {
+            await snapshotStore!.InvalidateAsync(snapshot, cancellationToken);
+        }
+
+        logger.SnapshotFallback(snapshot.SnapshotType, snapshot.SchemaVersion, reason, invalidated);
+    }
 
     private string ResolveTenant() =>
         tenantAccessor?.TenantId?.Value

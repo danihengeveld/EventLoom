@@ -1,5 +1,7 @@
 using System.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace EventLoom.EntityFrameworkCore;
 
@@ -87,10 +89,12 @@ internal sealed class ProjectionLeaseLostException(string tenantId, ProjectionKe
         $"Projection '{key.Name}' version {key.Version} lost its lease for tenant '{tenantId}'.");
 
 /// <summary>Persists checkpoints and failures and coordinates transactional EF projection work.</summary>
-internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider timeProvider)
+internal sealed class ProjectionStore(
+    EventStoreDbContext context, TimeProvider timeProvider, ILogger<ProjectionStore>? logger = null)
 {
     private readonly EventStoreDbContext context = context ?? throw new ArgumentNullException(nameof(context));
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
+    private readonly ILogger<ProjectionStore> logger = logger ?? NullLogger<ProjectionStore>.Instance;
 
     /// <summary>Lists tenants with persisted events, in deterministic order.</summary>
     public async Task<IReadOnlyList<string>> ReadTenantIdsAsync(CancellationToken cancellationToken = default) =>
@@ -99,7 +103,7 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
             .Select(value => value.TenantId)
             .OrderBy(value => value)
             .Select(value => value!)
-            .ToArrayAsync(cancellationToken);
+            .ToArrayAsync(cancellationToken).ConfigureAwait(false);
 
     /// <summary>Gets the checkpoint for a tenant and projection version, if one exists.</summary>
     public async Task<ProjectionCheckpoint?> GetCheckpointAsync(
@@ -113,7 +117,7 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
                 value.TenantId == tenantId &&
                 value.ProjectionName == key.Name &&
                 value.ProjectionVersion == key.Version,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         return checkpoint is null ? null : ToCheckpoint(checkpoint);
     }
 
@@ -138,7 +142,7 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
             .OrderBy(value => value.TenantOffset)
             .ThenBy(value => value.Id)
             .Select(value => ToFailure(value))
-            .ToArrayAsync(cancellationToken);
+            .ToArrayAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -170,7 +174,7 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
         var tenantOffsets = await context.TenantOffsets.AsNoTracking()
             .Where(value => value.NextOffset > 0)
             .Select(value => new { TenantId = value.TenantId!, Offset = value.NextOffset })
-            .ToArrayAsync(cancellationToken);
+            .ToArrayAsync(cancellationToken).ConfigureAwait(false);
         var checkpoints = await context.ProjectionCheckpoints.AsNoTracking()
             .Select(value => new
             {
@@ -179,11 +183,11 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
                 value.ProjectionVersion,
                 value.TenantOffset
             })
-            .ToArrayAsync(cancellationToken);
+            .ToArrayAsync(cancellationToken).ConfigureAwait(false);
         var failures = await context.ProjectionFailures.AsNoTracking()
             .Where(value => value.ResolvedAt == null)
             .Select(value => new { value.ProjectionName, value.ProjectionVersion })
-            .ToArrayAsync(cancellationToken);
+            .ToArrayAsync(cancellationToken).ConfigureAwait(false);
         var checkpointOffsets = checkpoints
             .Where(value => projectionSet.Contains(new ProjectionKey(value.ProjectionName, value.ProjectionVersion)))
             .ToDictionary(
@@ -294,9 +298,9 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
         context.ChangeTracker.Clear();
         await using var transaction = await context.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
-            cancellationToken);
-        await VerifyLeaseAsync(tenantId, key, lease, cancellationToken);
-        var checkpoint = await FindCheckpointAsync(tenantId, key, cancellationToken)
+            cancellationToken).ConfigureAwait(false);
+        await VerifyLeaseAsync(tenantId, key, lease, cancellationToken).ConfigureAwait(false);
+        var checkpoint = await FindCheckpointAsync(tenantId, key, cancellationToken).ConfigureAwait(false)
                          ?? new ProjectionCheckpointEntity
                          {
                              TenantId = tenantId,
@@ -318,7 +322,7 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
                 value.ProjectionVersion == key.Version &&
                 value.EventId == envelope.EventId &&
                 value.ResolvedAt == null,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         if (failure is null)
         {
             context.ProjectionFailures.Add(new ProjectionFailureEntity
@@ -343,8 +347,8 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
 
         checkpoint.Status = ProjectionStatus.Paused;
         checkpoint.UpdatedAt = timeProvider.GetUtcNow();
-        await context.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>Resumes a paused projection so it can retry its failed event.</summary>
@@ -354,7 +358,7 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
         CancellationToken cancellationToken = default)
     {
         tenantId = Normalize(tenantId, key);
-        var checkpoint = await FindCheckpointAsync(tenantId, key, cancellationToken);
+        var checkpoint = await FindCheckpointAsync(tenantId, key, cancellationToken).ConfigureAwait(false);
         if (checkpoint is null || checkpoint.Status != ProjectionStatus.Paused)
         {
             return false;
@@ -362,7 +366,8 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
 
         checkpoint.Status = ProjectionStatus.Running;
         checkpoint.UpdatedAt = timeProvider.GetUtcNow();
-        await context.SaveChangesAsync(cancellationToken);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        logger.ProjectionResumed(key.Name, key.Version);
         return true;
     }
 
@@ -376,8 +381,8 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
         tenantId = Normalize(tenantId, key);
         await using var transaction = await context.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
-            cancellationToken);
-        var checkpoint = await FindCheckpointAsync(tenantId, key, cancellationToken);
+            cancellationToken).ConfigureAwait(false);
+        var checkpoint = await FindCheckpointAsync(tenantId, key, cancellationToken).ConfigureAwait(false);
         var failure = await context.ProjectionFailures.SingleOrDefaultAsync(
             value =>
                 value.TenantId == tenantId &&
@@ -385,7 +390,7 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
                 value.ProjectionVersion == key.Version &&
                 value.EventId == eventId &&
                 value.ResolvedAt == null,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         if (checkpoint?.Status != ProjectionStatus.Paused || failure is null)
         {
             return false;
@@ -396,8 +401,9 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
         checkpoint.UpdatedAt = timeProvider.GetUtcNow();
         failure.ResolvedAt = timeProvider.GetUtcNow();
         failure.WasSkipped = true;
-        await context.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+        logger.ProjectionSkipped(key.Name, key.Version);
         return true;
     }
 
@@ -408,7 +414,7 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
         CancellationToken cancellationToken = default)
     {
         tenantId = Normalize(tenantId, key);
-        var checkpoint = await FindCheckpointAsync(tenantId, key, cancellationToken);
+        var checkpoint = await FindCheckpointAsync(tenantId, key, cancellationToken).ConfigureAwait(false);
         if (checkpoint is null)
         {
             context.ProjectionCheckpoints.Add(new ProjectionCheckpointEntity
@@ -428,7 +434,8 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
             checkpoint.UpdatedAt = timeProvider.GetUtcNow();
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        logger.ProjectionReplayStarted(key.Name, key.Version);
     }
 
     private async Task VerifyLeaseAsync(
@@ -443,7 +450,7 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
                 value.LeaseName == GetLeaseName(key) &&
                 value.OwnerId == lease.OwnerId &&
                 value.FencingToken == lease.FencingToken,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         if (active is null || active.LeaseUntil <= timeProvider.GetUtcNow())
         {
             throw new ProjectionLeaseLostException(tenantId, key);

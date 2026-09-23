@@ -14,6 +14,15 @@ pnpm --dir docs build
 
 Changes to persistence guarantees, public APIs, or operational behavior require an architecture decision record or an update to an existing decision.
 
+## Asynchronous continuations
+
+Use `ConfigureAwait(false)` in context-independent library I/O and worker waits
+when their continuations do not need the caller's synchronization context.
+Do not apply it mechanically to methods that may invoke application-supplied
+projection handlers, publishers, retry operations, snapshot policies, or
+upcasters after an await: their invocation context must be reviewed first.
+Application examples and tests normally use plain `await`.
+
 ## Public API and package validation
 
 The eight supported packages have public API regression tests in the core and

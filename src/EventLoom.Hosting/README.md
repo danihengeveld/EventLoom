@@ -4,6 +4,13 @@
 background projection and outbox workers, health checks, and optional
 OpenTelemetry SDK extensions.
 
+Workers use standard .NET logging without an EventLoom-specific opt-in:
+intermediate delivery retries and lease loss are debug logs, while a
+persisted projection pause or exhausted outbox delivery cycle is a warning.
+Successful projection resume, skip, and replay operations are information
+logs. Configure log providers and minimum levels in the host; EventLoom
+does not log event payloads or tenant, stream, event, or message IDs.
+
 ASP.NET Core applications should install `EventLoom.AspNetCore` plus exactly
 one provider package. Reference `EventLoom.Hosting` directly only for a
 non-web host:

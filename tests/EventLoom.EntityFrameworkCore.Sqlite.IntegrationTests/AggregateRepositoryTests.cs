@@ -1,8 +1,10 @@
 using System.Data.Common;
 using EventLoom.EntityFrameworkCore;
+using EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace EventLoom.UnitTests;
 
@@ -125,6 +127,7 @@ public sealed class AggregateRepositoryTests
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
+        var logs = new RecordingLogger<AggregateRepository<Counter, Guid>>();
         var snapshotType = typeof(CounterSnapshot);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
@@ -134,7 +137,8 @@ public sealed class AggregateRepositoryTests
             new TestTenantAccessor("tenant-a"),
             snapshots,
             snapshotType,
-            new EveryNEventsSnapshotPolicy(100));
+            new EveryNEventsSnapshotPolicy(100),
+            logger: logs);
         var aggregate = new Counter(Guid.NewGuid());
         aggregate.Increment(2);
         await repository.SaveAsync(aggregate);
@@ -153,6 +157,14 @@ public sealed class AggregateRepositoryTests
 
         await Assert.That(loaded.Value).IsEqualTo(5);
         await Assert.That(loaded.Version).IsEqualTo(2);
+        var fallback = logs.Entries.Single(entry => entry.EventId == 1002);
+        await Assert.That(fallback.Level).IsEqualTo(LogLevel.Warning);
+        await Assert.That(fallback.Properties["Reason"]).IsEqualTo(SnapshotInvalidationReason.Corrupt);
+        await Assert.That((bool)fallback.Properties["Invalidated"]!).IsFalse();
+        await Assert.That(fallback.Properties["SnapshotType"]).IsEqualTo("tests.counter");
+        await Assert.That(fallback.Exception).IsNull();
+        await Assert.That(fallback.Message.Contains("tenant-a", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(fallback.Message.Contains(aggregate.Id.ToString(), StringComparison.Ordinal)).IsFalse();
     }
 
     [Test]
@@ -169,6 +181,7 @@ public sealed class AggregateRepositoryTests
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
+        var logs = new RecordingLogger<AggregateRepository<Counter, Guid>>();
         var snapshotType = typeof(CounterSnapshot);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
@@ -177,7 +190,8 @@ public sealed class AggregateRepositoryTests
             id => id.ToString("D"),
             new TestTenantAccessor("tenant-a"),
             snapshots,
-            snapshotType);
+            snapshotType,
+            logger: logs);
         var aggregate = new Counter(Guid.NewGuid());
         aggregate.Increment(5);
         await repository.SaveAsync(aggregate);
@@ -194,6 +208,9 @@ public sealed class AggregateRepositoryTests
 
         await Assert.That(loaded.Value).IsEqualTo(5);
         await Assert.That(loaded.Version).IsEqualTo(1);
+        var fallback = logs.Entries.Single(entry => entry.EventId == 1002);
+        await Assert.That(fallback.Properties["Reason"]).IsEqualTo(SnapshotInvalidationReason.Incompatible);
+        await Assert.That((bool)fallback.Properties["Invalidated"]!).IsFalse();
     }
 
     [Test]
@@ -210,6 +227,7 @@ public sealed class AggregateRepositoryTests
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
+        var logs = new RecordingLogger<AggregateRepository<Counter, Guid>>();
         var snapshotType = typeof(CounterSnapshot);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
@@ -219,7 +237,8 @@ public sealed class AggregateRepositoryTests
             new TestTenantAccessor("tenant-a"),
             snapshots,
             snapshotType,
-            snapshotInvalidator: new AlwaysInvalidateSnapshots());
+            snapshotInvalidator: new AlwaysInvalidateSnapshots(),
+            logger: logs);
         var aggregate = new Counter(Guid.NewGuid());
         aggregate.Increment(5);
         await repository.SaveAsync(aggregate);
@@ -241,6 +260,9 @@ public sealed class AggregateRepositoryTests
 
         await Assert.That(loaded.Value).IsEqualTo(5);
         await Assert.That(snapshot).IsNull();
+        var fallback = logs.Entries.Single(entry => entry.EventId == 1002);
+        await Assert.That(fallback.Properties["Reason"]).IsEqualTo(SnapshotInvalidationReason.Corrupt);
+        await Assert.That((bool)fallback.Properties["Invalidated"]!).IsTrue();
     }
 
     [Test]

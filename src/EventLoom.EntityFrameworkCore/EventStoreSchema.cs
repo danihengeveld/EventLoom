@@ -101,7 +101,7 @@ public static class EventStoreSchema
         var closeConnection = connection.State != ConnectionState.Open;
         if (closeConnection)
         {
-            await connection.OpenAsync(cancellationToken);
+            await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
         }
 
         try
@@ -113,7 +113,8 @@ public static class EventStoreSchema
                 DbDataReader reader;
                 try
                 {
-                    reader = await command.ExecuteReaderAsync(CommandBehavior.SchemaOnly, cancellationToken);
+                    reader = await command.ExecuteReaderAsync(CommandBehavior.SchemaOnly, cancellationToken)
+                        .ConfigureAwait(false);
                 }
                 catch (DbException)
                 {
@@ -158,7 +159,7 @@ public static class EventStoreSchema
         {
             if (closeConnection)
             {
-                await connection.CloseAsync();
+                await connection.CloseAsync().ConfigureAwait(false);
             }
         }
 

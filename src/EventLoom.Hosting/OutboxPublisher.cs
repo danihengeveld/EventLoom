@@ -33,7 +33,7 @@ internal sealed class OutboxPublisherWorker(
         {
             if (!await RunIterationAsync(stoppingToken))
             {
-                await Task.Delay(options.PollInterval, timeProvider, stoppingToken);
+                await Task.Delay(options.PollInterval, timeProvider, stoppingToken).ConfigureAwait(false);
             }
         }
     }
@@ -92,7 +92,7 @@ internal sealed class OutboxPublisherWorker(
         catch (OutboxLeaseLostException)
         {
             EventLoomTelemetry.OutboxLeaseLosses.Add(1);
-            logger.LogDebug("Outbox publisher lost its lease before finishing a batch.");
+            logger.OutboxLeaseLost();
             return false;
         }
         finally
@@ -130,16 +130,17 @@ internal sealed class OutboxPublisherWorker(
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
                 EventLoomTelemetry.OutboxFailures.Add(1);
-                logger.LogWarning(
-                    "Outbox publication failed for message {MessageId} on attempt {Attempt} with {ExceptionType}.",
-                    message.MessageId,
-                    attempt + 1,
-                    exception.GetType().FullName);
                 await store.RecordAttemptAsync(message, lease, exception, cancellationToken);
                 if (attempt < options.MaxRetryAttempts)
                 {
+                    logger.OutboxRetry(attempt + 1, exception.GetType().FullName ?? exception.GetType().Name);
                     var delay = TimeSpan.FromMilliseconds(Math.Min(1000, 50 * Math.Pow(2, attempt)));
-                    await Task.Delay(delay, timeProvider, cancellationToken);
+                    await Task.Delay(delay, timeProvider, cancellationToken).ConfigureAwait(false);
+                }
+                else
+                {
+                    logger.OutboxAttemptsExhausted(attempt + 1,
+                        exception.GetType().FullName ?? exception.GetType().Name);
                 }
             }
         }

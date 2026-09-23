@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests;
 
@@ -125,7 +126,8 @@ public sealed class ProjectionStoreTests
         await context.Database.EnsureCreatedAsync();
         var eventStore = CreateEventStore(context);
         var envelope = await AppendAsync(eventStore);
-        var projections = new ProjectionStore(context, TimeProvider.System);
+        var logs = new RecordingLogger<ProjectionStore>();
+        var projections = new ProjectionStore(context, TimeProvider.System, logs);
         var key = new ProjectionKey("tests.orders", 1);
         var lease = await AcquireLeaseAsync(context, key);
 
@@ -149,6 +151,11 @@ public sealed class ProjectionStoreTests
         await Assert.That(resumed!.Status).IsEqualTo(ProjectionStatus.Running);
         await Assert.That(resumed.TenantOffset).IsEqualTo(envelope.TenantOffset);
         await Assert.That(resolved.Single().WasSkipped).IsTrue();
+        var skippedLog = logs.Entries.Single(entry => entry.EventId == 1004);
+        await Assert.That(skippedLog.Level).IsEqualTo(LogLevel.Information);
+        await Assert.That(skippedLog.Message.Contains(envelope.EventId.ToString(), StringComparison.Ordinal)).IsFalse();
+        await Assert.That(skippedLog.Message.Contains("tenant-a", StringComparison.Ordinal)).IsFalse();
+        await Assert.That(skippedLog.Exception).IsNull();
     }
 
     [Test]
@@ -160,7 +167,8 @@ public sealed class ProjectionStoreTests
         await context.Database.EnsureCreatedAsync();
         var eventStore = CreateEventStore(context);
         var envelope = await AppendAsync(eventStore);
-        var projections = new ProjectionStore(context, TimeProvider.System);
+        var logs = new RecordingLogger<ProjectionStore>();
+        var projections = new ProjectionStore(context, TimeProvider.System, logs);
         var key = new ProjectionKey("tests.orders", 1);
         var lease = await AcquireLeaseAsync(context, key);
         await projections.RecordFailureAsync(
@@ -183,6 +191,8 @@ public sealed class ProjectionStoreTests
         await Assert.That(result).IsEqualTo(ProjectionDeliveryResult.Processed);
         await Assert.That(failures.Single().ResolvedAt).IsNotNull();
         await Assert.That(failures.Single().WasSkipped).IsFalse();
+        await Assert.That(logs.Entries.Single(entry => entry.EventId == 1003).Level)
+            .IsEqualTo(LogLevel.Information);
     }
 
     [Test]
@@ -194,7 +204,8 @@ public sealed class ProjectionStoreTests
         await context.Database.EnsureCreatedAsync();
         var eventStore = CreateEventStore(context);
         var envelope = await AppendAsync(eventStore);
-        var projections = new ProjectionStore(context, TimeProvider.System);
+        var logs = new RecordingLogger<ProjectionStore>();
+        var projections = new ProjectionStore(context, TimeProvider.System, logs);
         var key = new ProjectionKey("tests.orders", 2);
         var lease = await AcquireLeaseAsync(context, key);
         var calls = 0;
@@ -224,6 +235,8 @@ public sealed class ProjectionStoreTests
 
         await Assert.That(reset!.TenantOffset).IsEqualTo(0);
         await Assert.That(calls).IsEqualTo(2);
+        await Assert.That(logs.Entries.Single(entry => entry.EventId == 1005).Level)
+            .IsEqualTo(LogLevel.Information);
     }
 
     [Test]

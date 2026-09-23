@@ -3,6 +3,7 @@ using EventLoom.Hosting;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace EventLoom.EntityFrameworkCore.UnitTests;
 
@@ -15,6 +16,8 @@ public sealed class OutboxPublisherWorkerTests
         var recorder = new IdempotentPublisherRecorder();
         var services = new ServiceCollection();
         services.AddSingleton(recorder);
+        var logs = new RecordingLogger<OutboxPublisherWorker>();
+        services.AddSingleton<ILogger<OutboxPublisherWorker>>(logs);
         services.AddEventLoom(eventLoom => eventLoom
             .AddEvent<ItemAdded>()
             .UseSingleTenancy("tenant-a")
@@ -51,6 +54,13 @@ public sealed class OutboxPublisherWorkerTests
             await Assert.That(attempts[0].Succeeded).IsFalse();
             await Assert.That(attempts[0].ExceptionType).IsEqualTo(typeof(InvalidOperationException).FullName);
             await Assert.That(attempts[1].Succeeded).IsTrue();
+            var retry = await logs.WaitForAsync(3004);
+            await Assert.That(retry.Level).IsEqualTo(LogLevel.Debug);
+            await Assert.That(retry.Properties["Attempt"]).IsEqualTo(1);
+            await Assert.That(retry.Exception).IsNull();
+            await Assert.That(retry.Message.Contains(eventId.ToString(), StringComparison.Ordinal)).IsFalse();
+            await Assert.That(retry.Properties.ContainsKey("MessageId")).IsFalse();
+            await Assert.That(logs.Entries.Any(entry => entry.EventId == 3005)).IsFalse();
         }
         finally
         {
@@ -157,6 +167,8 @@ public sealed class OutboxPublisherWorkerTests
         var recorder = new FailingPublisherRecorder();
         var services = new ServiceCollection();
         services.AddSingleton(recorder);
+        var logs = new RecordingLogger<OutboxPublisherWorker>();
+        services.AddSingleton<ILogger<OutboxPublisherWorker>>(logs);
         services.AddEventLoom(eventLoom => eventLoom
             .AddEvent<ItemAdded>()
             .UseSingleTenancy("tenant-a")
@@ -179,6 +191,7 @@ public sealed class OutboxPublisherWorkerTests
             var eventId = await AppendAsync(provider);
             await recorder.Failed.Task.WaitAsync(TimeSpan.FromSeconds(5));
             var message = await WaitForAttemptAsync(provider, eventId);
+            var exhausted = await logs.WaitForAsync(3005);
             await worker.StopAsync(CancellationToken.None);
 
             await using var scope = provider.CreateAsyncScope();
@@ -187,6 +200,11 @@ public sealed class OutboxPublisherWorkerTests
             await Assert.That(message.PublishedAt).IsNull();
             await Assert.That(attempts).IsNotEmpty();
             await Assert.That(attempts.All(attempt => !attempt.Succeeded)).IsTrue();
+            await Assert.That(exhausted.Level).IsEqualTo(LogLevel.Warning);
+            await Assert.That(exhausted.Properties["Attempts"]).IsEqualTo(1);
+            await Assert.That(exhausted.Exception).IsNull();
+            await Assert.That(exhausted.Message.Contains(eventId.ToString(), StringComparison.Ordinal)).IsFalse();
+            await Assert.That(exhausted.Properties.ContainsKey("MessageId")).IsFalse();
         }
         finally
         {

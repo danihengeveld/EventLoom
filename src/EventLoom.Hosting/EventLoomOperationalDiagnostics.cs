@@ -22,8 +22,9 @@ public sealed class EventLoomOperationalDiagnostics
     /// <summary>Gets payload-safe worker diagnostic summaries.</summary>
     public async Task<EventLoomOperationalSummary> GetAsync(CancellationToken cancellationToken = default) =>
         new(
-            await projections.GetHealthSummaryAsync(registry.AsynchronousProjections, cancellationToken),
-            await outbox.GetHealthSummaryAsync(cancellationToken));
+            await projections.GetHealthSummaryAsync(registry.AsynchronousProjections, cancellationToken)
+                .ConfigureAwait(false),
+            await outbox.GetHealthSummaryAsync(cancellationToken).ConfigureAwait(false));
 }
 
 /// <summary>Contains payload-safe aggregate worker diagnostics.</summary>

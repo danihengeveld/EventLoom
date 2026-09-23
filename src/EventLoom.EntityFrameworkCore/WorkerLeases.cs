@@ -37,12 +37,12 @@ internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider
                         .SetProperty(value => value.OwnerId, ownerId)
                         .SetProperty(value => value.FencingToken, value => value.FencingToken + 1)
                         .SetProperty(value => value.LeaseUntil, leaseUntil),
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
             if (updated == 1)
             {
                 var renewed = await context.ProjectionLeases.AsNoTracking().SingleAsync(
                     value => value.TenantId == tenantId && value.LeaseName == leaseName,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 return renewed.OwnerId == ownerId && renewed.LeaseUntil > timeProvider.GetUtcNow()
                     ? new WorkerLease(tenantId, leaseName, ownerId, renewed.FencingToken, renewed.LeaseUntil)
                     : null;
@@ -52,7 +52,7 @@ internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider
         var leases = isPostgreSql ? context.ProjectionLeases.AsNoTracking() : context.ProjectionLeases;
         var lease = await leases.SingleOrDefaultAsync(
             value => value.TenantId == tenantId && value.LeaseName == leaseName,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         if (lease is null)
         {
@@ -67,7 +67,7 @@ internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider
             context.ProjectionLeases.Add(newLease);
             try
             {
-                await context.SaveChangesAsync(cancellationToken);
+                await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
                 return new WorkerLease(tenantId, leaseName, ownerId, newLease.FencingToken, newLease.LeaseUntil);
             }
             catch (DbUpdateException exception)
@@ -75,7 +75,7 @@ internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider
                 context.ChangeTracker.Clear();
                 var current = await context.ProjectionLeases.AsNoTracking().SingleOrDefaultAsync(
                     value => value.TenantId == tenantId && value.LeaseName == leaseName,
-                    cancellationToken);
+                    cancellationToken).ConfigureAwait(false);
                 if (current is not null && current.LeaseUntil > now && current.OwnerId != ownerId)
                 {
                     return null;
@@ -96,7 +96,7 @@ internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider
             lease.FencingToken++;
             lease.LeaseUntil = now.Add(duration);
             context.ProjectionLeases.Update(lease);
-            await context.SaveChangesAsync(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
             return new WorkerLease(tenantId, leaseName, ownerId, lease.FencingToken, lease.LeaseUntil);
         }
 
@@ -113,7 +113,7 @@ internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider
                 value.LeaseName == lease.LeaseName &&
                 value.OwnerId == lease.OwnerId &&
                 value.FencingToken == lease.FencingToken)
-            .ExecuteDeleteAsync(cancellationToken);
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
         return affected == 1;
     }
 }

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace EventLoom.Hosting;
 
@@ -315,7 +316,8 @@ public sealed partial class EventLoomBuilder
             snapshots?.Policy,
             snapshots?.Invalidator,
             snapshots?.RetentionPolicy,
-            snapshots?.Upcasters));
+            snapshots?.Upcasters,
+            serviceProvider.GetRequiredService<ILogger<AggregateRepository<TAggregate, TId>>>()));
         return this;
     }
 
@@ -423,7 +425,8 @@ public sealed partial class EventLoomBuilder
             serviceProvider.GetRequiredService<EventStoreOptions>(),
             serviceProvider.GetService<ITenantAccessor>(),
             serviceProvider.GetService<IEventStoreRetryPolicy>(),
-            serviceProvider.GetService<IInlineProjectionDispatcher>()));
+            serviceProvider.GetService<IInlineProjectionDispatcher>(),
+            serviceProvider.GetRequiredService<ILogger<EventStore>>()));
         services.AddScoped<SnapshotStore>();
         services.AddScoped<ProjectionStore>();
         services.AddScoped(serviceProvider => new ProjectionAdministration(

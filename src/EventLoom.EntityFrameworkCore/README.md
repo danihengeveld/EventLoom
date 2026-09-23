@@ -7,6 +7,13 @@ transactional outbox model, and a unit-of-work API
 (`EventStore.BeginUnitOfWorkAsync`) for coordinating an append with
 application database changes in the same transaction.
 
+The EF Core package uses standard .NET logging for unexpected append
+failures, rejected appends, snapshot replay fallback, and successful
+projection administration changes. Host registration supplies the logger
+automatically; applications control providers and levels normally. Direct
+construction without a logger remains supported and uses a no-op logger.
+Logs omit persisted identifiers, payloads, and exception messages.
+
 Snapshots are aggregate-owned state caches. Declare a snapshot as
 `IAggregateSnapshot<TAggregate>` and configure it with
 `UseSnapshots<TSnapshot>(...)`; the aggregate supplies private

@@ -63,7 +63,7 @@ public sealed class EventLoomUnitOfWork : IAsyncDisposable
                 "share a unit of work.");
         }
 
-        await applicationContext.Database.UseTransactionAsync(DbTransaction, cancellationToken);
+        await applicationContext.Database.UseTransactionAsync(DbTransaction, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -92,7 +92,7 @@ public sealed class EventLoomUnitOfWork : IAsyncDisposable
     {
         EnsureActive();
         completed = true;
-        await transaction.CommitAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -106,7 +106,7 @@ public sealed class EventLoomUnitOfWork : IAsyncDisposable
     {
         EnsureActive();
         completed = true;
-        await transaction.RollbackAsync(cancellationToken);
+        await transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -119,7 +119,7 @@ public sealed class EventLoomUnitOfWork : IAsyncDisposable
             completed = true;
             try
             {
-                await transaction.RollbackAsync();
+                await transaction.RollbackAsync().ConfigureAwait(false);
             }
             catch (Exception)
             {
@@ -128,7 +128,7 @@ public sealed class EventLoomUnitOfWork : IAsyncDisposable
             }
         }
 
-        await transaction.DisposeAsync();
+        await transaction.DisposeAsync().ConfigureAwait(false);
     }
 
     private void EnsureActive()

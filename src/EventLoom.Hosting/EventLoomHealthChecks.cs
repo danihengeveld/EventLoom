@@ -68,12 +68,13 @@ internal sealed class EventStoreHealthCheck(IServiceScopeFactory scopeFactory) :
         var eventStoreContext = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
         try
         {
-            if (!await eventStoreContext.Database.CanConnectAsync(cancellationToken))
+            if (!await eventStoreContext.Database.CanConnectAsync(cancellationToken).ConfigureAwait(false))
             {
                 return HealthCheckResult.Unhealthy("EventLoom event-store connectivity failed.");
             }
 
-            var validation = await EventStoreSchema.ValidateAsync(eventStoreContext, cancellationToken);
+            var validation = await EventStoreSchema.ValidateAsync(eventStoreContext, cancellationToken)
+                .ConfigureAwait(false);
             return validation.IsCompatible
                 ? HealthCheckResult.Healthy("EventLoom event-store schema is compatible.")
                 : HealthCheckResult.Unhealthy(
@@ -115,7 +116,7 @@ internal sealed class ProjectionHealthCheck(
         {
             await using var scope = scopeFactory.CreateAsyncScope();
             var summary = await scope.ServiceProvider.GetRequiredService<ProjectionStore>()
-                .GetHealthSummaryAsync(registry.AsynchronousProjections, cancellationToken);
+                .GetHealthSummaryAsync(registry.AsynchronousProjections, cancellationToken).ConfigureAwait(false);
             var data = new Dictionary<string, object>
             {
                 ["projection_count"] = summary.ProjectionCount,
@@ -161,7 +162,7 @@ internal sealed class OutboxHealthCheck(
         {
             await using var scope = scopeFactory.CreateAsyncScope();
             var summary = await scope.ServiceProvider.GetRequiredService<OutboxStore>()
-                .GetHealthSummaryAsync(cancellationToken);
+                .GetHealthSummaryAsync(cancellationToken).ConfigureAwait(false);
             var data = new Dictionary<string, object>
             {
                 ["pending_message_count"] = summary.PendingMessageCount

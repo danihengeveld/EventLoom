@@ -29,7 +29,7 @@ internal sealed class ProjectionWorker(
             var progressed = await RunIterationAsync(stoppingToken);
             if (!progressed)
             {
-                await Task.Delay(options.PollInterval, timeProvider, stoppingToken);
+                await Task.Delay(options.PollInterval, timeProvider, stoppingToken).ConfigureAwait(false);
             }
         }
     }
@@ -128,7 +128,7 @@ internal sealed class ProjectionWorker(
         catch (ProjectionLeaseLostException)
         {
             EventLoomTelemetry.ProjectionLeaseLosses.Add(1);
-            logger.LogDebug("Projection worker lost its lease before finishing a batch.");
+            logger.ProjectionLeaseLost();
             return false;
         }
         finally
@@ -179,18 +179,13 @@ internal sealed class ProjectionWorker(
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
                 EventLoomTelemetry.ProjectionFailures.Add(1);
-                logger.LogWarning(
-                    "Projection {ProjectionName} v{ProjectionVersion} failed to process event {EventId} on attempt {Attempt} with {ExceptionType}.",
-                    key.Name,
-                    key.Version,
-                    envelope.EventId,
-                    attempt,
-                    exception.GetType().FullName);
                 failure = exception;
                 if (attempt <= options.MaxRetryAttempts)
                 {
+                    logger.ProjectionRetry(key.Name, key.Version, attempt,
+                        exception.GetType().FullName ?? exception.GetType().Name);
                     var delay = TimeSpan.FromMilliseconds(Math.Min(1000, 50 * Math.Pow(2, attempt - 1)));
-                    await Task.Delay(delay, timeProvider, cancellationToken);
+                    await Task.Delay(delay, timeProvider, cancellationToken).ConfigureAwait(false);
                 }
             }
         }
@@ -203,6 +198,8 @@ internal sealed class ProjectionWorker(
             options.MaxRetryAttempts + 1,
             failure ?? throw new InvalidOperationException("Projection delivery did not report a failure."),
             cancellationToken);
+        logger.ProjectionPaused(key.Name, key.Version, options.MaxRetryAttempts + 1,
+            failure.GetType().FullName ?? failure.GetType().Name);
         return ProjectionDeliveryResult.Paused;
     }
 }

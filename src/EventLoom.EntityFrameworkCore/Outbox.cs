@@ -49,7 +49,7 @@ internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider time
             .Select(value => value.TenantId)
             .Distinct()
             .OrderBy(value => value)
-            .ToArrayAsync(cancellationToken);
+            .ToArrayAsync(cancellationToken).ConfigureAwait(false);
 
     /// <summary>
     /// Gets the number of messages awaiting publication without returning message or event data.
@@ -58,7 +58,7 @@ internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider time
     /// <returns>A payload-safe outbox health summary.</returns>
     public async Task<OutboxHealthSummary> GetHealthSummaryAsync(CancellationToken cancellationToken = default) =>
         new(await context.Outbox.AsNoTracking()
-            .CountAsync(value => value.PublishedAt == null, cancellationToken));
+            .CountAsync(value => value.PublishedAt == null, cancellationToken).ConfigureAwait(false));
 
     /// <summary>Reads unpublished messages for a tenant in committed tenant-offset order.</summary>
     public async Task<IReadOnlyList<OutboxMessage>> ReadPendingAsync(
@@ -76,7 +76,7 @@ internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider time
             .Where(value => value.TenantId == tenantId && value.PublishedAt == null)
             .OrderBy(value => value.TenantOffset)
             .Take(limit)
-            .ToArrayAsync(cancellationToken);
+            .ToArrayAsync(cancellationToken).ConfigureAwait(false);
         return messages.Select(ToMessage).ToArray();
     }
 
@@ -89,7 +89,7 @@ internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider time
         tenantId = new TenantId(tenantId).Value;
         var message = await context.Outbox.AsNoTracking().SingleOrDefaultAsync(
             value => value.TenantId == tenantId && value.MessageId == messageId,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         return message is null ? null : ToMessage(message);
     }
 
@@ -103,7 +103,7 @@ internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider time
         var attempts = await context.OutboxAttempts.AsNoTracking()
             .Where(value => value.TenantId == tenantId && value.MessageId == messageId)
             .OrderBy(value => value.AttemptNumber)
-            .ToArrayAsync(cancellationToken);
+            .ToArrayAsync(cancellationToken).ConfigureAwait(false);
         return attempts.Select(value => new OutboxAttempt(
             value.MessageId,
             value.TenantId,
@@ -127,7 +127,7 @@ internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider time
             lease,
             exception,
             TimeSpan.Zero,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
     internal async Task<bool> RecordAttemptAsync(
         OutboxMessage message,
@@ -151,11 +151,11 @@ internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider time
         context.ChangeTracker.Clear();
         await using var transaction = await context.Database.BeginTransactionAsync(
             IsolationLevel.Serializable,
-            cancellationToken);
-        await VerifyLeaseAsync(message.TenantId, lease, cancellationToken);
+            cancellationToken).ConfigureAwait(false);
+        await VerifyLeaseAsync(message.TenantId, lease, cancellationToken).ConfigureAwait(false);
         var entity = await context.Outbox.SingleOrDefaultAsync(
             value => value.MessageId == message.MessageId,
-            cancellationToken) ?? throw new InvalidOperationException(
+            cancellationToken).ConfigureAwait(false) ?? throw new InvalidOperationException(
             $"Outbox message '{message.MessageId}' does not exist.");
         if (entity.TenantId != message.TenantId)
         {
@@ -173,10 +173,10 @@ internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider time
         {
             await context.OutboxAttempts
                 .Where(value => value.MessageId == entity.MessageId)
-                .ExecuteDeleteAsync(cancellationToken);
+                .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
             context.Outbox.Remove(entity);
-            await context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
             return true;
         }
 
@@ -194,8 +194,8 @@ internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider time
             entity.PublishedAt = attemptedAt;
         }
 
-        await context.SaveChangesAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return true;
     }
 
@@ -230,7 +230,7 @@ internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider time
                 .ThenBy(value => value.Id)
                 .Select(value => value.MessageId)
                 .Take(limit)
-                .ToArrayAsync(cancellationToken);
+                .ToArrayAsync(cancellationToken).ConfigureAwait(false);
         }
         else
         {
@@ -239,7 +239,7 @@ internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider time
                 .OrderBy(value => value.Id)
                 .Select(value => new { value.MessageId, value.PublishedAt })
                 .Take(limit)
-                .ToArrayAsync(cancellationToken);
+                .ToArrayAsync(cancellationToken).ConfigureAwait(false);
             messageIds = candidates
                 .Where(value => value.PublishedAt <= cutoff)
                 .Select(value => value.MessageId)
@@ -251,14 +251,15 @@ internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider time
             return 0;
         }
 
-        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken)
+            .ConfigureAwait(false);
         await context.OutboxAttempts
             .Where(value => messageIds.Contains(value.MessageId))
-            .ExecuteDeleteAsync(cancellationToken);
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
         var deleted = await context.Outbox
             .Where(value => messageIds.Contains(value.MessageId) && value.PublishedAt != null)
-            .ExecuteDeleteAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
+            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
+        await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         return deleted;
     }
 
@@ -276,7 +277,7 @@ internal sealed class OutboxStore(EventStoreDbContext context, TimeProvider time
                 value.LeaseName == OutboxPublisherLeaseName &&
                 value.OwnerId == lease.OwnerId &&
                 value.FencingToken == lease.FencingToken,
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         if (active is null || active.LeaseUntil <= timeProvider.GetUtcNow())
         {
             throw new OutboxLeaseLostException(tenantId);
