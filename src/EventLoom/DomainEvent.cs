@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+
 namespace EventLoom;
 
 /// <summary>Marks an immutable event raised by a specific domain aggregate.</summary>
@@ -8,10 +10,14 @@ public interface IDomainEvent<out TAggregate>
 internal static class DomainEventContract
 {
     private static readonly Type OpenContract = typeof(IDomainEvent<>);
+    private static readonly ConcurrentDictionary<Type, EventOwner> Owners = new();
 
     public static bool IsEvent(Type type) => GetAggregateType(type) is not null;
 
-    public static Type? GetAggregateType(Type type)
+    public static Type? GetAggregateType(Type type) =>
+        Owners.GetOrAdd(type, static eventType => new EventOwner(FindAggregateType(eventType))).AggregateType;
+
+    private static Type? FindAggregateType(Type type)
     {
         var aggregateTypes = type.GetInterfaces()
             .Where(candidate =>
@@ -22,6 +28,8 @@ internal static class DomainEventContract
             .ToArray();
         return aggregateTypes.Length == 1 ? aggregateTypes[0] : null;
     }
+
+    private readonly record struct EventOwner(Type? AggregateType);
 }
 
 /// <summary>Associates a stable persisted name and schema version with a domain event.</summary>

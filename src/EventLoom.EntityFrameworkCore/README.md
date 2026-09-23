@@ -30,3 +30,7 @@ EventLoom is currently pre-release. See the
 for provider setup and the
 [projection guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/projections.md)
 for delivery and recovery semantics.
+
+Projection tenant discovery and health lag use the persisted tenant-offset
+counters, not an event-table scan. A tenant counter at zero does not represent
+committed projection work.

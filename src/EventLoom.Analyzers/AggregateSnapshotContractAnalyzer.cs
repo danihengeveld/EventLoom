@@ -21,7 +21,8 @@ public sealed class AggregateSnapshotContractAnalyzer : DiagnosticAnalyzer
         "EventLoom",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Every persisted EventLoom aggregate snapshot needs a stable SnapshotTypeAttribute name and version.");
+        description:
+        "Every persisted EventLoom aggregate snapshot needs a stable SnapshotTypeAttribute name and version.");
 
     private static readonly DiagnosticDescriptor MissingSnapshotCreate = new(
         MissingSnapshotCreateDiagnosticId,
@@ -48,7 +49,8 @@ public sealed class AggregateSnapshotContractAnalyzer : DiagnosticAnalyzer
         "EventLoom",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "A snapshot-owning aggregate must provide the private restoration method used by runtime dispatch.");
+        description:
+        "A snapshot-owning aggregate must provide the private restoration method used by runtime dispatch.");
 
     private static readonly DiagnosticDescriptor InvalidSnapshotRestore = new(
         InvalidSnapshotRestoreDiagnosticId,
@@ -74,7 +76,8 @@ public sealed class AggregateSnapshotContractAnalyzer : DiagnosticAnalyzer
         context.RegisterCompilationStartAction(startContext =>
         {
             var aggregateSnapshot = startContext.Compilation.GetTypeByMetadataName("EventLoom.IAggregateSnapshot`1");
-            var snapshotTypeAttribute = startContext.Compilation.GetTypeByMetadataName("EventLoom.SnapshotTypeAttribute");
+            var snapshotTypeAttribute =
+                startContext.Compilation.GetTypeByMetadataName("EventLoom.SnapshotTypeAttribute");
             if (aggregateSnapshot is null || snapshotTypeAttribute is null)
             {
                 return;

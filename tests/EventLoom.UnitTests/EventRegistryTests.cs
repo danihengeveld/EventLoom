@@ -45,6 +45,29 @@ public sealed class EventRegistryTests
             .Throws<EventNotRegisteredException>();
     }
 
+    [Test]
+    public async Task Current_registration_is_highest_version_regardless_of_registration_order()
+    {
+        var registry = new EventRegistry()
+            .RegisterEvent<RegisteredEvent>()
+            .RegisterEvent<OlderRegisteredEvent>()
+            .RegisterEvent<NewestRegisteredEvent>();
+
+        await Assert.That(registry.GetCurrent("tests.registered").Version).IsEqualTo(3);
+        await Assert.That(() => registry.RegisterEvent<DuplicateNamedEvent>())
+            .Throws<DuplicateEventTypeException>();
+        await Assert.That(registry.GetCurrent("tests.registered").ClrType)
+            .IsEqualTo(typeof(NewestRegisteredEvent));
+        await Assert.That(() => registry.GetCurrent("tests.missing"))
+            .Throws<EventNotRegisteredException>();
+    }
+
+    [EventType("tests.registered", Version = 1)]
+    private sealed record OlderRegisteredEvent : IDomainEvent<TestAggregate>;
+
+    [EventType("tests.registered", Version = 3)]
+    private sealed record NewestRegisteredEvent : IDomainEvent<TestAggregate>;
+
     [EventType("tests.registered", Version = 2)]
     private sealed record RegisteredEvent : IDomainEvent<TestAggregate>;
 
@@ -56,6 +79,14 @@ public sealed class EventRegistryTests
     private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
     {
         private void Apply(RegisteredEvent @event)
+        {
+        }
+
+        private void Apply(OlderRegisteredEvent @event)
+        {
+        }
+
+        private void Apply(NewestRegisteredEvent @event)
         {
         }
 

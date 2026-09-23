@@ -62,10 +62,10 @@ public sealed class AggregateSnapshotContractAnalyzerTests
             """);
 
         await Assert.That(diagnostics.Select(value => value.Id)).IsEquivalentTo(
-            [
-                AggregateSnapshotContractAnalyzer.MissingSnapshotCreateDiagnosticId,
-                AggregateSnapshotContractAnalyzer.MissingSnapshotRestoreDiagnosticId
-            ]);
+        [
+            AggregateSnapshotContractAnalyzer.MissingSnapshotCreateDiagnosticId,
+            AggregateSnapshotContractAnalyzer.MissingSnapshotRestoreDiagnosticId
+        ]);
     }
 
     [Test]
@@ -86,10 +86,10 @@ public sealed class AggregateSnapshotContractAnalyzerTests
             """);
 
         await Assert.That(diagnostics.Select(value => value.Id)).IsEquivalentTo(
-            [
-                AggregateSnapshotContractAnalyzer.InvalidSnapshotCreateDiagnosticId,
-                AggregateSnapshotContractAnalyzer.InvalidSnapshotRestoreDiagnosticId
-            ]);
+        [
+            AggregateSnapshotContractAnalyzer.InvalidSnapshotCreateDiagnosticId,
+            AggregateSnapshotContractAnalyzer.InvalidSnapshotRestoreDiagnosticId
+        ]);
     }
 
     [Test]

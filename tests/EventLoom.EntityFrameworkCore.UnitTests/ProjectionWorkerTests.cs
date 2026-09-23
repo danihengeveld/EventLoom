@@ -11,6 +11,23 @@ namespace EventLoom.EntityFrameworkCore.UnitTests;
 public sealed class ProjectionWorkerTests
 {
     [Test]
+    public async Task Lease_renewal_is_due_only_after_its_interval()
+    {
+        var now = new DateTimeOffset(2026, 9, 23, 12, 0, 0, TimeSpan.Zero);
+        var options = new EventStoreWorkerOptions
+        {
+            LeaseDuration = TimeSpan.FromMilliseconds(300),
+            LeaseRenewalInterval = TimeSpan.FromMilliseconds(100)
+        };
+        var lease = new WorkerLease("tenant-a", "projection:orders:v1", "node-a", 1,
+            now.Add(options.LeaseDuration));
+
+        await Assert.That(ProjectionWorker.ShouldRenewLease(lease, now, options)).IsFalse();
+        await Assert.That(ProjectionWorker.ShouldRenewLease(lease, now.AddMilliseconds(99), options)).IsFalse();
+        await Assert.That(ProjectionWorker.ShouldRenewLease(lease, now.AddMilliseconds(100), options)).IsTrue();
+    }
+
+    [Test]
     public async Task Hosted_worker_dispatches_typed_envelopes_and_advances_checkpoints()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");

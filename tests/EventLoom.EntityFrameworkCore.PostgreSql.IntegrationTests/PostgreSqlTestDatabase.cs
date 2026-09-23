@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Testcontainers.PostgreSql;
-using TUnit.Core;
 using TUnit.Core.Interfaces;
 
 namespace EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests;

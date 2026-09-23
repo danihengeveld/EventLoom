@@ -1,6 +1,6 @@
-using System.Text.Json;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Text.Json;
 
 namespace EventLoom;
 
@@ -142,10 +142,10 @@ internal sealed class AggregateSnapshotDispatcher<TAggregate>
 
         this.snapshotType = snapshotType;
         metadata = snapshotType
-        .GetCustomAttributes(typeof(SnapshotTypeAttribute), false)
-        .OfType<SnapshotTypeAttribute>()
-        .SingleOrDefault() ?? throw new InvalidOperationException(
-        $"Snapshot type '{snapshotType.FullName}' is missing SnapshotTypeAttribute.");
+            .GetCustomAttributes(typeof(SnapshotTypeAttribute), false)
+            .OfType<SnapshotTypeAttribute>()
+            .SingleOrDefault() ?? throw new InvalidOperationException(
+            $"Snapshot type '{snapshotType.FullName}' is missing SnapshotTypeAttribute.");
         capture = CreateCaptureDelegate(snapshotType);
         restore = CreateRestoreDelegate(snapshotType);
         upcasterChain = upcasters is null

@@ -91,6 +91,22 @@ internal sealed class ProjectionWorker(
             var processed = false;
             foreach (var envelope in events)
             {
+                var now = timeProvider.GetUtcNow();
+                if (now >= lease.LeaseUntil)
+                {
+                    throw new ProjectionLeaseLostException(tenantId, key);
+                }
+
+                if (ShouldRenewLease(lease, now, options))
+                {
+                    lease = await leases.TryAcquireAsync(
+                        tenantId,
+                        ProjectionStore.GetLeaseName(key),
+                        options.InstanceId,
+                        options.LeaseDuration,
+                        cancellationToken) ?? throw new ProjectionLeaseLostException(tenantId, key);
+                }
+
                 var outcome = await DeliverAsync(
                     serviceProvider,
                     tenantId,
@@ -105,12 +121,6 @@ internal sealed class ProjectionWorker(
                 }
 
                 processed |= outcome == ProjectionDeliveryResult.Processed;
-                lease = await leases.TryAcquireAsync(
-                    tenantId,
-                    ProjectionStore.GetLeaseName(key),
-                    options.InstanceId,
-                    options.LeaseDuration,
-                    cancellationToken) ?? throw new ProjectionLeaseLostException(tenantId, key);
             }
 
             return processed;
@@ -126,6 +136,12 @@ internal sealed class ProjectionWorker(
             await leases.ReleaseAsync(lease, cancellationToken);
         }
     }
+
+    internal static bool ShouldRenewLease(
+        WorkerLease lease,
+        DateTimeOffset now,
+        EventStoreWorkerOptions options) =>
+        lease.LeaseUntil - now <= options.LeaseDuration - options.LeaseRenewalInterval;
 
     private async Task<ProjectionDeliveryResult> DeliverAsync(
         IServiceProvider serviceProvider,

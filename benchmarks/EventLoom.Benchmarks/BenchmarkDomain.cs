@@ -1,5 +1,3 @@
-using EventLoom;
-
 namespace EventLoom.Benchmarks;
 
 [EventType("benchmarks.counter-incremented", Version = 1)]

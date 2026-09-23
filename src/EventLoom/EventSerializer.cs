@@ -149,7 +149,6 @@ public sealed class EventSerializer
     /// <param name="Version">The persisted event schema version.</param>
     /// <param name="Payload">The JSON event payload.</param>
     public sealed record SerializedEventPayload(string EventName, int Version, string Payload);
-
 }
 
 /// <summary>Indicates that a stored event payload could not be materialized as its registered event type.</summary>

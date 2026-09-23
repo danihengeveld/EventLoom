@@ -41,7 +41,8 @@ See `RELEASING.md` for the complete release and repository setup process.
 
 The non-packable BenchmarkDotNet project in `benchmarks/EventLoom.Benchmarks`
 measures event serialization, upcasting, aggregate replay, and PostgreSQL
-append/read/load. Build and run it in Release mode:
+append/read/load and operational health queries. Build and run it in Release
+mode:
 
 ```bash
 dotnet run --project benchmarks/EventLoom.Benchmarks --configuration Release -- --filter '*SerializationBenchmarks*' '*UpcastingBenchmarks*' '*ReplayBenchmarks*'
@@ -57,8 +58,8 @@ the measured operations.
 Record the .NET SDK, OS, CPU, Docker configuration, and workload
 parameters alongside timings and allocations. Run comparisons on the same
 machine and Docker setup; containerized PostgreSQL measurements are not
-representative of every production database environment. The append case
-repeatedly extends one stream, so its stream length and database size increase
-during a run; interpret its results accordingly. Snapshot-load cases have a
-persisted snapshot and a tail of up to ten events. SQLite is intentionally not
-benchmarked.
+representative of every production database environment. The append case seeds
+a fresh one-event stream outside each measured invocation, keeping the stream
+length fixed; the database still grows during a run. Snapshot-load cases have
+a persisted snapshot and a tail of up to ten events. SQLite is intentionally
+not benchmarked.

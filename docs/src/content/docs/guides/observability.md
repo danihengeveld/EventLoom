@@ -97,6 +97,10 @@ returns 503 for both degraded and unhealthy EventLoom readiness, preventing a
 lagging or backed-up instance from being selected as ready.
 `eventloom.projections` is unhealthy for unresolved projection failures and
 degraded when event-offset lag exceeds `MaximumProjectionLag`.
+Its lag uses each tenant's persisted highest offset minus the corresponding
+projection checkpoint (or zero before its first delivery); tenants without
+committed events contribute no lag. No event payload or event-row scan is
+needed for this summary.
 `eventloom.outbox` is degraded when unpublished message count exceeds
 `MaximumOutboxBacklog`. Diagnostics contain only aggregate counts and offsets,
 never payloads, tenant IDs, stream IDs, event IDs, or headers.

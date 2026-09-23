@@ -16,5 +16,4 @@ public sealed partial class EventLoomBuilder
         configure(serializationOptions);
         return this;
     }
-
 }

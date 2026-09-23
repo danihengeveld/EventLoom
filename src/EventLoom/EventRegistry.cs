@@ -8,6 +8,7 @@ public sealed class EventRegistry
 {
     private readonly Dictionary<Type, EventRegistration> registrationsByType = [];
     private readonly Dictionary<EventTypeKey, EventRegistration> registrationsByName = [];
+    private readonly Dictionary<string, EventRegistration> currentByName = new(StringComparer.Ordinal);
 
     /// <summary>Registers one concrete event type using its stable event metadata.</summary>
     /// <typeparam name="TEvent">The concrete event type to register.</typeparam>
@@ -77,11 +78,9 @@ public sealed class EventRegistry
     public EventRegistration GetCurrent(string eventName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
-        return registrationsByName.Values
-                   .Where(registration => registration.Name == eventName)
-                   .OrderByDescending(registration => registration.Version)
-                   .FirstOrDefault()
-               ?? throw new EventNotRegisteredException(eventName, 0);
+        return currentByName.TryGetValue(eventName, out var registration)
+            ? registration
+            : throw new EventNotRegisteredException(eventName, 0);
     }
 
     /// <summary>Gets all explicitly registered event types.</summary>
@@ -114,6 +113,12 @@ public sealed class EventRegistry
         var registration = new EventRegistration(eventType, attribute.Name, attribute.Version);
         registrationsByType.Add(eventType, registration);
         registrationsByName.Add(key, registration);
+        if (!currentByName.TryGetValue(attribute.Name, out var current) ||
+            current.Version < registration.Version)
+        {
+            currentByName[attribute.Name] = registration;
+        }
+
         return this;
     }
 

@@ -22,10 +22,10 @@ internal static class OrderingEventLoomBuilderExtensions
                 .UseSnapshots<OrderSnapshot>(snapshots => snapshots.Every(2)))
             .AddOutboxPublisher<LoggingOutboxPublisher>(options =>
                 options.SuccessfulDeliveryRetention = TimeSpan.FromDays(1))
-                .AddProjection(OrderSummaryProjection.Name, projection => projection
-                    .Transactional<OrderSummaryProjection, OrderPlaced>()
-                    .Transactional<OrderSummaryProjection, OrderItemAdded>()
-                    .Transactional<OrderSummaryProjection, OrderCancelled>());
+            .AddProjection(OrderSummaryProjection.Name, projection => projection
+                .Transactional<OrderSummaryProjection, OrderPlaced>()
+                .Transactional<OrderSummaryProjection, OrderItemAdded>()
+                .Transactional<OrderSummaryProjection, OrderCancelled>());
     }
 
     private static void ConfigureReadModels(ModelBuilder modelBuilder)

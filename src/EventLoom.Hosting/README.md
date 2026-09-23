@@ -40,3 +40,6 @@ eventLoom.AddProjection("orders.summary", projection => projection
 
 `Asynchronous` is at-least-once, `Transactional` commits EF read-model changes
 with its checkpoint, and `Inline` runs within the event append transaction.
+The projection worker renews its fenced lease between events according to
+`LeaseRenewalInterval`; an expired or superseded lease cannot commit a
+checkpoint.

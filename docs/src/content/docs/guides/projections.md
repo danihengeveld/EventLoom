@@ -45,7 +45,12 @@ The worker is registered automatically when the first asynchronous projection
 is registered. It reads each tenant's event log in strict `TenantOffset`
 order, acquires a tenant/projection/version lease, and advances the checkpoint
 after every event. A projection checkpoint also advances past event types that
-the projection does not handle.
+the projection does not handle. Tenant discovery reads the persisted tenant
+offset counters rather than scanning event rows; empty tenant counters are
+ignored. Workers renew a lease between events when its renewal interval has
+elapsed, rather than after every delivery. If processing outlasts the lease,
+the fenced checkpoint transaction rejects the expired lease; the worker must
+reacquire it before retrying work.
 
 Use this handler form for external effects only when the destination is
 idempotent. EventLoom will retry bounded handler failures and can redeliver

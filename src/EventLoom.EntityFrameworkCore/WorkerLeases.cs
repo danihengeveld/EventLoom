@@ -24,12 +24,32 @@ internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider
         var now = timeProvider.GetUtcNow();
         var isPostgreSql = context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ==
                            true;
-        var leases = context.ProjectionLeases.AsQueryable();
         if (isPostgreSql)
         {
-            leases = leases.AsNoTracking();
+            var leaseUntil = now.Add(duration);
+            var updated = await context.ProjectionLeases
+                .Where(value =>
+                    value.TenantId == tenantId &&
+                    value.LeaseName == leaseName &&
+                    (value.LeaseUntil <= now || value.OwnerId == ownerId))
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(value => value.OwnerId, ownerId)
+                        .SetProperty(value => value.FencingToken, value => value.FencingToken + 1)
+                        .SetProperty(value => value.LeaseUntil, leaseUntil),
+                    cancellationToken);
+            if (updated == 1)
+            {
+                var renewed = await context.ProjectionLeases.AsNoTracking().SingleAsync(
+                    value => value.TenantId == tenantId && value.LeaseName == leaseName,
+                    cancellationToken);
+                return renewed.OwnerId == ownerId && renewed.LeaseUntil > timeProvider.GetUtcNow()
+                    ? new WorkerLease(tenantId, leaseName, ownerId, renewed.FencingToken, renewed.LeaseUntil)
+                    : null;
+            }
         }
 
+        var leases = isPostgreSql ? context.ProjectionLeases.AsNoTracking() : context.ProjectionLeases;
         var lease = await leases.SingleOrDefaultAsync(
             value => value.TenantId == tenantId && value.LeaseName == leaseName,
             cancellationToken);
@@ -65,7 +85,6 @@ internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider
             }
         }
 
-        var leaseUntil = now.Add(duration);
         if (!isPostgreSql)
         {
             if (lease.LeaseUntil > now && lease.OwnerId != ownerId)
@@ -75,32 +94,13 @@ internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider
 
             lease.OwnerId = ownerId;
             lease.FencingToken++;
-            lease.LeaseUntil = leaseUntil;
+            lease.LeaseUntil = now.Add(duration);
             context.ProjectionLeases.Update(lease);
             await context.SaveChangesAsync(cancellationToken);
             return new WorkerLease(tenantId, leaseName, ownerId, lease.FencingToken, lease.LeaseUntil);
         }
 
-        var updated = await context.ProjectionLeases
-            .Where(value =>
-                value.TenantId == tenantId &&
-                value.LeaseName == leaseName &&
-                (value.LeaseUntil <= now || value.OwnerId == ownerId))
-            .ExecuteUpdateAsync(
-                setters => setters
-                    .SetProperty(value => value.OwnerId, ownerId)
-                    .SetProperty(value => value.FencingToken, value => value.FencingToken + 1)
-                    .SetProperty(value => value.LeaseUntil, leaseUntil),
-                cancellationToken);
-        if (updated == 0)
-        {
-            return null;
-        }
-
-        var renewed = await context.ProjectionLeases.AsNoTracking().SingleAsync(
-            value => value.TenantId == tenantId && value.LeaseName == leaseName,
-            cancellationToken);
-        return new WorkerLease(tenantId, leaseName, ownerId, renewed.FencingToken, renewed.LeaseUntil);
+        return null;
     }
 
     /// <summary>Releases a lease only when its owner and fencing token still match.</summary>

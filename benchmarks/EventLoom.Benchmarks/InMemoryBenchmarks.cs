@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using BenchmarkDotNet.Attributes;
-using EventLoom;
 
 namespace EventLoom.Benchmarks;
 
@@ -12,8 +11,7 @@ public class SerializationBenchmarks
     private CounterIncremented @event = null!;
     private string payload = null!;
 
-    [Params(32, 4096)]
-    public int PayloadBytes { get; set; }
+    [Params(32, 4096)] public int PayloadBytes { get; set; }
 
     [GlobalSetup]
     public void Setup()
@@ -100,8 +98,7 @@ public class ReplayBenchmarks
 {
     private object[] events = null!;
 
-    [Params(10, 100, 1000)]
-    public int EventCount { get; set; }
+    [Params(10, 100, 1000)] public int EventCount { get; set; }
 
     [GlobalSetup]
     public void Setup()

@@ -94,10 +94,11 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
 
     /// <summary>Lists tenants with persisted events, in deterministic order.</summary>
     public async Task<IReadOnlyList<string>> ReadTenantIdsAsync(CancellationToken cancellationToken = default) =>
-        await context.Events.AsNoTracking()
+        await context.TenantOffsets.AsNoTracking()
+            .Where(value => value.NextOffset > 0)
             .Select(value => value.TenantId)
-            .Distinct()
             .OrderBy(value => value)
+            .Select(value => value!)
             .ToArrayAsync(cancellationToken);
 
     /// <summary>Gets the checkpoint for a tenant and projection version, if one exists.</summary>
@@ -166,9 +167,9 @@ internal sealed class ProjectionStore(EventStoreDbContext context, TimeProvider 
         }
 
         var projectionSet = projections.ToHashSet();
-        var tenantOffsets = await context.Events.AsNoTracking()
-            .GroupBy(value => value.TenantId)
-            .Select(group => new { TenantId = group.Key, Offset = group.Max(value => value.TenantOffset) })
+        var tenantOffsets = await context.TenantOffsets.AsNoTracking()
+            .Where(value => value.NextOffset > 0)
+            .Select(value => new { TenantId = value.TenantId!, Offset = value.NextOffset })
             .ToArrayAsync(cancellationToken);
         var checkpoints = await context.ProjectionCheckpoints.AsNoTracking()
             .Select(value => new

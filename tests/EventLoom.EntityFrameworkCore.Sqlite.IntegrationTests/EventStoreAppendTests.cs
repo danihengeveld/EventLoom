@@ -73,6 +73,29 @@ public sealed class EventStoreAppendTests
         await Assert.That(history.Count).IsEqualTo(2);
         await Assert.That(history[1].TenantOffset).IsEqualTo(2);
         await Assert.That(history[0].Metadata.Headers["source"]).IsEqualTo("test");
+        await Assert.That(history[1].Metadata.Headers["source"]).IsEqualTo("test");
+    }
+
+    [Test]
+    public async Task Stream_and_offset_reads_do_not_track_persisted_events()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        var store = new EventStore(
+            context,
+            new EventSerializer(new EventRegistry().RegisterEvent<Added>()),
+            new UuidV7EventIdGenerator(),
+            TimeProvider.System);
+        await store.AppendAsync(new AppendRequest(
+            "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream, [new Added(1)],
+            new EventMetadata()));
+        context.ChangeTracker.Clear();
+
+        await Assert.That((await store.ReadStreamAsync("tenant-a", "cart-1")).Count).IsEqualTo(1);
+        await Assert.That((await store.ReadTenantOffsetsAsync("tenant-a")).Count).IsEqualTo(1);
+        await Assert.That(context.ChangeTracker.Entries<EventEntity>()).IsEmpty();
     }
 
     [Test]

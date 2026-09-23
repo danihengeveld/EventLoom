@@ -381,10 +381,7 @@ public sealed partial class EventLoomBuilder
         };
 
         services.AddSingleton(registry);
-        services.AddSingleton(_ =>
-        {
-            return new EventSerializer(registry, SerializationOptions, upcasters);
-        });
+        services.AddSingleton(_ => { return new EventSerializer(registry, SerializationOptions, upcasters); });
         services.AddSingleton<IEventIdGenerator, UuidV7EventIdGenerator>();
         singleTenantAccessorDescriptor = ServiceDescriptor.Scoped<ITenantAccessor>(_ =>
         {

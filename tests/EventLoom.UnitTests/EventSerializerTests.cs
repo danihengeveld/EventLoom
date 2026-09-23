@@ -89,6 +89,5 @@ public sealed partial class EventSerializerTests
         private void Apply(VersionTwoEvent @event)
         {
         }
-
     }
 }

@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace EventLoom.EntityFrameworkCore;
 
@@ -250,6 +251,9 @@ public sealed class EventStore
         }
 
         var envelopes = new List<EventEnvelope>(request.Events.Count);
+        var headers = request.Metadata.Headers.Count == 0
+            ? null
+            : JsonSerializer.Serialize(request.Metadata.Headers);
         foreach (var @event in request.Events)
         {
             var payload = serializer.SerializePayload(@event);
@@ -268,9 +272,7 @@ public sealed class EventStore
                 CorrelationId = request.Metadata.CorrelationId,
                 CausationId = request.Metadata.CausationId,
                 Actor = request.Metadata.Actor,
-                Headers = request.Metadata.Headers.Count == 0
-                    ? null
-                    : JsonSerializer.Serialize(request.Metadata.Headers),
+                Headers = headers,
                 AppendId = request.AppendId
             };
             context.Events.Add(eventEntity);
@@ -337,19 +339,27 @@ public sealed class EventStore
         var schema = entityType.GetSchema();
         var qualifiedTable = schema is null ? table : $"{QuoteIdentifier(schema)}.{table}";
 
-        var sql = "INSERT INTO " + qualifiedTable +
-                  " (\"TenantId\", \"NextOffset\") VALUES ({0}, 0) ON CONFLICT (\"TenantId\") DO NOTHING";
-        await context.Database.ExecuteSqlRawAsync(
-            sql,
-            [tenantId],
-            cancellationToken);
-        await context.Database.ExecuteSqlRawAsync(
-            "UPDATE " + qualifiedTable + " SET \"NextOffset\" = \"NextOffset\" WHERE \"TenantId\" = {0}",
-            [tenantId],
-            cancellationToken);
+        await using var command = context.Database.GetDbConnection().CreateCommand();
+        command.Transaction = context.Database.CurrentTransaction?.GetDbTransaction()
+                              ?? throw new InvalidOperationException(
+                                  "A transaction is required to lock tenant offsets.");
+        command.CommandText = "INSERT INTO " + qualifiedTable +
+                              " (\"TenantId\", \"NextOffset\") VALUES (@tenantId, 0) " +
+                              "ON CONFLICT (\"TenantId\") DO UPDATE SET \"NextOffset\" = " +
+                              table + ".\"NextOffset\" RETURNING \"NextOffset\"";
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "tenantId";
+        parameter.Value = tenantId;
+        command.Parameters.Add(parameter);
+        var currentOffset = await command.ExecuteScalarAsync(cancellationToken);
+        if (currentOffset is not long value)
+        {
+            throw new InvalidOperationException("The tenant offset lock did not return an offset.");
+        }
 
-        return await context.TenantOffsets
-            .SingleAsync(value => value.TenantId == tenantId, cancellationToken);
+        var offset = new TenantOffsetEntity { TenantId = tenantId, NextOffset = value };
+        context.TenantOffsets.Attach(offset);
+        return offset;
     }
 
     private static string QuoteIdentifier(string identifier) =>
@@ -422,7 +432,8 @@ public sealed class EventStore
             query = query.Where(value => value.StreamVersion <= toVersion.Value);
         }
 
-        var entities = await query.OrderBy(value => value.StreamVersion).ToListAsync(cancellationToken);
+        var entities = await query.AsNoTracking().OrderBy(value => value.StreamVersion)
+            .ToListAsync(cancellationToken);
         return entities.Select(ToEnvelope).ToArray();
     }
 
@@ -471,6 +482,7 @@ public sealed class EventStore
         }
 
         var entities = await context.Events
+            .AsNoTracking()
             .Where(value => value.TenantId == tenantId && value.TenantOffset > afterOffset)
             .OrderBy(value => value.TenantOffset)
             .Take(limit)

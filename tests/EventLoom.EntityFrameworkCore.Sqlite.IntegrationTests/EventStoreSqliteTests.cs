@@ -1,6 +1,5 @@
 using System.Data.Common;
 using EventLoom.EntityFrameworkCore;
-using EventLoom.EntityFrameworkCore.Sqlite;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 

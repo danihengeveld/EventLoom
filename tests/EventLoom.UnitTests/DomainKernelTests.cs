@@ -104,6 +104,18 @@ public sealed class DomainKernelTests
     }
 
     [Test]
+    public async Task Cached_event_ownership_preserves_replay_and_rejection()
+    {
+        var aggregate = new CounterAggregate(Guid.NewGuid());
+        aggregate.ReplayHistory(Enumerable.Repeat<object>(new Incremented(1), 100));
+
+        await Assert.That(aggregate.Value).IsEqualTo(100);
+        await Assert.That(aggregate.Version).IsEqualTo(100);
+        await Assert.That(() => aggregate.ReplayHistory([new MissingHandlerEvent()]))
+            .Throws<EventOwnershipException>();
+    }
+
+    [Test]
     public async Task Event_type_requires_a_positive_version()
     {
         await Assert.That(() => new EventTypeAttribute("invalid") { Version = 0 })
