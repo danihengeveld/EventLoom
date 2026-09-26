@@ -13,15 +13,15 @@
       },
       "Microsoft.OpenApi": {
         "type": "Direct",
-        "requested": "[2.12.2, )",
-        "resolved": "2.12.2",
-        "contentHash": "ZkT7qiJe0Kj0+DTZOZo+xrDy1kNmdsWFQVPIQLNx9ZJ0T9cB2LG7r+Bi60so8/+yg1nkS7QCPadrzsTG4VPKrA=="
+        "requested": "[3.10.2, )",
+        "resolved": "3.10.2",
+        "contentHash": "qzg4a3WmgQm28Azaporbnsu+KHA+vq5sgpQQFLiJgB06Rra2S+kzGAU7pzUB8/UIwZJCSCY2JEE/M5e0hQ2K8w=="
       },
       "Scalar.AspNetCore": {
         "type": "Direct",
-        "requested": "[2.17.6, )",
-        "resolved": "2.17.6",
-        "contentHash": "Qho7zxnjr5620jueYl40XlPNDJdn871MPe352AfYE2zvUkneMjOR5U9Cj+4f1Na7ODSSp5DUL0WM3MTdoKOazA=="
+        "requested": "[2.17.9, )",
+        "resolved": "2.17.9",
+        "contentHash": "/HulaHnMtDfMuVIFOSzzYAqFnF4rm/Ih/bLK0hu5RBKrggbjd6UTJOzXIXqzaOGPQ7Kjy12gotQym+QhZJas+A=="
       },
       "Microsoft.EntityFrameworkCore.Abstractions": {
         "type": "Transitive",
