@@ -16,7 +16,7 @@ public class SerializationBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        serializer = new EventSerializer(new EventRegistry().RegisterEvent<CounterIncremented>());
+        serializer = new EventSerializer(new EventRegistry().RegisterAggregate<BenchmarkCounter>());
         @event = new CounterIncremented(1, new string('x', PayloadBytes));
         payload = serializer.Serialize(@event);
     }
@@ -38,10 +38,7 @@ public class UpcastingBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        var registry = new EventRegistry()
-            .RegisterEvent<CounterIncrementedV1>()
-            .RegisterEvent<CounterIncrementedV2>()
-            .RegisterEvent<CounterIncrementedV3>();
+        var registry = new EventRegistry().RegisterAggregate<UpcastCounter>();
         serializer = new EventSerializer(registry, [new AddDataUpcaster(), new AddAmountUpcaster()]);
         payload = """{"amount":1}""";
         currentPayload = serializer.Serialize(new CounterIncrementedV3(1, "benchmark", 0));
@@ -55,14 +52,20 @@ public class UpcastingBenchmarks
     public object DeserializeTwoVersionUpcasts() =>
         serializer.Deserialize("benchmarks.upcast-counter", 1, payload);
 
-    [EventType("benchmarks.upcast-counter", Version = 1)]
-    public sealed record CounterIncrementedV1(int Amount) : IDomainEvent<BenchmarkCounter>;
+    public sealed record CounterIncrementedV3(int Amount, string Data, int Extra) :
+        IDomainEvent<CounterIncrementedV3, UpcastCounter>
+    {
+        public static string EventType => "benchmarks.upcast-counter";
 
-    [EventType("benchmarks.upcast-counter", Version = 2)]
-    public sealed record CounterIncrementedV2(int Amount, string Data) : IDomainEvent<BenchmarkCounter>;
+        public static int EventVersion => 3;
+    }
 
-    [EventType("benchmarks.upcast-counter", Version = 3)]
-    public sealed record CounterIncrementedV3(int Amount, string Data, int Extra) : IDomainEvent<BenchmarkCounter>;
+    public sealed class UpcastCounter(Guid id) : Aggregate<UpcastCounter, Guid>(id), IApply<CounterIncrementedV3>
+    {
+        void IApply<CounterIncrementedV3>.Apply(CounterIncrementedV3 @event)
+        {
+        }
+    }
 
     private sealed class AddDataUpcaster : IEventUpcaster
     {

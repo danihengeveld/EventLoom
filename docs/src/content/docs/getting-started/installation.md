@@ -26,7 +26,6 @@ PostgreSQL:
 ```bash
 dotnet add package EventLoom.AspNetCore --version 0.1.0-alpha.0
 dotnet add package EventLoom.EntityFrameworkCore.PostgreSql --version 0.1.0-alpha.0
-dotnet add package EventLoom.Analyzers --version 0.1.0-alpha.0
 ```
 
 For SQLite:
@@ -34,11 +33,11 @@ For SQLite:
 ```bash
 dotnet add package EventLoom.AspNetCore --version 0.1.0-alpha.0
 dotnet add package EventLoom.EntityFrameworkCore.Sqlite --version 0.1.0-alpha.0
-dotnet add package EventLoom.Analyzers --version 0.1.0-alpha.0
 ```
 
 The provider projects bring in the provider-neutral EF Core event store. Choose
-one provider for an application. The [Ordering API sample](/guides/ordering-api)
+one provider for an application. The EventLoom analyzer is bundled in the
+`EventLoom` package and is enabled automatically for consuming projects. The [Ordering API sample](/guides/ordering-api)
 uses PostgreSQL through .NET Aspire to demonstrate the production path.
 
 ## Choose a provider

@@ -127,7 +127,7 @@ public sealed class ProjectionWorkerTests
         var services = new ServiceCollection();
         Batteries_V2.Init();
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<ItemAdded>()
+            .AddAggregateEvents<TestAggregate>()
             .UseSingleTenancy("tenant-a")
             .ConfigureProjectionModel(modelBuilder =>
             {
@@ -168,7 +168,7 @@ public sealed class ProjectionWorkerTests
         var services = new ServiceCollection();
         Batteries_V2.Init();
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<ItemAdded>()
+            .AddAggregateEvents<TestAggregate>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
             .AddProjection("tests.inline", projection => projection
@@ -210,7 +210,7 @@ public sealed class ProjectionWorkerTests
         services.AddEventLoom(eventLoom =>
         {
             eventLoom
-                .AddEvent<ItemAdded>()
+                .AddAggregateEvents<TestAggregate>()
                 .UseSingleTenancy("tenant-a")
                 .ConfigureWorkers(options =>
                 {
@@ -271,12 +271,14 @@ public sealed class ProjectionWorkerTests
         throw new TimeoutException($"Projection '{key.Name}' did not reach status '{status}'.");
     }
 
-    [EventType("tests.projection-item-added")]
-    private sealed record ItemAdded(int Quantity) : IDomainEvent<TestAggregate>;
-
-    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed record ItemAdded(int Quantity) : IDomainEvent<ItemAdded, TestAggregate>
     {
-        private void Apply(ItemAdded @event)
+        public static string EventType => "tests.projection-item-added";
+    }
+
+    private sealed class TestAggregate(Guid id) : Aggregate<TestAggregate, Guid>(id), IApply<ItemAdded>
+    {
+        void IApply<ItemAdded>.Apply(ItemAdded @event)
         {
         }
     }

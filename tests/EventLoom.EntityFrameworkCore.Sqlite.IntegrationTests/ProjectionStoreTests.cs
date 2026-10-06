@@ -282,7 +282,7 @@ public sealed class ProjectionStoreTests
     private static EventStore CreateEventStore(EventStoreDbContext context) =>
         new(
             context,
-            new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
+            new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
             TimeProvider.System);
 
@@ -302,12 +302,14 @@ public sealed class ProjectionStoreTests
             "node-a",
             TimeSpan.FromMinutes(1)))!;
 
-    [EventType("tests.item-added")]
-    private sealed record ItemAdded(int Quantity) : IDomainEvent<TestAggregate>;
-
-    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed record ItemAdded(int Quantity) : IDomainEvent<ItemAdded, TestAggregate>
     {
-        private void Apply(ItemAdded @event)
+        public static string EventType => "tests.item-added";
+    }
+
+    private sealed class TestAggregate(Guid id) : Aggregate<TestAggregate, Guid>(id), IApply<ItemAdded>
+    {
+        void IApply<ItemAdded>.Apply(ItemAdded @event)
         {
         }
     }

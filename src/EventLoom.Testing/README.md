@@ -44,7 +44,6 @@ using EventLoom.Testing;
 
 await using var host = await EventLoomSqliteTestHost.CreateAsync(options =>
     options.ConfigureEventLoom = builder => builder
-        .AddEvent<OrderPlaced>()
         .AddAggregate<Order, Guid>(aggregate => aggregate
             .ConstructWith(id => new Order(id))
             .UseStream("order", id => id.ToString("D"))));

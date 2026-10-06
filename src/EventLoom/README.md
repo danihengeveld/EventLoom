@@ -1,9 +1,10 @@
 # EventLoom
 
 `EventLoom` is the core package for immutable, versioned domain events and
-event-sourced aggregates. It contains event contracts, stable
-`[EventType]` names, strongly typed identifiers, metadata, expected-version
-rules, aggregate dispatch, and JSON serialization settings.
+event-sourced aggregates. It contains compiler-checked event contracts, stable
+persisted event names, strongly typed identifiers, metadata, expected-version
+rules, aggregate dispatch, snapshot contracts, JSON serialization settings,
+and bundled analyzer diagnostics.
 
 Install it directly when your domain layer needs EventLoom abstractions:
 
@@ -16,18 +17,26 @@ Define a stable persisted event and apply it through an aggregate:
 ```csharp
 using EventLoom;
 
-public sealed class InventoryItem(Guid id) : Aggregate<Guid>(id)
+public sealed record InventoryReceived(int Quantity)
+    : IDomainEvent<InventoryReceived, InventoryItem>
+{
+    public static string EventType => "inventory.received";
+}
+
+public sealed class InventoryItem(Guid id) : Aggregate<InventoryItem, Guid>(id),
+    IApply<InventoryReceived>
 {
     public int Available { get; private set; }
 
     public void Receive(int quantity) => Raise(new InventoryReceived(quantity));
 
-    private void Apply(InventoryReceived @event) => Available += @event.Quantity;
+    void IApply<InventoryReceived>.Apply(InventoryReceived @event) =>
+        Available += @event.Quantity;
 }
-
-[EventType("inventory.received", Version = 1)]
-public sealed record InventoryReceived(int Quantity) : IDomainEvent<InventoryItem>;
 ```
+
+`EventVersion` is optional and defaults to `1`. Increase it only with a
+registered upcaster for the same stable `EventType` string.
 
 This package has no application composition or storage provider. Web
 applications should add `EventLoom.AspNetCore` plus exactly one provider:

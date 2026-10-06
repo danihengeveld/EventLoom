@@ -21,7 +21,9 @@ using EventLoom.Hosting;
 builder.Services
     .AddEventLoom()
     .UseSqlite("Data Source=eventloom.db")
-    .AddEvent<OrderPlaced>();
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D")));
 ```
 
 For an intentionally explicit empty-database initialization, resolve the

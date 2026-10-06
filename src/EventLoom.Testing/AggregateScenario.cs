@@ -10,7 +10,7 @@ public static class AggregateScenario
     /// <returns>A new scenario for the aggregate.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="factory"/> is <see langword="null"/>.</exception>
     public static AggregateScenario<TAggregate, TId> For<TAggregate, TId>(Func<TId, TAggregate> factory)
-        where TAggregate : Aggregate<TId> =>
+        where TAggregate : Aggregate<TAggregate, TId> =>
         new(factory);
 }
 
@@ -22,7 +22,7 @@ public static class AggregateScenario
 /// <typeparam name="TAggregate">The aggregate type under test.</typeparam>
 /// <typeparam name="TId">The aggregate identifier type.</typeparam>
 public sealed class AggregateScenario<TAggregate, TId>
-    where TAggregate : Aggregate<TId>
+    where TAggregate : Aggregate<TAggregate, TId>
 {
     private readonly Func<TId, TAggregate> factory;
     private TAggregate? aggregate;
@@ -52,10 +52,21 @@ public sealed class AggregateScenario<TAggregate, TId>
     /// <param name="id">The aggregate identifier.</param>
     /// <param name="history">The prior events to replay, in stream order.</param>
     /// <returns>This scenario.</returns>
+    /// <exception cref="InvalidOperationException">The aggregate factory returned <see langword="null"/>.</exception>
+    /// <exception cref="AggregateFactoryException">
+    /// The aggregate factory returned an aggregate that already has applied or pending events.
+    /// </exception>
+    /// <exception cref="EventOwnershipException">The history contains an event the aggregate does not own.</exception>
     public AggregateScenario<TAggregate, TId> Given(TId id, params object[] history)
     {
         ArgumentNullException.ThrowIfNull(history);
-        aggregate = factory(id);
+        var created = factory(id) ?? throw new InvalidOperationException("The aggregate factory returned null.");
+        if (!created.IsPristine)
+        {
+            throw new AggregateFactoryException(typeof(TAggregate));
+        }
+
+        aggregate = created;
         aggregate.ApplyHistory(history);
         return this;
     }

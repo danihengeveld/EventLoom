@@ -1,56 +1,59 @@
-using System.Collections.Concurrent;
-
 namespace EventLoom;
 
-/// <summary>Marks an immutable event raised by a specific domain aggregate.</summary>
+/// <summary>Marks a persisted domain event. Implement <see cref="IDomainEvent{TSelf, TAggregate}"/> instead.</summary>
+public interface IDomainEvent;
+
+/// <summary>
+/// Identifies the aggregate that owns an event. Only <see cref="IDomainEvent{TSelf, TAggregate}"/> can implement
+/// this interface, which guarantees that every owned event has a handler on its aggregate.
+/// </summary>
 /// <typeparam name="TAggregate">The aggregate that owns and applies the event.</typeparam>
-public interface IDomainEvent<out TAggregate>
-    where TAggregate : Aggregate;
-
-internal static class DomainEventContract
+public interface IDomainEvent<TAggregate> : IDomainEvent
+    where TAggregate : Aggregate
 {
-    private static readonly Type OpenContract = typeof(IDomainEvent<>);
-    private static readonly ConcurrentDictionary<Type, EventOwner> Owners = new();
+    internal static abstract string PersistedName { get; }
 
-    public static bool IsEvent(Type type) => GetAggregateType(type) is not null;
+    internal static abstract int PersistedVersion { get; }
 
-    public static Type? GetAggregateType(Type type) =>
-        Owners.GetOrAdd(type, static eventType => new EventOwner(FindAggregateType(eventType))).AggregateType;
-
-    private static Type? FindAggregateType(Type type)
-    {
-        var aggregateTypes = type.GetInterfaces()
-            .Where(candidate =>
-                candidate.IsGenericType &&
-                candidate.GetGenericTypeDefinition() == OpenContract)
-            .Select(candidate => candidate.GetGenericArguments()[0])
-            .Distinct()
-            .ToArray();
-        return aggregateTypes.Length == 1 ? aggregateTypes[0] : null;
-    }
-
-    private readonly record struct EventOwner(Type? AggregateType);
+    internal void ApplyTo(TAggregate aggregate);
 }
 
-/// <summary>Associates a stable persisted name and schema version with a domain event.</summary>
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited = false, AllowMultiple = false)]
-public sealed class EventTypeAttribute(string name) : Attribute
+/// <summary>
+/// Declares an immutable domain event, its stable persisted identity, and its owning aggregate.
+/// </summary>
+/// <remarks>
+/// The owning aggregate must implement <see cref="IApply{TEvent}"/> for the event; the compiler rejects
+/// an event declaration whose aggregate cannot apply it.
+/// </remarks>
+/// <typeparam name="TSelf">The implementing event type.</typeparam>
+/// <typeparam name="TAggregate">The aggregate that owns and applies the event.</typeparam>
+public interface IDomainEvent<TSelf, TAggregate> : IDomainEvent<TAggregate>
+    where TSelf : IDomainEvent<TSelf, TAggregate>
+    where TAggregate : Aggregate, IApply<TSelf>
 {
-    /// <summary>Gets the stable persisted event name.</summary>
-    public string Name { get; } = ValidateName(name);
+    /// <summary>Gets the stable persisted event name. Never change it after events have been stored.</summary>
+    static abstract string EventType { get; }
 
-    /// <summary>Gets or sets the positive schema version.</summary>
-    public int Version
-    {
-        get;
-        init => field = value > 0
-            ? value
-            : throw new ArgumentOutOfRangeException(nameof(value), "Event schema version must be positive.");
-    } = 1;
+    /// <summary>Gets the positive schema version. Defaults to 1; increase it together with an upcaster.</summary>
+    static virtual int EventVersion => 1;
 
-    private static string ValidateName(string name)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        return name;
-    }
+    static string IDomainEvent<TAggregate>.PersistedName => TSelf.EventType;
+
+    static int IDomainEvent<TAggregate>.PersistedVersion => TSelf.EventVersion;
+
+    void IDomainEvent<TAggregate>.ApplyTo(TAggregate aggregate) => aggregate.Apply((TSelf)this);
+}
+
+/// <summary>Applies one owned domain event to aggregate state.</summary>
+/// <remarks>
+/// Implement explicitly so the handler stays off the aggregate's public surface. Handlers must be deterministic
+/// because they run again on every replay. Never call them directly; use <c>Raise</c>.
+/// </remarks>
+/// <typeparam name="TEvent">The handled event type.</typeparam>
+public interface IApply<in TEvent>
+    where TEvent : IDomainEvent
+{
+    /// <summary>Applies the event to aggregate state.</summary>
+    /// <param name="event">The event to apply.</param>
+    void Apply(TEvent @event);
 }

@@ -12,16 +12,16 @@ before the first stable release.
 
 | Package | Reference directly when... | Provides |
 | --- | --- | --- |
-| `EventLoom` | Your domain project defines aggregates and events. | Domain contracts, aggregate dispatch, event metadata, serialization, IDs, and expected versions. |
+| `EventLoom` | Your domain project defines aggregates and events. | Domain contracts, aggregate dispatch, event metadata, serialization, IDs, expected versions, and bundled analyzer diagnostics. |
 | `EventLoom.AspNetCore` | You are building an ASP.NET Core application. | Development schema initialization and health/diagnostic endpoint helpers. |
 | `EventLoom.EntityFrameworkCore.PostgreSql` | The application runs multiple instances or distributed workers. | PostgreSQL provider configuration, transient retry classification, and distributed lease support. |
 | `EventLoom.EntityFrameworkCore.Sqlite` | The application is local, embedded, test-only, or one controlled process. | SQLite provider configuration and bundled native SQLite initialization. |
 | `EventLoom.Testing` | A test project exercises aggregates or SQLite-backed integration paths. | Aggregate scenarios, event fixtures, deterministic time/IDs, and a managed SQLite test host. |
-| `EventLoom.Analyzers` | A project declares persisted events, snapshots, or aggregates. | Compile-time validation of persisted identities, event ownership, `Apply` methods, and snapshot methods. |
 
 `EventLoom.EntityFrameworkCore` and `EventLoom.Hosting` are usually transitive
 dependencies. Reference them directly only when building custom infrastructure
-around the event store or a non-web host.
+around the event store or a non-web host. The analyzer is included in the
+`EventLoom` package; `EventLoom.Analyzers` is no longer a published package.
 
 ## Choose exactly one provider
 
@@ -41,15 +41,12 @@ concurrent instances, lease fencing, and authoritative per-tenant ordering.
 
 ## Package references
 
-An ASP.NET Core service references `EventLoom.AspNetCore`, one provider, and
-the analyzer:
+An ASP.NET Core service references `EventLoom.AspNetCore` and one provider:
 
 ```xml
 <ItemGroup>
   <PackageReference Include="EventLoom.AspNetCore" Version="0.1.0-alpha.0" />
   <PackageReference Include="EventLoom.EntityFrameworkCore.PostgreSql" Version="0.1.0-alpha.0" />
-  <PackageReference Include="EventLoom.Analyzers" Version="0.1.0-alpha.0"
-                    PrivateAssets="all" />
 </ItemGroup>
 ```
 

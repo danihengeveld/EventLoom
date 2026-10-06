@@ -108,7 +108,9 @@ endpoint from an ASP.NET Core host:
 builder.Services
     .AddEventLoom()
     .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
-    .AddEvent<OrderPlaced>();
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D")));
 builder.Services.AddEventLoomHealthChecks(options =>
 {
     options.MaximumProjectionLag = 500;

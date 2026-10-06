@@ -19,7 +19,7 @@ public sealed class OutboxPublisherWorkerTests
         var logs = new RecordingLogger<OutboxPublisherWorker>();
         services.AddSingleton<ILogger<OutboxPublisherWorker>>(logs);
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<ItemAdded>()
+            .AddAggregateEvents<TestAggregate>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
             .AddOutboxPublisher<IdempotentPublisher>(options =>
@@ -79,7 +79,7 @@ public sealed class OutboxPublisherWorkerTests
         var services = new ServiceCollection();
         services.AddSingleton(recorder);
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<ItemAdded>()
+            .AddAggregateEvents<TestAggregate>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
             .AddOutboxPublisher<SuccessfulPublisher>(options =>
@@ -122,7 +122,7 @@ public sealed class OutboxPublisherWorkerTests
         var services = new ServiceCollection();
         services.AddSingleton(recorder);
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<ItemAdded>()
+            .AddAggregateEvents<TestAggregate>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
             .UseTimeProvider(timeProvider)
@@ -170,7 +170,7 @@ public sealed class OutboxPublisherWorkerTests
         var logs = new RecordingLogger<OutboxPublisherWorker>();
         services.AddSingleton<ILogger<OutboxPublisherWorker>>(logs);
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<ItemAdded>()
+            .AddAggregateEvents<TestAggregate>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
             .AddOutboxPublisher<FailingPublisher>(options =>
@@ -298,12 +298,14 @@ public sealed class OutboxPublisherWorkerTests
         throw new TimeoutException("The outbox message was not marked as published.");
     }
 
-    [EventType("tests.outbox-worker-item-added")]
-    private sealed record ItemAdded : IDomainEvent<TestAggregate>;
-
-    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed record ItemAdded : IDomainEvent<ItemAdded, TestAggregate>
     {
-        private void Apply(ItemAdded @event)
+        public static string EventType => "tests.outbox-worker-item-added";
+    }
+
+    private sealed class TestAggregate(Guid id) : Aggregate<TestAggregate, Guid>(id), IApply<ItemAdded>
+    {
+        void IApply<ItemAdded>.Apply(ItemAdded @event)
         {
         }
     }

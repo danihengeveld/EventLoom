@@ -10,11 +10,20 @@ aggregate and repository APIs that a PostgreSQL application uses.
 
 Events are immutable application-owned values. Give every persisted event a
 stable name that is independent of its CLR type and a positive schema version.
+Declare the event with its owning aggregate; the compiler then requires that
+the aggregate can apply it.
 
 ```csharp
 using EventLoom;
 
-public sealed class Counter(Guid id) : Aggregate<Guid>(id)
+public sealed record CounterIncremented(int Amount)
+    : IDomainEvent<CounterIncremented, Counter>
+{
+    public static string EventType => "counter.incremented";
+}
+
+public sealed class Counter(Guid id) : Aggregate<Counter, Guid>(id),
+    IApply<CounterIncremented>
 {
     public int Value { get; private set; }
 
@@ -28,31 +37,31 @@ public sealed class Counter(Guid id) : Aggregate<Guid>(id)
         Raise(new CounterIncremented(amount));
     }
 
-    private void Apply(CounterIncremented @event) => Value += @event.Amount;
+    void IApply<CounterIncremented>.Apply(CounterIncremented @event) =>
+        Value += @event.Amount;
 }
-
-[EventType("counter.incremented", Version = 1)]
-public sealed record CounterIncremented(int Amount) : IDomainEvent<Counter>;
 ```
 
-The generic event contract links the event to its owning aggregate. EventLoom's
-analyzer verifies that `Counter` has exactly one correctly shaped
-`Apply(CounterIncremented)` method and that another aggregate cannot raise this
-event. An aggregate changes state only by raising an event. `Raise` applies the event
+`EventVersion` is optional and defaults to `1`; add
+`public static int EventVersion => 2;` only when evolving the persisted JSON
+with an upcaster. `Raise` only accepts events owned by the aggregate, so another
+aggregate cannot raise `CounterIncremented`. An event whose aggregate lacks the
+matching `IApply<TEvent>` handler fails to compile.
+
+An aggregate changes state only by raising an event. `Raise` applies the event
 immediately and stores it in `PendingEvents`; replay applies persisted history
-without adding pending events. An `Apply` method must be private or protected,
-take exactly one event type, and return `void`.
+without adding pending events. Implement handlers explicitly so application
+code cannot call them directly.
 
 ## Configure services
 
-Register each event explicitly, configure repository identity once, and select
-SQLite:
+Register repository identity once and select SQLite. Aggregate registration
+automatically registers the events owned through `IApply<TEvent>`:
 
 ```csharp
 services
     .AddEventLoom()
     .UseSqlite("Data Source=eventloom.db")
-    .AddEvent<CounterIncremented>()
     .AddAggregate<Counter, Guid>(aggregate => aggregate
         .ConstructWith(id => new Counter(id))
         .UseStream("counter", id => id.ToString("D")));

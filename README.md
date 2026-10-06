@@ -9,9 +9,9 @@
 
 EventLoom is an opinionated event-sourcing library for .NET 10 and EF Core 10.
 It favors explicit contracts and operationally safe defaults: immutable,
-versioned events; a dedicated event-store context; short aggregate repository
-operations; tenant-scoped ordering; snapshots; checkpointed projections; and a
-transactional outbox.
+versioned events; compiler-checked aggregate wiring; a dedicated event-store
+context; short aggregate repository operations; tenant-scoped ordering;
+snapshots; checkpointed projections; and a transactional outbox.
 
 PostgreSQL is the distributed production provider. SQLite supports local,
 embedded, and controlled single-node applications.
@@ -24,18 +24,18 @@ embedded, and controlled single-node applications.
 
 Most web applications should reference `EventLoom.AspNetCore` and exactly one
 provider package. The provider brings the core and EF Core infrastructure
-dependencies with it.
+dependencies with it. The analyzer is bundled inside the `EventLoom` package
+and is enabled automatically; there is no separate analyzer package to install.
 
 | Package | Install directly? | Use it for |
 | --- | --- | --- |
-| `EventLoom` | Yes | Domain event contracts, aggregates, identifiers, and serialization. |
+| `EventLoom` | Yes | Domain event contracts, aggregates, identifiers, serialization, and bundled analyzer diagnostics. |
 | `EventLoom.EntityFrameworkCore.PostgreSql` | Yes | PostgreSQL event storage and distributed worker correctness. |
 | `EventLoom.EntityFrameworkCore.Sqlite` | Yes | Local development, tests, embedded apps, and one controlled process. |
 | `EventLoom.EntityFrameworkCore` | No, normally transitive | Shared EF Core storage, aggregate repositories, snapshots, projections, and outbox infrastructure. |
 | `EventLoom.AspNetCore` | Yes for web apps | Canonical ASP.NET Core composition, workers, health checks, and endpoint helpers. |
 | `EventLoom.Hosting` | Usually transitive | Host-neutral composition and worker implementation. |
 | `EventLoom.Testing` | Yes, for test projects | Aggregate Given/When/Then scenarios and a managed SQLite test host. |
-| `EventLoom.Analyzers` | Recommended | Build-time validation for persisted EventLoom contracts. |
 
 ## Quick start
 
@@ -44,7 +44,6 @@ A PostgreSQL application starts with:
 ```bash
 dotnet add package EventLoom.AspNetCore --prerelease
 dotnet add package EventLoom.EntityFrameworkCore.PostgreSql --prerelease
-dotnet add package EventLoom.Analyzers --prerelease
 ```
 
 Define immutable events with stable names and versions, then change aggregate
@@ -53,20 +52,26 @@ state exclusively by applying them:
 ```csharp
 using EventLoom;
 
-public sealed class Counter(Guid id) : Aggregate<Guid>(id)
+public sealed record CounterIncremented(int Amount)
+    : IDomainEvent<CounterIncremented, Counter>
+{
+    public static string EventType => "counter.incremented";
+}
+
+public sealed class Counter(Guid id) : Aggregate<Counter, Guid>(id),
+    IApply<CounterIncremented>
 {
     public int Value { get; private set; }
 
     public void Increment(int amount) => Raise(new CounterIncremented(amount));
 
-    private void Apply(CounterIncremented @event) => Value += @event.Amount;
+    void IApply<CounterIncremented>.Apply(CounterIncremented @event) =>
+        Value += @event.Amount;
 }
-
-[EventType("counter.incremented", Version = 1)]
-public sealed record CounterIncremented(int Amount) : IDomainEvent<Counter>;
 ```
 
-Register the event, configured repository, and PostgreSQL provider:
+Register the configured repository and PostgreSQL provider. Aggregate
+registration automatically registers events owned by the aggregate:
 
 ```csharp
 using EventLoom.EntityFrameworkCore.PostgreSql;
@@ -75,7 +80,6 @@ using EventLoom.Hosting;
 builder.Services
     .AddEventLoom()
     .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
-    .AddEvent<CounterIncremented>()
     .AddAggregate<Counter, Guid>(aggregate => aggregate
         .ConstructWith(id => new Counter(id))
         .UseStream("counter", id => id.ToString("D")));

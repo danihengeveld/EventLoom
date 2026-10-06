@@ -19,7 +19,7 @@ public sealed class EventLoomHealthCheckTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<ItemAdded>()
+            .AddAggregateEvents<TestAggregate>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}")
             .AddProjection("tests.health", projection =>
@@ -113,12 +113,14 @@ public sealed class EventLoomHealthCheckTests
             new EventMetadata()));
     }
 
-    [EventType("tests.health-item-added")]
-    private sealed record ItemAdded : IDomainEvent<TestAggregate>;
-
-    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed record ItemAdded : IDomainEvent<ItemAdded, TestAggregate>
     {
-        private void Apply(ItemAdded @event)
+        public static string EventType => "tests.health-item-added";
+    }
+
+    private sealed class TestAggregate(Guid id) : Aggregate<TestAggregate, Guid>(id), IApply<ItemAdded>
+    {
+        void IApply<ItemAdded>.Apply(ItemAdded @event)
         {
         }
     }

@@ -10,22 +10,27 @@ incompatible, EventLoom recreates the aggregate and replays the full stream.
 ## Define aggregate-owned snapshot state
 
 Use an immutable, versioned DTO with a stable name. It must implement
-`IAggregateSnapshot<TAggregate>`. The aggregate owns private methods that
-create and restore that DTO:
+`IAggregateSnapshot<TSelf, TAggregate>`, and the owning aggregate must implement
+`ISnapshotable<TSnapshot>`:
 
 ```csharp
-[SnapshotType("orders.order", Version = 1)]
 public sealed record OrderSnapshot(string Status, IReadOnlyList<OrderItem> Items)
-    : IAggregateSnapshot<Order>;
+    : IAggregateSnapshot<OrderSnapshot, Order>
+{
+    public static string SnapshotType => "orders.order";
+    // public static int SnapshotVersion => 2; // optional, defaults to 1
+}
 
-public sealed class Order(Guid id) : Aggregate<Guid>(id)
+public sealed class Order(Guid id) : Aggregate<Order, Guid>(id),
+    ISnapshotable<OrderSnapshot>
 {
     public string Status { get; private set; } = "draft";
     public IReadOnlyList<OrderItem> Items { get; private set; } = [];
 
-    private OrderSnapshot CreateSnapshot() => new(Status, Items.ToArray());
+    OrderSnapshot ISnapshotable<OrderSnapshot>.CreateSnapshot() =>
+        new(Status, Items.ToArray());
 
-    private void RestoreSnapshot(OrderSnapshot snapshot)
+    void ISnapshotable<OrderSnapshot>.RestoreSnapshot(OrderSnapshot snapshot)
     {
         Status = snapshot.Status;
         Items = snapshot.Items;
@@ -33,9 +38,10 @@ public sealed class Order(Guid id) : Aggregate<Guid>(id)
 }
 ```
 
-Change the snapshot type version whenever its serialized shape changes. These
-private methods keep snapshot state explicit aggregate behavior rather than a
-separate public contract.
+Change `SnapshotVersion` whenever its serialized shape changes. The compiler
+rejects a snapshot contract unless the aggregate can capture and restore that
+snapshot. Implement snapshot members explicitly and do not call them directly;
+EventLoom invokes them during load and save.
 
 ## Register a snapshot-enabled aggregate
 
@@ -51,8 +57,9 @@ eventLoom.AddAggregate<Order, Guid>(aggregate => aggregate
         .UseInvalidator(new RemoveUnusableOrderSnapshots())));
 ```
 
-Use `UsePolicy(...)` for custom cadence logic, `UseRetention(...)` for custom
-retention, and `UseUpcasters(...)` when a snapshot schema needs deterministic
+Use `UseSnapshots<OrderSnapshot>()` for defaults. Use `UsePolicy(...)` for
+custom cadence logic, `UseRetention(...)` for custom retention, and
+`UseUpcasters(...)` when a snapshot schema needs deterministic
 version-by-version migration.
 
 If no policy is supplied, EventLoom captures a snapshot every 100 events. It

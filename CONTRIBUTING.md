@@ -25,7 +25,7 @@ Application examples and tests normally use plain `await`.
 
 ## Public API and package validation
 
-The eight supported packages have public API regression tests in the core and
+The seven supported packages have public API regression tests in the core and
 EF Core test projects. Update those snapshots only for deliberate API changes.
 After the first stable release, do not remove or alter a shipped signature
 without an explicitly documented compatibility decision.

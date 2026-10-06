@@ -11,7 +11,7 @@ public sealed class PostgreSqlConcurrencyTests : PostgreSqlIntegrationTest
         await using var firstContext = database.CreateContext();
         await using var secondContext = database.CreateContext();
 
-        var registry = new EventRegistry().RegisterEvent<Created>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var first = CreateStore(firstContext, registry);
         var second = CreateStore(secondContext, registry);
         var streamId = Guid.NewGuid().ToString("D");
@@ -30,12 +30,12 @@ public sealed class PostgreSqlConcurrencyTests : PostgreSqlIntegrationTest
     public async Task Concurrent_first_appends_with_the_same_append_id_replay_one_result()
     {
         var options = new EventStoreOptions
-            { UseSchema = true, Schema = "eventloom_idempotency", TablePrefix = "eventloom_" };
+        { UseSchema = true, Schema = "eventloom_idempotency", TablePrefix = "eventloom_" };
         await using var database = await Server.CreateDatabaseAsync(options);
         await using var firstContext = database.CreateContext();
         await using var secondContext = database.CreateContext();
 
-        var registry = new EventRegistry().RegisterEvent<Created>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var retryOptions = new EventStoreWorkerOptions { MaxRetryAttempts = 20 };
         var first = CreateStore(firstContext, registry, new PostgreSqlRetryPolicy(retryOptions, TimeProvider.System));
         var second = CreateStore(secondContext, registry, new PostgreSqlRetryPolicy(retryOptions, TimeProvider.System));
@@ -61,10 +61,10 @@ public sealed class PostgreSqlConcurrencyTests : PostgreSqlIntegrationTest
     public async Task Concurrent_instances_assign_contiguous_committed_tenant_offsets()
     {
         var options = new EventStoreOptions
-            { UseSchema = true, Schema = "eventloom_offsets", TablePrefix = "eventloom_" };
+        { UseSchema = true, Schema = "eventloom_offsets", TablePrefix = "eventloom_" };
         await using var database = await Server.CreateDatabaseAsync(options);
 
-        var registry = new EventRegistry().RegisterEvent<Created>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var contexts = Enumerable.Range(0, 4)
             .Select(_ => database.CreateContext())
             .ToArray();
@@ -125,12 +125,14 @@ public sealed class PostgreSqlConcurrencyTests : PostgreSqlIntegrationTest
         }
     }
 
-    [EventType("integration.created")]
-    private sealed record Created : IDomainEvent<TestAggregate>;
-
-    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed record Created : IDomainEvent<Created, TestAggregate>
     {
-        private void Apply(Created @event)
+        public static string EventType => "integration.created";
+    }
+
+    private sealed class TestAggregate(Guid id) : Aggregate<TestAggregate, Guid>(id), IApply<Created>
+    {
+        void IApply<Created>.Apply(Created @event)
         {
         }
     }

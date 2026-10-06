@@ -20,6 +20,11 @@ non-web host:
 - `EventLoom.EntityFrameworkCore.Sqlite` for local and controlled single-node
   use.
 
+Aggregate registration is compiler-checked: `AddAggregate<TAggregate, TId>`
+registers the repository and every event owned by the aggregate's
+`IApply<TEvent>` interfaces. Use `AddAggregateEvents<TAggregate>()` only when
+using `EventStore` without a repository.
+
 After configuring EventLoom, add readiness checks and optional telemetry with:
 
 ```csharp

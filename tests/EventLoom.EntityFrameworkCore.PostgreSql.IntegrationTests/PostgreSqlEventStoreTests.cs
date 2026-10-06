@@ -8,7 +8,7 @@ public sealed class PostgreSqlEventStoreTests : PostgreSqlIntegrationTest
         await using var database = await Server.CreateDatabaseAsync();
         await using var context = database.CreateContext();
 
-        var registry = new EventRegistry().RegisterEvent<OrderPlaced>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var streamId = Guid.NewGuid().ToString("D");
@@ -32,7 +32,7 @@ public sealed class PostgreSqlEventStoreTests : PostgreSqlIntegrationTest
     {
         await using var database = await Server.CreateDatabaseAsync();
         await using var context = database.CreateContext();
-        var registry = new EventRegistry().RegisterEvent<OrderPlaced>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var failedStore = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         await Assert.That(async () => await failedStore.AppendAsync(new AppendRequest(
@@ -51,12 +51,14 @@ public sealed class PostgreSqlEventStoreTests : PostgreSqlIntegrationTest
         await Assert.That(await store.ReadStreamAsync("tenant-a", "failed")).IsEmpty();
     }
 
-    [EventType("integration.order-placed")]
-    private sealed record OrderPlaced(string Sku, int Quantity) : IDomainEvent<TestAggregate>;
-
-    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed record OrderPlaced(string Sku, int Quantity) : IDomainEvent<OrderPlaced, TestAggregate>
     {
-        private void Apply(OrderPlaced @event)
+        public static string EventType => "integration.order-placed";
+    }
+
+    private sealed class TestAggregate(Guid id) : Aggregate<TestAggregate, Guid>(id), IApply<OrderPlaced>
+    {
+        void IApply<OrderPlaced>.Apply(OrderPlaced @event)
         {
         }
     }

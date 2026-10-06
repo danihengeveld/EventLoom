@@ -123,6 +123,9 @@
           "TUnit.Core": "1.72.16"
         }
       },
+      "eventloom": {
+        "type": "Project"
+      },
       "eventloom.analyzers": {
         "type": "Project"
       }

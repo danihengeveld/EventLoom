@@ -1,22 +1,65 @@
-using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
-using System.Linq.Expressions;
-using System.Reflection;
 
 namespace EventLoom;
 
 /// <summary>
 /// Non-generic base type for aggregate ownership metadata.
 /// </summary>
-public abstract class Aggregate;
+public abstract class Aggregate
+{
+    private protected Aggregate()
+    {
+    }
+
+    /// <summary>Gets whether an event handler or snapshot callback is currently running.</summary>
+    private protected bool IsApplying { get; private set; }
+
+    /// <summary>Runs an event handler or snapshot callback while rejecting nested <c>Raise</c> calls.</summary>
+    private protected void RunGuarded(Action action)
+    {
+        if (IsApplying)
+        {
+            throw new NestedRaiseException(GetType());
+        }
+
+        IsApplying = true;
+        try
+        {
+            action();
+        }
+        finally
+        {
+            IsApplying = false;
+        }
+    }
+
+    /// <summary>Runs a snapshot capture callback while rejecting nested <c>Raise</c> calls.</summary>
+    internal TSnapshot CaptureSnapshot<TSnapshot>()
+    {
+        if (this is not ISnapshotable<TSnapshot> snapshotable)
+        {
+            throw new InvalidOperationException(
+                $"Aggregate '{GetType().FullName}' does not implement ISnapshotable<{typeof(TSnapshot).Name}>.");
+        }
+
+        TSnapshot snapshot = default!;
+        RunGuarded(() => snapshot = snapshotable.CreateSnapshot());
+        return snapshot;
+    }
+}
 
 /// <summary>
 /// Base type for an event-sourced aggregate with a stable application-defined identifier.
 /// </summary>
+/// <remarks>
+/// Pass the aggregate itself as <typeparamref name="TSelf"/>: <c>sealed class Order : Aggregate&lt;Order, Guid&gt;</c>.
+/// Implement <see cref="IApply{TEvent}"/> for every owned event.
+/// </remarks>
+/// <typeparam name="TSelf">The concrete aggregate type.</typeparam>
 /// <typeparam name="TId">The aggregate identifier type.</typeparam>
-public abstract class Aggregate<TId> : Aggregate
+public abstract class Aggregate<TSelf, TId> : Aggregate
+    where TSelf : Aggregate<TSelf, TId>
 {
-    private static readonly ConcurrentDictionary<Type, AggregateDispatcher> Dispatchers = new();
     private readonly List<PendingEvent> pendingEvents = [];
     private readonly ReadOnlyCollection<PendingEvent> readOnlyPendingEvents;
 
@@ -24,8 +67,14 @@ public abstract class Aggregate<TId> : Aggregate
     /// Initializes an aggregate with its identifier.
     /// </summary>
     /// <param name="id">The application-defined aggregate identifier.</param>
+    /// <exception cref="InvalidAggregateTypeException">The aggregate does not pass itself as <typeparamref name="TSelf"/>.</exception>
     protected Aggregate(TId id)
     {
+        if (this is not TSelf)
+        {
+            throw new InvalidAggregateTypeException(GetType(), typeof(TSelf));
+        }
+
         Id = id;
         readOnlyPendingEvents = pendingEvents.AsReadOnly();
     }
@@ -39,15 +88,22 @@ public abstract class Aggregate<TId> : Aggregate
     /// <summary>Gets the events raised since the last successful non-idempotent save.</summary>
     internal IReadOnlyList<PendingEvent> PendingEvents => readOnlyPendingEvents;
 
+    /// <summary>Gets whether no event has been applied or raised since construction.</summary>
+    internal bool IsPristine => Version == 0 && pendingEvents.Count == 0;
+
+    private TSelf Self => (TSelf)this;
+
     /// <summary>
-    /// Raises and immediately applies a new domain event.
+    /// Raises and immediately applies a new domain event owned by this aggregate.
     /// </summary>
     /// <typeparam name="TEvent">The concrete event type.</typeparam>
     /// <param name="event">The event representing the state transition.</param>
+    /// <exception cref="NestedRaiseException">Called from an event handler or snapshot callback.</exception>
     protected void Raise<TEvent>(TEvent @event)
+        where TEvent : IDomainEvent<TSelf>
     {
         ArgumentNullException.ThrowIfNull(@event);
-        ApplyEvent(@event);
+        ApplyOwned(@event);
         pendingEvents.Add(new PendingEvent(@event, Version));
     }
 
@@ -55,13 +111,19 @@ public abstract class Aggregate<TId> : Aggregate
     /// Replays historical events without adding them to the pending collection.
     /// </summary>
     /// <param name="history">The events to replay in stream-version order.</param>
+    /// <exception cref="EventOwnershipException">An event is not owned by this aggregate.</exception>
     protected void Replay(IEnumerable<object> history)
     {
         ArgumentNullException.ThrowIfNull(history);
         foreach (var @event in history)
         {
             ArgumentNullException.ThrowIfNull(@event);
-            ApplyEvent(@event);
+            if (@event is not IDomainEvent<TSelf> owned)
+            {
+                throw new EventOwnershipException(GetType(), @event.GetType());
+            }
+
+            ApplyOwned(owned);
         }
     }
 
@@ -73,27 +135,25 @@ public abstract class Aggregate<TId> : Aggregate
     /// <summary>Removes all pending events after they have been persisted.</summary>
     internal void ClearPendingEvents() => pendingEvents.Clear();
 
-    internal void RestoreSnapshotVersion(long streamVersion)
+    /// <summary>Restores snapshot state and stream version while rejecting nested <c>Raise</c> calls.</summary>
+    internal void RestoreSnapshot<TSnapshot>(TSnapshot snapshot, long streamVersion)
     {
-        if (streamVersion < 0)
+        ArgumentOutOfRangeException.ThrowIfNegative(streamVersion);
+        if (this is not ISnapshotable<TSnapshot> snapshotable)
         {
-            throw new ArgumentOutOfRangeException(nameof(streamVersion));
+            throw new InvalidOperationException(
+                $"Aggregate '{GetType().FullName}' does not implement ISnapshotable<{typeof(TSnapshot).Name}>.");
         }
 
+        RunGuarded(() => snapshotable.RestoreSnapshot(snapshot));
         Version = streamVersion;
         pendingEvents.Clear();
     }
 
-    private void ApplyEvent(object @event)
+    private void ApplyOwned(IDomainEvent<TSelf> @event)
     {
-        var owner = DomainEventContract.GetAggregateType(@event.GetType());
-        if (owner is null || !owner.IsInstanceOfType(this))
-        {
-            throw new EventOwnershipException(GetType(), @event.GetType());
-        }
-
-        var dispatcher = Dispatchers.GetOrAdd(GetType(), static type => AggregateDispatcher.Create(type));
-        dispatcher.Apply(this, @event);
+        var self = Self;
+        RunGuarded(() => @event.ApplyTo(self));
         Version++;
     }
 
@@ -101,81 +161,4 @@ public abstract class Aggregate<TId> : Aggregate
     /// <param name="Event">The raised domain event.</param>
     /// <param name="StreamVersion">The aggregate version after applying the event.</param>
     internal sealed record PendingEvent(object Event, long StreamVersion);
-
-    private sealed class AggregateDispatcher
-    {
-        private readonly IReadOnlyDictionary<Type, Action<object, object>> handlers;
-
-        private AggregateDispatcher(IReadOnlyDictionary<Type, Action<object, object>> handlers)
-        {
-            this.handlers = handlers;
-        }
-
-        public static AggregateDispatcher Create(Type aggregateType)
-        {
-            var methods = aggregateType
-                .GetMethods(BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
-                .Where(method => method.Name == "Apply");
-            var discovered = new Dictionary<Type, Action<object, object>>();
-
-            foreach (var method in methods)
-            {
-                if (method.IsStatic || method.IsAbstract || method.ContainsGenericParameters)
-                {
-                    throw new InvalidApplyHandlerException(method,
-                        "handlers must be non-static, non-generic, and concrete");
-                }
-
-                var parameters = method.GetParameters();
-                if (parameters.Length != 1 || !DomainEventContract.IsEvent(parameters[0].ParameterType))
-                {
-                    throw new InvalidApplyHandlerException(
-                        method,
-                        "handlers must accept one IDomainEvent<TAggregate> parameter");
-                }
-
-                if (method.ReturnType != typeof(void))
-                {
-                    throw new InvalidApplyHandlerException(method, "handlers must return void");
-                }
-
-                if (!(method.IsPrivate ||
-                      method.IsFamily ||
-                      method.IsFamilyAndAssembly ||
-                      method.IsFamilyOrAssembly))
-                {
-                    throw new InvalidApplyHandlerException(method, "handlers must be private or protected");
-                }
-
-                var eventType = parameters[0].ParameterType;
-                if (!discovered.TryAdd(eventType, CreateDelegate(method, eventType)))
-                {
-                    throw new AmbiguousApplyHandlerException(aggregateType, eventType);
-                }
-            }
-
-            return new AggregateDispatcher(discovered);
-        }
-
-        public void Apply(object aggregate, object @event)
-        {
-            if (!handlers.TryGetValue(@event.GetType(), out var handler))
-            {
-                throw new MissingApplyHandlerException(aggregate.GetType(), @event.GetType());
-            }
-
-            handler(aggregate, @event);
-        }
-
-        private static Action<object, object> CreateDelegate(MethodInfo method, Type eventType)
-        {
-            var aggregate = Expression.Parameter(typeof(object), "aggregate");
-            var @event = Expression.Parameter(typeof(object), "event");
-            var call = Expression.Call(
-                Expression.Convert(aggregate, method.DeclaringType!),
-                method,
-                Expression.Convert(@event, eventType));
-            return Expression.Lambda<Action<object, object>>(call, aggregate, @event).Compile();
-        }
-    }
 }

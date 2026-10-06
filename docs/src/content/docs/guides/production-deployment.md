@@ -21,7 +21,9 @@ builder.Services
         options.Schema = "eventloom";
         options.TablePrefix = "eventloom_";
     })
-    .AddEvent<OrderPlaced>();
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D")));
 ```
 
 EventLoom generates a unique identity for each projection and outbox worker

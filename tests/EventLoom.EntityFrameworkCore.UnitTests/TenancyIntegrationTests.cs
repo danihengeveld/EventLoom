@@ -33,7 +33,7 @@ public sealed class TenancyIntegrationTests
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
             options);
         await context.Database.EnsureCreatedAsync();
-        var registry = new EventRegistry().RegisterEvent<ItemAdded>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var requestStore = new EventStore(
             context,
             new EventSerializer(registry),
@@ -60,12 +60,14 @@ public sealed class TenancyIntegrationTests
         await Assert.That(events.Single().TenantId!.Value.Value).IsEqualTo("acme");
     }
 
-    [EventType("tests.background-item-added")]
-    private sealed record ItemAdded : IDomainEvent<TestAggregate>;
-
-    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed record ItemAdded : IDomainEvent<ItemAdded, TestAggregate>
     {
-        private void Apply(ItemAdded @event)
+        public static string EventType => "tests.background-item-added";
+    }
+
+    private sealed class TestAggregate(Guid id) : Aggregate<TestAggregate, Guid>(id), IApply<ItemAdded>
+    {
+        void IApply<ItemAdded>.Apply(ItemAdded @event)
         {
         }
     }

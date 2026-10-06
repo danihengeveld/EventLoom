@@ -1,4 +1,3 @@
-using System.Reflection;
 using EventLoom.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -73,31 +72,20 @@ public sealed partial class EventLoomBuilder
     }
 
     /// <summary>
-    /// Registers a domain-event type for persistence and deserialization.
+    /// Registers the events owned by an aggregate without registering an aggregate repository.
     /// </summary>
-    /// <typeparam name="TEvent">The concrete domain-event type to register.</typeparam>
+    /// <remarks>
+    /// <see cref="AddAggregate{TAggregate, TId}"/> registers owned events automatically. Use this method only when
+    /// events are appended and read through <see cref="EventStore"/> without an aggregate repository.
+    /// </remarks>
+    /// <typeparam name="TAggregate">The aggregate whose owned events are registered.</typeparam>
     /// <returns>This builder.</returns>
-    public EventLoomBuilder AddEvent<TEvent>()
+    public EventLoomBuilder AddAggregateEvents<TAggregate>()
+        where TAggregate : Aggregate
     {
-        registry.RegisterEvent<TEvent>();
+        registry.RegisterAggregate<TAggregate>();
         return this;
     }
-
-    /// <summary>
-    /// Registers all concrete domain-event types in an assembly.
-    /// </summary>
-    /// <param name="assembly">The assembly containing the event types.</param>
-    /// <returns>This builder.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="assembly"/> is <see langword="null"/>.</exception>
-    public EventLoomBuilder AddEventsFromAssembly(Assembly assembly)
-    {
-        registry.RegisterAssembly(assembly);
-        return this;
-    }
-
-    /// <summary>Registers concrete domain-event types from the assembly containing <typeparamref name="TMarker"/>.</summary>
-    public EventLoomBuilder AddEventsFromAssemblyContaining<TMarker>() =>
-        AddEventsFromAssembly(typeof(TMarker).Assembly);
 
     /// <summary>
     /// Adds an event upcaster used when reading earlier versions of an event.
@@ -290,19 +278,23 @@ public sealed partial class EventLoomBuilder
         return this;
     }
 
-    /// <summary>Registers an aggregate using one cohesive persistence configuration.</summary>
+    /// <summary>
+    /// Registers an aggregate repository and every event the aggregate owns and handles through
+    /// <see cref="IApply{TEvent}"/>.
+    /// </summary>
     /// <typeparam name="TAggregate">The aggregate type.</typeparam>
     /// <typeparam name="TId">The aggregate identifier type.</typeparam>
     /// <param name="configure">Configures aggregate construction, stream identity, and optional snapshots.</param>
     /// <returns>This builder.</returns>
     public EventLoomBuilder AddAggregate<TAggregate, TId>(
         Action<AggregateRegistrationBuilder<TAggregate, TId>> configure)
-        where TAggregate : Aggregate<TId>
+        where TAggregate : Aggregate<TAggregate, TId>
     {
         ArgumentNullException.ThrowIfNull(configure);
         var builder = new AggregateRegistrationBuilder<TAggregate, TId>();
         configure(builder);
         var registration = builder.Build();
+        registry.RegisterAggregate<TAggregate>();
 
         var snapshots = registration.SnapshotConfiguration;
         services.AddScoped(serviceProvider => new AggregateRepository<TAggregate, TId>(
@@ -312,11 +304,10 @@ public sealed partial class EventLoomBuilder
             registration.StreamId,
             ResolveTenantAccessor(serviceProvider),
             snapshots is null ? null : serviceProvider.GetRequiredService<SnapshotStore>(),
-            snapshots?.SnapshotType,
+            snapshots?.Dispatcher,
             snapshots?.Policy,
             snapshots?.Invalidator,
             snapshots?.RetentionPolicy,
-            snapshots?.Upcasters,
             serviceProvider.GetRequiredService<ILogger<AggregateRepository<TAggregate, TId>>>()));
         return this;
     }

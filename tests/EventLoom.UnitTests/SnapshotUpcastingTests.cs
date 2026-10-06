@@ -35,10 +35,7 @@ public sealed class SnapshotUpcastingTests
             .Throws<SnapshotUpcastException>();
     }
 
-    [SnapshotType("tests.counter", Version = 2)]
-    private sealed record SnapshotV2(int Value, string Currency) : IAggregateSnapshot<SnapshotAggregate>;
-
-    private sealed class SnapshotAggregate(Guid id) : Aggregate<Guid>(id);
+    private sealed record SnapshotV2(int Value, string Currency);
 
     private sealed class SnapshotV1ToV2 : ISnapshotUpcaster
     {

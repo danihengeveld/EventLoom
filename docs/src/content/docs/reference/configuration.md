@@ -10,8 +10,8 @@ worked examples, use the [configuration guide](/guides/configure-ef-core), the
 
 ## Start from one of these configurations
 
-Use these as minimal, complete composition baselines. Add aggregate,
-projection, snapshot, and outbox registrations after choosing the provider.
+Use these as minimal, complete composition baselines. Add projection, snapshot,
+and outbox registrations after choosing the provider.
 
 ### PostgreSQL service
 
@@ -19,19 +19,18 @@ projection, snapshot, and outbox registrations after choosing the provider.
 builder.Services.AddEventLoom(eventLoom => eventLoom
     .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
     .UseSingleTenancy()
-    .AddEvent<OrderPlaced>()
     .AddAggregate<Order, Guid>(aggregate => aggregate
         .ConstructWith(id => new Order(id))
         .UseStream("order", id => id.ToString("D"))));
 ```
 
-### Multi-tenant PostgreSQL service
+### Multi-tenant PostgreSQL event-store-only service
 
 ```csharp
 builder.Services.AddEventLoom(eventLoom => eventLoom
     .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
     .UseMultiTenancy<AuthenticatedTenantAccessor>()
-    .AddEvent<OrderPlaced>());
+    .AddAggregateEvents<Order>());
 ```
 
 ### Local or single-process SQLite application
@@ -40,7 +39,9 @@ builder.Services.AddEventLoom(eventLoom => eventLoom
 builder.Services.AddEventLoom(eventLoom => eventLoom
     .UseSqlite("Data Source=eventloom.db")
     .UseSingleTenancy()
-    .AddEvent<OrderPlaced>());
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D"))));
 ```
 
 Choose one provider per application. Use PostgreSQL when separate processes
@@ -53,8 +54,8 @@ to a controlled single process.
 | --- | --- |
 | `services.AddEventLoom()` | Starts fluent registration and returns an `EventLoomBuilder`. |
 | `services.AddEventLoom(configure)` | Runs configuration and validates it before returning the service collection. |
-| `AddEvent<TEvent>()` | Registers one concrete persisted event. |
-| `AddEventsFromAssembly(assembly)` / `AddEventsFromAssemblyContaining<T>()` | Registers concrete event types from an assembly. |
+| `AddAggregate<TAggregate, TId>(configure)` | Registers a repository, stream mapping, factory, and all events owned by the aggregate. |
+| `AddAggregateEvents<TAggregate>()` | Registers events owned by an aggregate without registering a repository. |
 | `AddUpcaster(upcaster)` | Registers one deterministic event-payload upcaster. |
 | `ConfigureEventSerialization(configure)` | Configures JSON serialization for persisted events. |
 | `UseSingleTenancy(tenantId)` | Uses one stable tenant; defaults to `default`. |
@@ -71,6 +72,11 @@ to a controlled single process.
 `AddProjection(name, configure, version)` is the preferred projection API. Its
 registration builder makes the durable projection name and version explicit and
 chooses `Asynchronous`, `Transactional`, or `Inline` per handler.
+
+`AddAggregate<TAggregate, TId>` validates its factory and stream mapping and
+registers the aggregate's owned events. Registering the same aggregate twice is
+idempotent. Handlers for events owned by other aggregates are ignored by event
+registration.
 
 ## Provider selection
 
@@ -141,10 +147,11 @@ Pass these options to `AddOutboxPublisher`. They do not inherit
 
 ## Snapshot configuration
 
-Declare an immutable snapshot DTO as `IAggregateSnapshot<TAggregate>`, then
-call `UseSnapshots<TSnapshot>(...)` in the aggregate registration. The
-aggregate must supply private `CreateSnapshot(): TSnapshot` and
-`RestoreSnapshot(TSnapshot)` methods. The typed builder accepts:
+Declare an immutable snapshot DTO as
+`IAggregateSnapshot<TSnapshot, TAggregate>`, implement
+`ISnapshotable<TSnapshot>` on the aggregate, then call
+`UseSnapshots<TSnapshot>(...)` or `UseSnapshots<TSnapshot>()` in the aggregate
+registration. The typed builder accepts:
 
 | Method | Effect |
 | --- | --- |

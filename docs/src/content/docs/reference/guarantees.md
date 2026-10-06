@@ -15,6 +15,28 @@ description: Authoritative delivery guarantees, ordering rules, and administrati
 | Outbox publication | Event and message commit together; external publication is at least once. | Deduplicate at the destination with `OutboxMessage.MessageId`. |
 | Snapshot | Snapshot failures never modify committed event history; unusable snapshots fall back to replay. | Keep aggregate snapshot methods and upcasters deterministic. |
 
+## Compile-time contract guarantees
+
+EventLoom uses C# static-abstract interface contracts for aggregate wiring:
+
+- `IDomainEvent<TSelf, TAggregate>` requires the owning aggregate to implement
+  `IApply<TSelf>`; declaring an event for an aggregate without that handler
+  fails to compile.
+- `Aggregate<TSelf, TId>` and `Raise<TEvent>` constrain an aggregate to raise
+  only events owned by its concrete `TSelf`.
+- `IAggregateSnapshot<TSelf, TAggregate>` requires the aggregate to implement
+  `ISnapshotable<TSelf>`, and `UseSnapshots<TSnapshot>` accepts only snapshots
+  belonging to the registered aggregate.
+- The analyzer bundled in `EventLoom` adds deterministic-handler, immutability,
+  constant-name/version, duplicate-name, constructor-raise, nested-raise, and
+  direct-handler-call diagnostics.
+
+Runtime guards remain in place for dynamic paths such as replay and aggregate
+factories. They reject invalid self types, nested raises, and cross-aggregate
+event replay. Factories that return null fail with `InvalidOperationException`
+("returned null"); factories that return already-mutated aggregates fail with
+`AggregateFactoryException`.
+
 ## Ordering and identity
 
 - `StreamVersion` orders events inside one aggregate stream.

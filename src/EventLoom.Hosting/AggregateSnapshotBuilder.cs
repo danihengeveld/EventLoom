@@ -48,18 +48,18 @@ public sealed class AggregateSnapshotBuilder<TAggregate, TSnapshot>
         return this;
     }
 
-    internal AggregateSnapshotConfiguration<TAggregate> Build() =>
+    internal AggregateSnapshotConfiguration<TAggregate> Build(
+        Func<IReadOnlyList<ISnapshotUpcaster>, IAggregateSnapshotDispatcher<TAggregate>> createDispatcher) =>
         new(
-            typeof(TSnapshot),
-            upcasters,
+            createDispatcher(upcasters),
             policy,
             retentionPolicy,
             invalidator);
 }
 
 internal sealed record AggregateSnapshotConfiguration<TAggregate>(
-    Type SnapshotType,
-    IReadOnlyList<ISnapshotUpcaster> Upcasters,
+    IAggregateSnapshotDispatcher<TAggregate> Dispatcher,
     ISnapshotPolicy? Policy,
     ISnapshotRetentionPolicy? RetentionPolicy,
-    ISnapshotInvalidator? Invalidator);
+    ISnapshotInvalidator? Invalidator)
+    where TAggregate : Aggregate;

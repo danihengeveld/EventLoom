@@ -66,8 +66,13 @@ public sealed class EventSerializer
     public object Deserialize(string eventName, int version, string payload)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(payload);
-        _ = registry.Get(eventName, version);
-        var currentRegistration = registry.GetCurrent(eventName);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(version);
+        var currentRegistration = registry.Get(eventName);
+        if (version > currentRegistration.Version)
+        {
+            throw new EventNotRegisteredException(eventName, version);
+        }
+
         var normalizedPayload = payload;
         if (version < currentRegistration.Version)
         {

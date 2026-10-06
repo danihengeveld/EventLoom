@@ -19,7 +19,6 @@ public sealed class EventLoomHostingTests
         var services = new ServiceCollection();
 
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<CounterIncremented>()
             .UseSqlite("Data Source=:memory:")
             .AddAggregate<Counter, Guid>(aggregate => aggregate
                 .ConstructWith(id => new Counter(id))
@@ -46,7 +45,6 @@ public sealed class EventLoomHostingTests
     {
         var services = new ServiceCollection();
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<CounterIncremented>()
             .UseSqlite("Data Source=:memory:")
             .AddAggregate<Counter, Guid>(aggregate => aggregate
                 .ConstructWith(id => new Counter(id))
@@ -61,12 +59,45 @@ public sealed class EventLoomHostingTests
     }
 
     [Test]
+    public async Task AddAggregateEvents_registers_owned_events_without_a_repository()
+    {
+        var services = new ServiceCollection();
+        services.AddEventLoom(eventLoom => eventLoom
+            .AddAggregateEvents<Counter>()
+            .AddAggregateEvents<Counter>()
+            .UseSqlite("Data Source=:memory:"));
+
+        using var serviceProvider = services.BuildServiceProvider();
+        var registry = serviceProvider.GetRequiredService<EventRegistry>();
+
+        await Assert.That(registry.Registrations.Count).IsEqualTo(1);
+        await Assert.That(registry.Get("tests.counter-incremented").AggregateType).IsEqualTo(typeof(Counter));
+        await Assert.That(serviceProvider.GetService<AggregateRepository<Counter, Guid>>()).IsNull();
+    }
+
+    [Test]
+    public async Task Duplicate_event_names_across_aggregates_fail_during_registration()
+    {
+        var services = new ServiceCollection();
+
+        await Assert.That(() => services.AddEventLoom(eventLoom => eventLoom
+                .UseSqlite("Data Source=:memory:")
+                .AddAggregate<Counter, Guid>(aggregate => aggregate
+                    .ConstructWith(id => new Counter(id))
+                    .UseStream("counter", id => id.ToString("D")))
+                .AddAggregate<DuplicateCounter, Guid>(aggregate => aggregate
+                    .ConstructWith(id => new DuplicateCounter(id))
+                    .UseStream("duplicate-counter", id => id.ToString("D")))))
+            .Throws<DuplicateEventTypeException>();
+    }
+
+    [Test]
     public async Task MultiTenancyRequiresAnAccessor()
     {
         var services = new ServiceCollection();
 
         await Assert.That(() => services.AddEventLoom(eventLoom => eventLoom
-                .AddEvent<CounterIncremented>()
+                .AddAggregateEvents<Counter>()
                 .UseSqlite("Data Source=:memory:")
                 .UseMultiTenancy()))
             .Throws<InvalidOperationException>();
@@ -78,7 +109,7 @@ public sealed class EventLoomHostingTests
         var services = new ServiceCollection();
 
         await Assert.That(() => services.AddEventLoom(eventLoom => eventLoom
-                .AddEvent<CounterIncremented>()
+                .AddAggregateEvents<Counter>()
                 .UseSqlite("Data Source=:memory:")
                 .AddProjection("tests.empty", _ => { })))
             .Throws<InvalidOperationException>()
@@ -91,7 +122,7 @@ public sealed class EventLoomHostingTests
         var services = new ServiceCollection();
 
         await Assert.That(() => services.AddEventLoom(eventLoom => eventLoom
-                .AddEvent<CounterIncremented>()
+                .AddAggregateEvents<Counter>()
                 .UseSqlite("Data Source=:memory:")
                 .AddProjection("tests.duplicate", projection => projection
                     .Asynchronous<CounterProjection, CounterIncremented>()
@@ -105,7 +136,7 @@ public sealed class EventLoomHostingTests
     {
         var sqliteServices = new ServiceCollection();
         sqliteServices.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<CounterIncremented>()
+            .AddAggregateEvents<Counter>()
             .ConfigureEventStore(options => options.UseSchema = true)
             .UseSqlite("Data Source=:memory:"));
 
@@ -114,7 +145,7 @@ public sealed class EventLoomHostingTests
 
         var postgreSqlServices = new ServiceCollection();
         postgreSqlServices.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<CounterIncremented>()
+            .AddAggregateEvents<Counter>()
             .ConfigureEventStore(options => options.UseSchema = false)
             .UsePostgreSql("Host=localhost;Database=eventloom;Username=eventloom;Password=eventloom"));
 
@@ -130,7 +161,6 @@ public sealed class EventLoomHostingTests
         var services = new ServiceCollection();
 
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<CounterIncremented>()
             .UseSqlite("Data Source=:memory:")
             .ConfigureSnapshotRetention(new KeepLatestSnapshotsPolicy(2))
             .AddAggregate<Counter, Guid>(aggregate => aggregate
@@ -154,7 +184,6 @@ public sealed class EventLoomHostingTests
         var services = new ServiceCollection();
 
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<CounterIncremented>()
             .UseSqlite("Data Source=:memory:")
             .AddAggregate<Counter, Guid>(aggregate => aggregate
                 .ConstructWith(id => new Counter(id))
@@ -179,7 +208,7 @@ public sealed class EventLoomHostingTests
         var services = new ServiceCollection();
         services.AddScoped<DbConnection>(_ => connection);
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<CounterIncremented>()
+            .AddAggregateEvents<Counter>()
             .UseSqlite(provider => provider.GetRequiredService<DbConnection>()));
         await using var provider = services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
@@ -195,7 +224,7 @@ public sealed class EventLoomHostingTests
         var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
         var services = new ServiceCollection();
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<CounterIncremented>()
+            .AddAggregateEvents<Counter>()
             .UseSingleTenancy("tenant-a")
             .UseSqlite($"Data Source={databasePath}"));
         var provider = services.BuildServiceProvider();
@@ -225,8 +254,10 @@ public sealed class EventLoomHostingTests
         }
     }
 
-    [EventType("tests.counter-incremented", Version = 1)]
-    private sealed record CounterIncremented : IDomainEvent<Counter>;
+    private sealed record CounterIncremented : IDomainEvent<CounterIncremented, Counter>
+    {
+        public static string EventType => "tests.counter-incremented";
+    }
 
     private sealed class CounterProjection : IProjectionHandler<CounterIncremented>
     {
@@ -234,17 +265,36 @@ public sealed class EventLoomHostingTests
             Task.CompletedTask;
     }
 
-    private sealed class Counter(Guid id) : Aggregate<Guid>(id)
+    private sealed class Counter(Guid id) : Aggregate<Counter, Guid>(id), IApply<CounterIncremented>, ISnapshotable<CounterSnapshot>
     {
-        private CounterSnapshot CreateSnapshot() => new();
+        void IApply<CounterIncremented>.Apply(CounterIncremented @event)
+        {
+        }
 
-        private void RestoreSnapshot(CounterSnapshot snapshot)
+        CounterSnapshot ISnapshotable<CounterSnapshot>.CreateSnapshot() => new();
+
+        void ISnapshotable<CounterSnapshot>.RestoreSnapshot(CounterSnapshot snapshot)
         {
         }
     }
 
-    [SnapshotType("tests.counter", Version = 1)]
-    private sealed record CounterSnapshot : IAggregateSnapshot<Counter>;
+    private sealed record CounterSnapshot : IAggregateSnapshot<CounterSnapshot, Counter>
+    {
+        public static string SnapshotType => "tests.counter";
+    }
+
+    private sealed record DuplicateCounterIncremented : IDomainEvent<DuplicateCounterIncremented, DuplicateCounter>
+    {
+        public static string EventType => "tests.counter-incremented";
+    }
+
+    private sealed class DuplicateCounter(Guid id) : Aggregate<DuplicateCounter, Guid>(id),
+        IApply<DuplicateCounterIncremented>
+    {
+        void IApply<DuplicateCounterIncremented>.Apply(DuplicateCounterIncremented @event)
+        {
+        }
+    }
 
     private sealed class AlwaysInvalidateSnapshots : ISnapshotInvalidator
     {

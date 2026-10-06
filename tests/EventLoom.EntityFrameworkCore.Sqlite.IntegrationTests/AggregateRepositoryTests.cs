@@ -20,7 +20,7 @@ public sealed class AggregateRepositoryTests
             new EventStoreOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
-        var registry = new EventRegistry().RegisterEvent<Incremented>();
+        var registry = new EventRegistry().RegisterAggregate<Counter>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var repository = new AggregateRepository<Counter, Guid>(
@@ -41,6 +41,44 @@ public sealed class AggregateRepositoryTests
     }
 
     [Test]
+    public async Task Aggregate_factory_must_return_a_pristine_aggregate()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = new EventStoreDbContext(
+            new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
+            new EventStoreOptions { TablePrefix = "test_" });
+        await context.Database.EnsureCreatedAsync();
+
+        var registry = new EventRegistry().RegisterAggregate<Counter>();
+        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
+        var raisingFactory = new AggregateRepository<Counter, Guid>(
+            store,
+            id =>
+            {
+                var counter = new Counter(id);
+                counter.Increment(1);
+                return counter;
+            },
+            aggregate => aggregate.PendingEvents.Select(value => value.Event),
+            aggregate => aggregate.Version);
+        var nullFactory = new AggregateRepository<Counter, Guid>(
+            store,
+            _ => null!,
+            aggregate => aggregate.PendingEvents.Select(value => value.Event),
+            aggregate => aggregate.Version);
+        var id = Guid.NewGuid();
+
+        await Assert.That(async () => await raisingFactory.LoadAsync("tenant-a", id.ToString(), id))
+            .Throws<AggregateFactoryException>();
+        await Assert.That(async () => await nullFactory.LoadAsync("tenant-a", id.ToString(), id))
+            .Throws<InvalidOperationException>()
+            .WithMessageContaining("returned null");
+        await Assert.That(await store.ReadStreamAsync("tenant-a", id.ToString())).IsEmpty();
+    }
+
+    [Test]
     public async Task Configured_repository_uses_short_tenant_scoped_operations()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
@@ -50,7 +88,7 @@ public sealed class AggregateRepositoryTests
             new EventStoreOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
-        var registry = new EventRegistry().RegisterEvent<Incremented>();
+        var registry = new EventRegistry().RegisterAggregate<Counter>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var repository = new AggregateRepository<Counter, Guid>(
@@ -78,11 +116,10 @@ public sealed class AggregateRepositoryTests
             new EventStoreOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
-        var registry = new EventRegistry().RegisterEvent<Incremented>();
+        var registry = new EventRegistry().RegisterAggregate<Counter>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
-        var snapshotType = typeof(CounterSnapshot);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
             id => new Counter(id),
@@ -90,7 +127,7 @@ public sealed class AggregateRepositoryTests
             id => id.ToString("D"),
             new TestTenantAccessor("tenant-a"),
             snapshots,
-            snapshotType,
+            AggregateSnapshotDispatcher.Create<Counter, Guid, CounterSnapshot>(null),
             new EveryNEventsSnapshotPolicy(2));
         var aggregate = new Counter(Guid.NewGuid());
 
@@ -123,12 +160,11 @@ public sealed class AggregateRepositoryTests
             new EventStoreOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
-        var registry = new EventRegistry().RegisterEvent<Incremented>();
+        var registry = new EventRegistry().RegisterAggregate<Counter>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
         var logs = new RecordingLogger<AggregateRepository<Counter, Guid>>();
-        var snapshotType = typeof(CounterSnapshot);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
             id => new Counter(id),
@@ -136,7 +172,7 @@ public sealed class AggregateRepositoryTests
             id => id.ToString("D"),
             new TestTenantAccessor("tenant-a"),
             snapshots,
-            snapshotType,
+            AggregateSnapshotDispatcher.Create<Counter, Guid, CounterSnapshot>(null),
             new EveryNEventsSnapshotPolicy(100),
             logger: logs);
         var aggregate = new Counter(Guid.NewGuid());
@@ -177,12 +213,11 @@ public sealed class AggregateRepositoryTests
             new EventStoreOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
-        var registry = new EventRegistry().RegisterEvent<Incremented>();
+        var registry = new EventRegistry().RegisterAggregate<Counter>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
         var logs = new RecordingLogger<AggregateRepository<Counter, Guid>>();
-        var snapshotType = typeof(CounterSnapshot);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
             id => new Counter(id),
@@ -190,7 +225,7 @@ public sealed class AggregateRepositoryTests
             id => id.ToString("D"),
             new TestTenantAccessor("tenant-a"),
             snapshots,
-            snapshotType,
+            AggregateSnapshotDispatcher.Create<Counter, Guid, CounterSnapshot>(null),
             logger: logs);
         var aggregate = new Counter(Guid.NewGuid());
         aggregate.Increment(5);
@@ -223,12 +258,11 @@ public sealed class AggregateRepositoryTests
             new EventStoreOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
-        var registry = new EventRegistry().RegisterEvent<Incremented>();
+        var registry = new EventRegistry().RegisterAggregate<Counter>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var snapshots = new SnapshotStore(context, TimeProvider.System);
         var logs = new RecordingLogger<AggregateRepository<Counter, Guid>>();
-        var snapshotType = typeof(CounterSnapshot);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
             id => new Counter(id),
@@ -236,7 +270,7 @@ public sealed class AggregateRepositoryTests
             id => id.ToString("D"),
             new TestTenantAccessor("tenant-a"),
             snapshots,
-            snapshotType,
+            AggregateSnapshotDispatcher.Create<Counter, Guid, CounterSnapshot>(null),
             snapshotInvalidator: new AlwaysInvalidateSnapshots(),
             logger: logs);
         var aggregate = new Counter(Guid.NewGuid());
@@ -338,10 +372,9 @@ public sealed class AggregateRepositoryTests
             new EventStoreOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
-        var registry = new EventRegistry().RegisterEvent<Incremented>();
+        var registry = new EventRegistry().RegisterAggregate<Counter>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
-        var snapshotType = typeof(CounterSnapshot);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
             id => new Counter(id),
@@ -349,7 +382,7 @@ public sealed class AggregateRepositoryTests
             id => id.ToString("D"),
             new TestTenantAccessor("tenant-a"),
             new SnapshotStore(context, TimeProvider.System),
-            snapshotType,
+            AggregateSnapshotDispatcher.Create<Counter, Guid, CounterSnapshot>(null),
             new EveryNEventsSnapshotPolicy(1));
         var aggregate = new Counter(Guid.NewGuid());
         aggregate.Increment(5);
@@ -362,24 +395,28 @@ public sealed class AggregateRepositoryTests
         await Assert.That(aggregate.PendingEvents).IsEmpty();
     }
 
-    [EventType("tests.incremented")]
-    private sealed record Incremented(int Amount) : IDomainEvent<Counter>;
+    private sealed record Incremented(int Amount) : IDomainEvent<Incremented, Counter>
+    {
+        public static string EventType => "tests.incremented";
+    }
 
-    private sealed class Counter(Guid id) : Aggregate<Guid>(id)
+    private sealed class Counter(Guid id) : Aggregate<Counter, Guid>(id), IApply<Incremented>, ISnapshotable<CounterSnapshot>
     {
         public int Value { get; private set; }
 
         public void Increment(int amount) => Raise(new Incremented(amount));
 
-        private void Apply(Incremented @event) => Value += @event.Amount;
+        void IApply<Incremented>.Apply(Incremented @event) => Value += @event.Amount;
 
-        private CounterSnapshot CreateSnapshot() => new(Value);
+        CounterSnapshot ISnapshotable<CounterSnapshot>.CreateSnapshot() => new(Value);
 
-        private void RestoreSnapshot(CounterSnapshot snapshot) => Value = snapshot.Value;
+        void ISnapshotable<CounterSnapshot>.RestoreSnapshot(CounterSnapshot snapshot) => Value = snapshot.Value;
     }
 
-    [SnapshotType("tests.counter", Version = 1)]
-    private sealed record CounterSnapshot(int Value) : IAggregateSnapshot<Counter>;
+    private sealed record CounterSnapshot(int Value) : IAggregateSnapshot<CounterSnapshot, Counter>
+    {
+        public static string SnapshotType => "tests.counter";
+    }
 
     private sealed class TestTenantAccessor(string tenant) : ITenantAccessor
     {

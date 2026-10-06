@@ -21,7 +21,6 @@ using EventLoom.Hosting;
 builder.Services
     .AddEventLoom()
     .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
-    .AddEvent<OrderPlaced>()
     .AddAggregate<Order, Guid>(aggregate => aggregate
         .ConstructWith(id => new Order(id))
         .UseStream("order", id => id.ToString("D")));
@@ -50,7 +49,9 @@ using EventLoom.EntityFrameworkCore.Sqlite;
 builder.Services
     .AddEventLoom()
     .UseSqlite("Data Source=eventloom.db")
-    .AddEvent<OrderPlaced>();
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D")));
 ```
 
 `UseSqlite` disables schemas and initializes the SQLite provider from its
@@ -72,7 +73,9 @@ builder.Services
         options.Schema = "events";
         options.TablePrefix = "app_";
     })
-    .AddEvent<OrderPlaced>();
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D")));
 ```
 
 | `EventStoreOptions` property | Default | Notes |

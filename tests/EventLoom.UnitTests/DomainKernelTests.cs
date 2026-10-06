@@ -28,15 +28,6 @@ public sealed class DomainKernelTests
     }
 
     [Test]
-    public async Task Missing_handler_is_reported()
-    {
-        var aggregate = new MissingHandlerAggregate(Guid.NewGuid());
-
-        await Assert.That(() => aggregate.RaiseUnknown(new MissingHandlerEvent()))
-            .Throws<MissingApplyHandlerException>();
-    }
-
-    [Test]
     public async Task Expected_version_semantics_are_explicit()
     {
         await Assert.That(ExpectedVersion.Exact(3).IsMatch(3)).IsTrue();
@@ -71,36 +62,41 @@ public sealed class DomainKernelTests
         var aggregate = new CounterAggregate(Guid.NewGuid());
         aggregate.Increment(1);
 
-        await Assert.That(() => ((IList<Aggregate<Guid>.PendingEvent>)aggregate.PendingEvents).Clear())
+        await Assert.That(() => ((IList<Aggregate<CounterAggregate, Guid>.PendingEvent>)aggregate.PendingEvents).Clear())
             .Throws<NotSupportedException>();
     }
 
     [Test]
-    public async Task Apply_handler_can_be_declared_on_a_base_aggregate()
+    public async Task Generic_base_aggregate_can_share_state_with_a_concrete_owner()
     {
         var aggregate = new DerivedCounterAggregate(Guid.NewGuid());
 
         aggregate.Increment(5);
 
         await Assert.That(aggregate.Value).IsEqualTo(5);
+        await Assert.That(aggregate.Version).IsEqualTo(1);
     }
 
     [Test]
-    public async Task Static_apply_handlers_are_rejected()
+    public async Task Struct_events_are_raised_and_replayed()
     {
-        var aggregate = new StaticHandlerAggregate(Guid.NewGuid());
+        var aggregate = new CounterAggregate(Guid.NewGuid());
 
-        await Assert.That(() => aggregate.RaiseUnknown(new StaticHandlerEvent()))
-            .Throws<InvalidApplyHandlerException>();
+        aggregate.Reset();
+        aggregate.ReplayHistory([new Reset()]);
+
+        await Assert.That(aggregate.Version).IsEqualTo(2);
+        await Assert.That(aggregate.PendingEvents[0].Event).IsEqualTo(new Reset());
     }
 
     [Test]
-    public async Task Aggregate_cannot_raise_an_event_owned_by_another_aggregate()
+    public async Task Replay_rejects_an_event_owned_by_another_aggregate()
     {
         var aggregate = new OtherAggregate(Guid.NewGuid());
 
-        await Assert.That(() => aggregate.RaiseForeign(new Incremented(1)))
+        await Assert.That(() => aggregate.ReplayHistory([new Incremented(1)]))
             .Throws<EventOwnershipException>();
+        await Assert.That(aggregate.Version).IsEqualTo(0);
     }
 
     [Test]
@@ -111,15 +107,40 @@ public sealed class DomainKernelTests
 
         await Assert.That(aggregate.Value).IsEqualTo(100);
         await Assert.That(aggregate.Version).IsEqualTo(100);
-        await Assert.That(() => aggregate.ReplayHistory([new MissingHandlerEvent()]))
+        await Assert.That(() => aggregate.ReplayHistory([new OtherHappened()]))
+            .Throws<EventOwnershipException>();
+        await Assert.That(() => aggregate.ReplayHistory(["not an event"]))
             .Throws<EventOwnershipException>();
     }
 
     [Test]
-    public async Task Event_type_requires_a_positive_version()
+    public async Task Aggregate_must_pass_itself_as_self_type()
     {
-        await Assert.That(() => new EventTypeAttribute("invalid") { Version = 0 })
-            .Throws<ArgumentOutOfRangeException>();
+        await Assert.That(() => new MisdeclaredAggregate(Guid.NewGuid()))
+            .Throws<InvalidAggregateTypeException>();
+    }
+
+    [Test]
+    public async Task Raise_from_an_apply_handler_is_rejected_without_changing_state()
+    {
+        var aggregate = new ReentrantAggregate(Guid.NewGuid());
+
+        await Assert.That(() => aggregate.Start()).Throws<NestedRaiseException>();
+        await Assert.That(aggregate.Version).IsEqualTo(0);
+        await Assert.That(aggregate.PendingEvents).IsEmpty();
+
+        aggregate.Finish();
+        await Assert.That(aggregate.Version).IsEqualTo(1);
+    }
+
+    [Test]
+    public async Task Aggregate_reports_whether_it_is_pristine()
+    {
+        var aggregate = new CounterAggregate(Guid.NewGuid());
+        await Assert.That(aggregate.IsPristine).IsTrue();
+
+        aggregate.Increment(1);
+        await Assert.That(aggregate.IsPristine).IsFalse();
     }
 
     [Test]
@@ -134,58 +155,91 @@ public sealed class DomainKernelTests
         await Assert.That(generator.Create()).IsEqualTo(id);
     }
 
-    [EventType("counter.incremented")]
-    private sealed record Incremented(int Amount) : IDomainEvent<CounterAggregate>;
+    private sealed record Incremented(int Amount) : IDomainEvent<Incremented, CounterAggregate>
+    {
+        public static string EventType => "counter.incremented";
+    }
 
-    [EventType("counter.derived-incremented")]
-    private sealed record DerivedIncremented(int Amount) : IDomainEvent<BaseCounterAggregate>;
+    private readonly record struct Reset : IDomainEvent<Reset, CounterAggregate>
+    {
+        public static string EventType => "counter.reset";
+    }
 
-    [EventType("counter.missing-handler")]
-    private sealed record MissingHandlerEvent : IDomainEvent<MissingHandlerAggregate>;
+    private sealed record DerivedIncremented(int Amount) : IDomainEvent<DerivedIncremented, DerivedCounterAggregate>
+    {
+        public static string EventType => "counter.derived-incremented";
+    }
 
-    [EventType("counter.static-handler")]
-    private sealed record StaticHandlerEvent : IDomainEvent<StaticHandlerAggregate>;
+    private sealed record OtherHappened : IDomainEvent<OtherHappened, OtherAggregate>
+    {
+        public static string EventType => "counter.other-happened";
+    }
 
-    private sealed class CounterAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed record Started : IDomainEvent<Started, ReentrantAggregate>
+    {
+        public static string EventType => "counter.started";
+    }
+
+    private sealed record Finished : IDomainEvent<Finished, ReentrantAggregate>
+    {
+        public static string EventType => "counter.finished";
+    }
+
+    private sealed class CounterAggregate(Guid id) : Aggregate<CounterAggregate, Guid>(id),
+        IApply<Incremented>,
+        IApply<Reset>
     {
         public int Value { get; private set; }
 
         public void Increment(int amount) => Raise(new Incremented(amount));
 
+        public void Reset() => Raise(new Reset());
+
         public void ReplayHistory(IEnumerable<object> history) => Replay(history);
 
-        private void Apply(Incremented @event) => Value += @event.Amount;
+        void IApply<Incremented>.Apply(Incremented @event) => Value += @event.Amount;
+
+        void IApply<Reset>.Apply(Reset @event) => Value = 0;
     }
 
-    private sealed class MissingHandlerAggregate(Guid id) : Aggregate<Guid>(id)
+    private abstract class BaseCounterAggregate<TSelf>(Guid id) : Aggregate<TSelf, Guid>(id)
+        where TSelf : BaseCounterAggregate<TSelf>
     {
-        public void RaiseUnknown(MissingHandlerEvent @event) => Raise(@event);
+        public int Value { get; protected set; }
     }
 
-    private abstract class BaseCounterAggregate(Guid id) : Aggregate<Guid>(id)
-    {
-        public int Value { get; private set; }
-
-        protected void Apply(DerivedIncremented @event) => Value += @event.Amount;
-    }
-
-    private sealed class DerivedCounterAggregate(Guid id) : BaseCounterAggregate(id)
+    private sealed class DerivedCounterAggregate(Guid id) : BaseCounterAggregate<DerivedCounterAggregate>(id),
+        IApply<DerivedIncremented>
     {
         public void Increment(int amount) => Raise(new DerivedIncremented(amount));
+
+        void IApply<DerivedIncremented>.Apply(DerivedIncremented @event) => Value += @event.Amount;
     }
 
-    private sealed class StaticHandlerAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed class OtherAggregate(Guid id) : Aggregate<OtherAggregate, Guid>(id), IApply<OtherHappened>
     {
-        public void RaiseUnknown(StaticHandlerEvent @event) => Raise(@event);
+        public void ReplayHistory(IEnumerable<object> history) => Replay(history);
 
-        private static void Apply(StaticHandlerEvent @event)
+        void IApply<OtherHappened>.Apply(OtherHappened @event)
         {
         }
     }
 
-    private sealed class OtherAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed class MisdeclaredAggregate(Guid id) : Aggregate<CounterAggregate, Guid>(id);
+
+    private sealed class ReentrantAggregate(Guid id) : Aggregate<ReentrantAggregate, Guid>(id),
+        IApply<Started>,
+        IApply<Finished>
     {
-        public void RaiseForeign(Incremented @event) => Raise(@event);
+        public void Start() => Raise(new Started());
+
+        public void Finish() => Raise(new Finished());
+
+        void IApply<Started>.Apply(Started @event) => Raise(new Finished());
+
+        void IApply<Finished>.Apply(Finished @event)
+        {
+        }
     }
 
     private sealed class FrozenTimeProvider(DateTimeOffset now) : TimeProvider

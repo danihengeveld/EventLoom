@@ -8,7 +8,6 @@ trap 'rm -rf "$temporary_directory"' EXIT
 
 package_ids=(
   EventLoom
-  EventLoom.Analyzers
   EventLoom.AspNetCore
   EventLoom.EntityFrameworkCore
   EventLoom.EntityFrameworkCore.PostgreSql
@@ -28,9 +27,7 @@ for extension in nupkg; do
 done
 
 for package_id in "${package_ids[@]}"; do
-  if [[ "$package_id" != 'EventLoom.Analyzers' ]]; then
-    printf '%s.%s.snupkg\n' "$package_id" "$version"
-  fi
+  printf '%s.%s.snupkg\n' "$package_id" "$version"
 done | sort > "$temporary_directory/expected-snupkg.txt"
 find "$package_directory" -maxdepth 1 -name '*.snupkg' -exec basename {} \; \
   | sort > "$temporary_directory/actual-snupkg.txt"
@@ -43,3 +40,10 @@ for package in "$package_directory"/*.nupkg; do
   unzip -p "$package" '*.nuspec' | grep --fixed-strings '<icon>eventloom-icon.png</icon>' > /dev/null
   unzip -p "$package" '*.nuspec' | grep --fixed-strings '<repository type="git"' > /dev/null
 done
+
+core_package="$package_directory/EventLoom.$version.nupkg"
+unzip -Z1 "$core_package" | grep --fixed-strings --line-regexp 'analyzers/dotnet/cs/EventLoom.Analyzers.dll' > /dev/null
+if unzip -p "$core_package" '*.nuspec' | grep --fixed-strings 'EventLoom.Analyzers' > /dev/null; then
+  echo 'EventLoom must bundle its analyzer instead of depending on an EventLoom.Analyzers package.' >&2
+  exit 1
+fi

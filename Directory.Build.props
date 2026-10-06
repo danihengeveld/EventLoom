@@ -21,7 +21,6 @@
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore'">true</IsEventLoomPackage>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.Hosting'">true</IsEventLoomPackage>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.AspNetCore'">true</IsEventLoomPackage>
-    <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.Analyzers'">true</IsEventLoomPackage>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.PostgreSql'">true</IsEventLoomPackage>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.Sqlite'">true</IsEventLoomPackage>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.Testing'">true</IsEventLoomPackage>
@@ -53,7 +52,6 @@
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore'">Infrastructure dependency containing EF Core event-store persistence, aggregate repositories, snapshots, projections, and outbox support for EventLoom.</Description>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.Hosting'">Application composition, background-worker, health-check, and OpenTelemetry integration for EventLoom.</Description>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.AspNetCore'">ASP.NET Core endpoint integration for EventLoom health checks.</Description>
-    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.Analyzers'">Roslyn analyzers for EventLoom event contracts.</Description>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.PostgreSql'">PostgreSQL storage provider with distributed append and worker correctness for EventLoom.</Description>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.Sqlite'">SQLite storage provider for local and controlled single-node EventLoom deployments.</Description>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.Testing'">Aggregate scenario testing and a managed SQLite test host for EventLoom.</Description>

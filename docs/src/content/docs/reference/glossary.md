@@ -8,14 +8,14 @@ description: Definitions for the EventLoom domain, persistence, and delivery ter
 | Term | Meaning |
 | --- | --- |
 | **Aggregate** | An application-owned consistency boundary that changes state only by applying domain events. |
-| **Domain event** | An immutable application-owned fact that implements `IDomainEvent<TAggregate>` and has a stable `[EventType]` name and version. |
+| **Domain event** | An immutable application-owned fact that implements `IDomainEvent<TSelf, TAggregate>` and declares a stable `EventType` name and version. |
 | **Event envelope** | The stored event plus persistence metadata: tenant, stream, versions, event ID, occurrence time, and metadata. |
 | **Stream** | The ordered event history for one aggregate identity and aggregate type within a tenant. |
 | **Stream version** | A consecutive number that orders events within one stream and supports optimistic concurrency. |
 | **Expected version** | The stream state an append requires: no stream, an exact version, an existing stream, or any version. |
 | **Append ID** | A caller-owned, tenant-scoped identifier used to safely retry the same command after an ambiguous failure. |
 | **Tenant offset** | A consecutive, committed position that orders all events for one tenant. It is the checkpoint position for asynchronous processing. |
-| **Snapshot** | A versioned aggregate-owned state cache, declared as `IAggregateSnapshot<TAggregate>`, that shortens replay. Event history remains authoritative. |
+| **Snapshot** | A versioned aggregate-owned state cache, declared as `IAggregateSnapshot<TSnapshot, TAggregate>`, that shortens replay. Event history remains authoritative. |
 
 ## Processing and delivery
 

@@ -131,7 +131,7 @@ public sealed class UnitOfWorkTests
     private static EventStore CreateEventStore(EventStoreDbContext context) =>
         new(
             context,
-            new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
+            new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
             TimeProvider.System,
             context.Configuration);
@@ -155,12 +155,14 @@ public sealed class UnitOfWorkTests
         await command.ExecuteNonQueryAsync();
     }
 
-    [EventType("tests.unit-of-work-item-added")]
-    private sealed record ItemAdded(int Quantity) : IDomainEvent<TestAggregate>;
-
-    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed record ItemAdded(int Quantity) : IDomainEvent<ItemAdded, TestAggregate>
     {
-        private void Apply(ItemAdded @event)
+        public static string EventType => "tests.unit-of-work-item-added";
+    }
+
+    private sealed class TestAggregate(Guid id) : Aggregate<TestAggregate, Guid>(id), IApply<ItemAdded>
+    {
+        void IApply<ItemAdded>.Apply(ItemAdded @event)
         {
         }
     }

@@ -1,9 +1,11 @@
 namespace EventLoom.Benchmarks;
 
-[EventType("benchmarks.counter-incremented", Version = 1)]
-public sealed record CounterIncremented(int Amount, string Data) : IDomainEvent<BenchmarkCounter>;
+public sealed record CounterIncremented(int Amount, string Data) : IDomainEvent<CounterIncremented, BenchmarkCounter>
+{
+    public static string EventType => "benchmarks.counter-incremented";
+}
 
-public sealed class BenchmarkCounter(Guid id) : Aggregate<Guid>(id)
+public sealed class BenchmarkCounter(Guid id) : Aggregate<BenchmarkCounter, Guid>(id), IApply<CounterIncremented>, ISnapshotable<CounterSnapshot>
 {
     public int Value { get; private set; }
 
@@ -11,12 +13,14 @@ public sealed class BenchmarkCounter(Guid id) : Aggregate<Guid>(id)
 
     public void ReplayEvents(IEnumerable<object> events) => Replay(events);
 
-    private void Apply(CounterIncremented @event) => Value += @event.Amount;
+    void IApply<CounterIncremented>.Apply(CounterIncremented @event) => Value += @event.Amount;
 
-    private CounterSnapshot CaptureSnapshot() => new(Value);
+    CounterSnapshot ISnapshotable<CounterSnapshot>.CreateSnapshot() => new(Value);
 
-    private void RestoreSnapshot(CounterSnapshot snapshot) => Value = snapshot.Value;
+    void ISnapshotable<CounterSnapshot>.RestoreSnapshot(CounterSnapshot snapshot) => Value = snapshot.Value;
 }
 
-[SnapshotType("benchmarks.counter")]
-public sealed record CounterSnapshot(int Value) : IAggregateSnapshot<BenchmarkCounter>;
+public sealed record CounterSnapshot(int Value) : IAggregateSnapshot<CounterSnapshot, BenchmarkCounter>
+{
+    public static string SnapshotType => "benchmarks.counter";
+}

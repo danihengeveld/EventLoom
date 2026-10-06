@@ -20,7 +20,9 @@ using EventLoom.Hosting;
 builder.Services
     .AddEventLoom()
     .UsePostgreSql(connectionString)
-    .AddEvent<OrderPlaced>();
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D")));
 builder.Services.AddEventLoomHealthChecks();
 
 var app = builder.Build();

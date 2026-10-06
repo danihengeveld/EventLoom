@@ -7,7 +7,7 @@ public sealed class PublicApiSurfaceTests
     [Test]
     public async Task Aggregate_persistence_bookkeeping_is_not_public()
     {
-        var publicMembers = typeof(Aggregate<Guid>)
+        var publicMembers = typeof(Aggregate<SurfaceAggregate, Guid>)
             .GetMembers(BindingFlags.Instance | BindingFlags.Public)
             .Select(member => member.Name)
             .ToArray();
@@ -36,10 +36,14 @@ public sealed class PublicApiSurfaceTests
                      "EventLoom.StringIdConverter",
                      "EventLoom.GuidIdConverter",
                      "EventLoom.TimeProviderClock",
-                     "EventLoom.TenancyMode"
+                     "EventLoom.TenancyMode",
+                     "EventLoom.IAggregateSnapshotDispatcher`1",
+                     "EventLoom.AggregateSnapshotDispatcher"
                  })
         {
             await Assert.That(exportedTypeNames.Contains(typeName)).IsFalse();
         }
     }
+
+    private sealed class SurfaceAggregate(Guid id) : Aggregate<SurfaceAggregate, Guid>(id);
 }

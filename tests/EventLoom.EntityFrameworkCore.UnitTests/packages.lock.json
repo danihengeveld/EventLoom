@@ -332,6 +332,17 @@
           "OpenTelemetry": "[1.19.1, )"
         }
       },
+      "eventloom.testing": {
+        "type": "Project",
+        "dependencies": {
+          "EventLoom": "[0.1.0-alpha.0, )",
+          "EventLoom.EntityFrameworkCore.Sqlite": "[0.1.0-alpha.0, )",
+          "EventLoom.Hosting": "[0.1.0-alpha.0, )",
+          "Microsoft.Data.Sqlite.Core": "[10.0.12, )",
+          "Microsoft.Extensions.DependencyInjection": "[10.0.12, )",
+          "SQLitePCLRaw.bundle_e_sqlite3": "[3.0.5, )"
+        }
+      },
       "Microsoft.Data.Sqlite.Core": {
         "type": "CentralTransitive",
         "requested": "[10.0.12, )",

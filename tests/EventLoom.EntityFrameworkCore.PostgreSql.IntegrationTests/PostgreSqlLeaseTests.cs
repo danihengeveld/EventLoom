@@ -20,7 +20,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
 
         var store = new EventStore(
             context,
-            new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
+            new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var first = (await store.AppendAsync(new AppendRequest(
@@ -80,7 +80,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
         await using var context = database.CreateContext();
         var eventStore = new EventStore(
             context,
-            new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
+            new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var envelope = (await eventStore.AppendAsync(new AppendRequest(
@@ -124,7 +124,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
         var clock = new AdjustableTimeProvider();
         var eventStore = new EventStore(
             firstContext,
-            new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
+            new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
             clock);
         var envelope = (await eventStore.AppendAsync(new AppendRequest(
@@ -183,7 +183,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
         await using var context = database.CreateContext();
         var eventStore = new EventStore(
             context,
-            new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
+            new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
             TimeProvider.System,
             options);
@@ -227,7 +227,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
         await using var context = database.CreateContext();
         var eventStore = new EventStore(
             context,
-            new EventSerializer(new EventRegistry().RegisterEvent<ItemAdded>()),
+            new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
             TimeProvider.System,
             options);
@@ -254,12 +254,14 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
         await Assert.That(await outbox.ReadAttemptsAsync("tenant-a", eventId)).IsEmpty();
     }
 
-    [EventType("tests.projection-item-added")]
-    private sealed record ItemAdded : IDomainEvent<TestAggregate>;
-
-    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed record ItemAdded : IDomainEvent<ItemAdded, TestAggregate>
     {
-        private void Apply(ItemAdded @event)
+        public static string EventType => "tests.projection-item-added";
+    }
+
+    private sealed class TestAggregate(Guid id) : Aggregate<TestAggregate, Guid>(id), IApply<ItemAdded>
+    {
+        void IApply<ItemAdded>.Apply(ItemAdded @event)
         {
         }
     }

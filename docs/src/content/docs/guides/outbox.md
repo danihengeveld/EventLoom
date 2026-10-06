@@ -13,7 +13,9 @@ those messages:
 builder.Services
     .AddEventLoom()
     .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
-    .AddEvent<OrderPlaced>()
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D")))
     .AddOutboxPublisher<OrderIntegrationPublisher>();
 ```
 
@@ -44,7 +46,9 @@ one cohesive options callback:
 builder.Services
     .AddEventLoom()
     .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
-    .AddEvent<OrderPlaced>()
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D")))
     .AddOutboxPublisher<OrderIntegrationPublisher>(options =>
     {
         options.SuccessfulDeliveryRetention = TimeSpan.FromDays(7);
@@ -119,7 +123,9 @@ builder.Services.AddDbContext<OrderDbContext>((services, options) =>
 builder.Services
     .AddEventLoom()
     .UsePostgreSql(services => services.GetRequiredService<DbConnection>())
-    .AddEvent<OrderPlaced>();
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D")));
 ```
 
 Then use `EventStore.BeginUnitOfWorkAsync` to coordinate the append and the

@@ -2,7 +2,7 @@ namespace EventLoom.Hosting;
 
 /// <summary>Configures persistence for one aggregate type.</summary>
 public sealed class AggregateRegistrationBuilder<TAggregate, TId>
-    where TAggregate : Aggregate<TId>
+    where TAggregate : Aggregate<TAggregate, TId>
 {
     private Func<TId, TAggregate>? factory;
     private string? aggregateType;
@@ -27,8 +27,14 @@ public sealed class AggregateRegistrationBuilder<TAggregate, TId>
         return this;
     }
 
-    /// <summary>Enables snapshots for the aggregate.</summary>
-    /// <summary>Configures snapshot behavior for the aggregate's snapshot contract.</summary>
+    /// <summary>Enables snapshots for the aggregate using one of its snapshot contracts.</summary>
+    /// <remarks>
+    /// <typeparamref name="TSnapshot"/> must implement <see cref="IAggregateSnapshot{TSelf, TAggregate}"/> for this
+    /// aggregate, which also requires the aggregate to implement <see cref="ISnapshotable{TSnapshot}"/>.
+    /// </remarks>
+    /// <typeparam name="TSnapshot">The snapshot DTO type.</typeparam>
+    /// <param name="configure">Configures snapshot cadence, retention, invalidation, and upcasters.</param>
+    /// <returns>This builder.</returns>
     public AggregateRegistrationBuilder<TAggregate, TId> UseSnapshots<TSnapshot>(
         Action<AggregateSnapshotBuilder<TAggregate, TSnapshot>> configure)
         where TSnapshot : IAggregateSnapshot<TAggregate>
@@ -36,9 +42,17 @@ public sealed class AggregateRegistrationBuilder<TAggregate, TId>
         ArgumentNullException.ThrowIfNull(configure);
         var builder = new AggregateSnapshotBuilder<TAggregate, TSnapshot>();
         configure(builder);
-        snapshotConfiguration = builder.Build();
+        snapshotConfiguration = builder.Build(
+            static upcasters => AggregateSnapshotDispatcher.Create<TAggregate, TId, TSnapshot>(upcasters));
         return this;
     }
+
+    /// <summary>Enables snapshots for the aggregate using default snapshot settings.</summary>
+    /// <typeparam name="TSnapshot">The snapshot DTO type.</typeparam>
+    /// <returns>This builder.</returns>
+    public AggregateRegistrationBuilder<TAggregate, TId> UseSnapshots<TSnapshot>()
+        where TSnapshot : IAggregateSnapshot<TAggregate> =>
+        UseSnapshots<TSnapshot>(static _ => { });
 
     internal AggregateRegistration<TAggregate, TId> Build()
     {
@@ -67,4 +81,4 @@ internal sealed record AggregateRegistration<TAggregate, TId>(
     string AggregateType,
     Func<TId, string> StreamId,
     AggregateSnapshotConfiguration<TAggregate>? SnapshotConfiguration)
-    where TAggregate : Aggregate<TId>;
+    where TAggregate : Aggregate<TAggregate, TId>;

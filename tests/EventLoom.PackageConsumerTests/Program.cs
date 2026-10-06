@@ -13,7 +13,7 @@ try
         .AddEventLoom()
         .UseSqlite($"Data Source={databasePath}")
         .UseSingleTenancy("consumer")
-        .AddEvent<ItemAdded>();
+        .AddAggregateEvents<Cart>();
 
     await using var provider = services.BuildServiceProvider();
     await using var scope = provider.CreateAsyncScope();
@@ -43,10 +43,14 @@ finally
     File.Delete($"{databasePath}-wal");
 }
 
-[EventType("package-consumer.item-added", Version = 1)]
-internal sealed record ItemAdded(string Sku) : IDomainEvent<Cart>;
-
-internal sealed class Cart(string id) : Aggregate<string>(id)
+internal sealed record ItemAdded(string Sku) : IDomainEvent<ItemAdded, Cart>
 {
-    private void Apply(ItemAdded @event) { }
+    public static string EventType => "package-consumer.item-added";
+}
+
+internal sealed class Cart(string id) : Aggregate<Cart, string>(id), IApply<ItemAdded>
+{
+    void IApply<ItemAdded>.Apply(ItemAdded @event)
+    {
+    }
 }

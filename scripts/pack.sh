@@ -9,7 +9,6 @@ find "$output_directory" -maxdepth 1 -type f \( -name '*.nupkg' -o -name '*.snup
 
 projects=(
   src/EventLoom/EventLoom.csproj
-  src/EventLoom.Analyzers/EventLoom.Analyzers.csproj
   src/EventLoom.AspNetCore/EventLoom.AspNetCore.csproj
   src/EventLoom.EntityFrameworkCore/EventLoom.EntityFrameworkCore.csproj
   src/EventLoom.EntityFrameworkCore.PostgreSql/EventLoom.EntityFrameworkCore.PostgreSql.csproj

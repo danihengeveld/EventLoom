@@ -8,7 +8,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddEventLoom()
     .UseSqlite(builder.Configuration.GetConnectionString("EventStore") ?? "Data Source=eventloom.db")
-    .AddEvent<CounterIncremented>()
     .AddAggregate<Counter, Guid>(aggregate => aggregate
         .ConstructWith(id => new Counter(id))
         .UseStream("counter", id => id.ToString("D")));
@@ -32,14 +31,16 @@ app.MapPost("/counters/{id:guid}/increment", async (
 });
 app.Run();
 
-[EventType("counter.incremented")]
-public sealed record CounterIncremented : IDomainEvent<Counter>;
+public sealed record CounterIncremented : IDomainEvent<CounterIncremented, Counter>
+{
+    public static string EventType => "counter.incremented";
+}
 
-public sealed class Counter(Guid id) : Aggregate<Guid>(id)
+public sealed class Counter(Guid id) : Aggregate<Counter, Guid>(id), IApply<CounterIncremented>
 {
     public int Value { get; private set; }
 
     public void Increment() => Raise(new CounterIncremented());
 
-    private void Apply(CounterIncremented _) => Value++;
+    void IApply<CounterIncremented>.Apply(CounterIncremented _) => Value++;
 }

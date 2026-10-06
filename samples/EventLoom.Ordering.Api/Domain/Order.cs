@@ -1,20 +1,33 @@
 namespace EventLoom.Ordering.Api.Domain;
 
-[EventType("ordering.order-placed", Version = 1)]
-internal sealed record OrderPlaced(string Sku, int Quantity) : IDomainEvent<Order>;
+internal sealed record OrderPlaced(string Sku, int Quantity) : IDomainEvent<OrderPlaced, Order>
+{
+    public static string EventType => "ordering.order-placed";
+}
 
-[EventType("ordering.order-item-added", Version = 1)]
-internal sealed record OrderItemAdded(string Sku, int Quantity) : IDomainEvent<Order>;
+internal sealed record OrderItemAdded(string Sku, int Quantity) : IDomainEvent<OrderItemAdded, Order>
+{
+    public static string EventType => "ordering.order-item-added";
+}
 
-[EventType("ordering.order-cancelled", Version = 1)]
-internal sealed record OrderCancelled(string Reason) : IDomainEvent<Order>;
+internal sealed record OrderCancelled(string Reason) : IDomainEvent<OrderCancelled, Order>
+{
+    public static string EventType => "ordering.order-cancelled";
+}
 
 internal sealed record OrderItem(string Sku, int Quantity);
 
-[SnapshotType("ordering.order", Version = 1)]
-internal sealed record OrderSnapshot(string Status, IReadOnlyList<OrderItem> Items) : IAggregateSnapshot<Order>;
+internal sealed record OrderSnapshot(string Status, IReadOnlyList<OrderItem> Items)
+    : IAggregateSnapshot<OrderSnapshot, Order>
+{
+    public static string SnapshotType => "ordering.order";
+}
 
-internal sealed class Order(Guid id) : Aggregate<Guid>(id)
+internal sealed class Order(Guid id) : Aggregate<Order, Guid>(id),
+    IApply<OrderPlaced>,
+    IApply<OrderItemAdded>,
+    IApply<OrderCancelled>,
+    ISnapshotable<OrderSnapshot>
 {
     private readonly List<OrderItem> _items = [];
 
@@ -46,9 +59,9 @@ internal sealed class Order(Guid id) : Aggregate<Guid>(id)
         Raise(new OrderCancelled(reason));
     }
 
-    private OrderSnapshot CreateSnapshot() => new(Status, Items.ToArray());
+    OrderSnapshot ISnapshotable<OrderSnapshot>.CreateSnapshot() => new(Status, Items.ToArray());
 
-    private void RestoreSnapshot(OrderSnapshot snapshot)
+    void ISnapshotable<OrderSnapshot>.RestoreSnapshot(OrderSnapshot snapshot)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         _items.Clear();
@@ -56,15 +69,15 @@ internal sealed class Order(Guid id) : Aggregate<Guid>(id)
         Status = snapshot.Status;
     }
 
-    private void Apply(OrderPlaced @event)
+    void IApply<OrderPlaced>.Apply(OrderPlaced @event)
     {
         _items.Add(new OrderItem(@event.Sku, @event.Quantity));
         Status = "placed";
     }
 
-    private void Apply(OrderItemAdded @event) => _items.Add(new OrderItem(@event.Sku, @event.Quantity));
+    void IApply<OrderItemAdded>.Apply(OrderItemAdded @event) => _items.Add(new OrderItem(@event.Sku, @event.Quantity));
 
-    private void Apply(OrderCancelled @event) => Status = "cancelled";
+    void IApply<OrderCancelled>.Apply(OrderCancelled @event) => Status = "cancelled";
 
     private void EnsureActive()
     {

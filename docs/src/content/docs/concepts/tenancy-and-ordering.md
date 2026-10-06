@@ -32,7 +32,9 @@ tenant:
 services.AddEventLoom(eventLoom => eventLoom
     .UseMultiTenancy<AuthenticatedTenantAccessor>()
     .UsePostgreSql(connectionString)
-    .AddEvent<OrderPlaced>());
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D"))));
 ```
 
 In multi-tenant mode, EventLoom rejects missing scoped tenants and explicit

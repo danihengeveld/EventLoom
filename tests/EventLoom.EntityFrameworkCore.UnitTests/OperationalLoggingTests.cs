@@ -47,7 +47,7 @@ public sealed class OperationalLoggingTests
             new EventStoreOptions());
         var store = new EventStore(
             context,
-            new EventSerializer(new EventRegistry().RegisterEvent<Added>()),
+            new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
             TimeProvider.System,
             null, null, new FailingRetryPolicy(), null, logger);
@@ -79,7 +79,7 @@ public sealed class OperationalLoggingTests
         await context.Database.EnsureCreatedAsync();
         var store = new EventStore(
             context,
-            new EventSerializer(new EventRegistry().RegisterEvent<Added>()),
+            new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
             TimeProvider.System,
             null, null, null, null, logger);
@@ -105,7 +105,7 @@ public sealed class OperationalLoggingTests
         var services = new ServiceCollection();
         services.AddLogging(builder => builder.AddProvider(new CaptureProvider(logs)));
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<Added>()
+            .AddAggregateEvents<TestAggregate>()
             .UseSingleTenancy("tenant-private")
             .UseSqlite("Data Source=:memory:"));
         services.AddScoped<IEventStoreRetryPolicy>(_ => new FailingRetryPolicy());
@@ -135,7 +135,7 @@ public sealed class OperationalLoggingTests
             builder.AddFilter("EventLoom", LogLevel.Critical);
         });
         services.AddEventLoom(eventLoom => eventLoom
-            .AddEvent<Added>()
+            .AddAggregateEvents<TestAggregate>()
             .UseSingleTenancy("tenant-private")
             .UseSqlite("Data Source=:memory:"));
         services.AddScoped<IEventStoreRetryPolicy>(_ => new FailingRetryPolicy());
@@ -151,12 +151,14 @@ public sealed class OperationalLoggingTests
         await Assert.That(logs.Entries).IsEmpty();
     }
 
-    [EventType("tests.operational-log-added")]
-    private sealed record Added : IDomainEvent<TestAggregate>;
-
-    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed record Added : IDomainEvent<Added, TestAggregate>
     {
-        private void Apply(Added @event)
+        public static string EventType => "tests.operational-log-added";
+    }
+
+    private sealed class TestAggregate(Guid id) : Aggregate<TestAggregate, Guid>(id), IApply<Added>
+    {
+        void IApply<Added>.Apply(Added @event)
         {
         }
     }

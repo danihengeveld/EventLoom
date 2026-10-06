@@ -6,7 +6,7 @@ namespace EventLoom.EntityFrameworkCore;
 
 /// <summary>Loads and saves aggregates through the EventLoom event store.</summary>
 public sealed class AggregateRepository<TAggregate, TId>
-    where TAggregate : Aggregate<TId>
+    where TAggregate : Aggregate<TAggregate, TId>
 {
     private readonly EventStore store;
     private readonly Func<TId, TAggregate> factory;
@@ -16,7 +16,7 @@ public sealed class AggregateRepository<TAggregate, TId>
     private readonly Func<TId, string>? streamId;
     private readonly ITenantAccessor? tenantAccessor;
     private readonly SnapshotStore? snapshotStore;
-    private readonly AggregateSnapshotDispatcher<TAggregate>? snapshotDispatcher;
+    private readonly IAggregateSnapshotDispatcher<TAggregate>? snapshotDispatcher;
     private readonly ISnapshotPolicy? snapshotPolicy;
     private readonly ISnapshotInvalidator? snapshotInvalidator;
     private readonly ISnapshotRetentionPolicy? snapshotRetentionPolicy;
@@ -46,11 +46,10 @@ public sealed class AggregateRepository<TAggregate, TId>
         Func<TId, string> streamId,
         ITenantAccessor? tenantAccessor = null,
         SnapshotStore? snapshotStore = null,
-        Type? snapshotType = null,
+        IAggregateSnapshotDispatcher<TAggregate>? snapshotDispatcher = null,
         ISnapshotPolicy? snapshotPolicy = null,
         ISnapshotInvalidator? snapshotInvalidator = null,
         ISnapshotRetentionPolicy? snapshotRetentionPolicy = null,
-        IEnumerable<ISnapshotUpcaster>? snapshotUpcasters = null,
         ILogger<AggregateRepository<TAggregate, TId>>? logger = null)
         : this(
             store,
@@ -62,17 +61,15 @@ public sealed class AggregateRepository<TAggregate, TId>
         this.aggregateType = aggregateType;
         this.streamId = streamId ?? throw new ArgumentNullException(nameof(streamId));
         this.tenantAccessor = tenantAccessor;
-        if (snapshotType is not null && snapshotStore is null)
+        if (snapshotDispatcher is not null && snapshotStore is null)
         {
             throw new ArgumentException("A snapshot store is required when a snapshot type is configured.",
                 nameof(snapshotStore));
         }
 
         this.snapshotStore = snapshotStore;
-        snapshotDispatcher = snapshotType is null
-            ? null
-            : new AggregateSnapshotDispatcher<TAggregate>(snapshotType, snapshotUpcasters);
-        this.snapshotPolicy = snapshotDispatcher is null
+        this.snapshotDispatcher = snapshotDispatcher;
+        this.snapshotPolicy = this.snapshotDispatcher is null
             ? null
             : snapshotPolicy ?? new EveryNEventsSnapshotPolicy(100);
         this.snapshotInvalidator = snapshotInvalidator;
@@ -94,7 +91,7 @@ public sealed class AggregateRepository<TAggregate, TId>
         TId id,
         CancellationToken cancellationToken)
     {
-        var aggregate = factory(id);
+        var aggregate = CreateAggregate(id);
         using var activity = EventLoomTelemetry.ActivitySource.StartActivity(
             "eventloom.aggregate.load",
             ActivityKind.Client);
@@ -135,7 +132,7 @@ public sealed class AggregateRepository<TAggregate, TId>
     {
         EnsureConfigured();
         var tenantId = ResolveTenant();
-        var aggregate = factory(id);
+        var aggregate = CreateAggregate(id);
         using var activity = EventLoomTelemetry.ActivitySource.StartActivity(
             "eventloom.aggregate.load",
             ActivityKind.Client);
@@ -163,25 +160,28 @@ public sealed class AggregateRepository<TAggregate, TId>
             {
                 try
                 {
-                    snapshotDispatcher.Restore(aggregate, snapshot.SchemaVersion, snapshot.Payload);
-                    aggregate.RestoreSnapshotVersion(snapshot.StreamVersion);
+                    snapshotDispatcher.Restore(
+                        aggregate,
+                        snapshot.SchemaVersion,
+                        snapshot.Payload,
+                        snapshot.StreamVersion);
                     fromVersion = snapshot.StreamVersion + 1;
                     snapshotUsed = true;
                 }
                 catch (SnapshotDeserializationException)
                 {
                     await LogSnapshotFallbackAsync(snapshot, SnapshotInvalidationReason.Corrupt, cancellationToken);
-                    aggregate = factory(id);
+                    aggregate = CreateAggregate(id);
                 }
                 catch (SnapshotIncompatibleException)
                 {
                     await LogSnapshotFallbackAsync(snapshot, SnapshotInvalidationReason.Incompatible, cancellationToken);
-                    aggregate = factory(id);
+                    aggregate = CreateAggregate(id);
                 }
                 catch (SnapshotUpcastException)
                 {
                     await LogSnapshotFallbackAsync(snapshot, SnapshotInvalidationReason.UpcastFailed, cancellationToken);
-                    aggregate = factory(id);
+                    aggregate = CreateAggregate(id);
                 }
             }
         }
@@ -347,6 +347,13 @@ public sealed class AggregateRepository<TAggregate, TId>
             TimeProvider.System.GetElapsedTime(startedAt).TotalMilliseconds,
             tags);
         activity?.SetStatus(ActivityStatusCode.Ok);
+    }
+
+    private TAggregate CreateAggregate(TId id)
+    {
+        var aggregate = factory(id) ?? throw new InvalidOperationException(
+            $"The factory for aggregate '{typeof(TAggregate).FullName}' returned null.");
+        return aggregate.IsPristine ? aggregate : throw new AggregateFactoryException(typeof(TAggregate));
     }
 
     private void EnsureConfigured()

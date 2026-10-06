@@ -15,9 +15,9 @@ construction without a logger remains supported and uses a no-op logger.
 Logs omit persisted identifiers, payloads, and exception messages.
 
 Snapshots are aggregate-owned state caches. Declare a snapshot as
-`IAggregateSnapshot<TAggregate>` and configure it with
-`UseSnapshots<TSnapshot>(...)`; the aggregate supplies private
-`CreateSnapshot()` and `RestoreSnapshot(TSnapshot)` methods.
+`IAggregateSnapshot<TSnapshot, TAggregate>`, implement
+`ISnapshotable<TSnapshot>` on the aggregate, and configure it with
+`UseSnapshots<TSnapshot>(...)`.
 
 It is intentionally a dependency package rather than a normal application
 entry point. Install one provider package instead:

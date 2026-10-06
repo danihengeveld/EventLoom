@@ -12,9 +12,6 @@ internal static class OrderingEventLoomBuilderExtensions
         ArgumentNullException.ThrowIfNull(eventLoom);
         return eventLoom
             .UseMultiTenancy<RequestTenantAccessor>()
-            .AddEvent<OrderPlaced>()
-            .AddEvent<OrderItemAdded>()
-            .AddEvent<OrderCancelled>()
             .ConfigureProjectionModel(ConfigureReadModels)
             .AddAggregate<Order, Guid>(aggregate => aggregate
                 .ConstructWith(id => new Order(id))

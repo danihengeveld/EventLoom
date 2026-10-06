@@ -33,7 +33,7 @@ compatibility-sensitive.
 
 ### Product libraries (`src/`)
 
-All projects below are packable NuGet packages.
+All projects below except the analyzer project are packable NuGet packages.
 
 | Project                                    | Responsibility                                                                                                                                                                          |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -44,7 +44,7 @@ All projects below are packable NuGet packages.
 | `EventLoom.Hosting`                        | Dependency injection, aggregate/projection registration, hosted projection and outbox workers, health checks, worker identity, options, and OpenTelemetry wiring.                       |
 | `EventLoom.AspNetCore`                     | ASP.NET Core application and endpoint integration over `EventLoom.Hosting`.                                                                                                             |
 | `EventLoom.Testing`                        | Given/When/Then aggregate scenarios, deterministic IDs/time, and a managed SQLite test host. It intentionally does not provide a managed PostgreSQL host.                               |
-| `EventLoom.Analyzers`                      | Roslyn diagnostics for persisted event contracts. This project targets `netstandard2.0`; do not accidentally move it to the runtime target framework.                                   |
+| `EventLoom.Analyzers`                      | Roslyn diagnostics bundled into the `EventLoom` package, not published separately. This project targets `netstandard2.0`; do not accidentally move it to the runtime target framework. |
 
 Keep the intended dependency direction:
 
@@ -56,7 +56,7 @@ EventLoom
        -> PostgreSql / Sqlite providers
 
 EventLoom.Testing -> EventLoom + Hosting + Sqlite
-EventLoom.Analyzers -> Roslyn only
+EventLoom.Analyzers -> Roslyn only (bundled into EventLoom package)
 ```
 
 Provider-specific behavior belongs in its provider project. ASP.NET-specific
@@ -75,8 +75,8 @@ is `dotnet run --project ...`, not an assumed test-framework command.
 | Project                                                     | Coverage                                                                                                         |
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
 | `EventLoom.UnitTests`                                       | Domain kernel, registry, serialization, and event/snapshot upcasting.                                            |
-| `EventLoom.Analyzers.Tests`                                 | Analyzer diagnostics and accepted event-contract shapes.                                                         |
-| `EventLoom.EntityFrameworkCore.UnitTests`                   | EF model, hosting registration, workers, health checks, tenancy, options, and provider-independent behavior.     |
+| `EventLoom.Analyzers.Tests`                                 | Analyzer diagnostics EL0101–EL0110 and compiler-enforced contract guarantees (CS0311, CS0535, CS0122).          |
+| `EventLoom.EntityFrameworkCore.UnitTests`                   | EF model, hosting registration, workers, health checks, tenancy, options, AggregateScenario testing utilities, and provider-independent behavior. |
 | `EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests`     | Real SQLite append/read, repositories, transactions, projections, outbox, and leases.                            |
 | `EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests` | Real PostgreSQL behavior, concurrency, ordering, and leases through Testcontainers. Docker must be available.    |
 | `EventLoom.PackageConsumerTests`                            | Consumer compiled and run against packed NuGet artifacts only. It must remain independent of project references. |
@@ -204,7 +204,7 @@ Use this impact guide:
 | Provider behavior                                                            | Provider tests and provider README; explicitly document differences between PostgreSQL and SQLite.     |
 | Hosting, worker, health, or telemetry behavior                               | Hosting unit tests; configuration/observability/operations docs; sample updates when user-facing.      |
 | ASP.NET Core endpoint or composition API                                     | Hosting/API tests as applicable; ASP.NET package README; quick-start/sample/template updates.          |
-| Analyzer diagnostic                                                          | Positive and negative analyzer tests; analyzer README and event-contract docs.                         |
+| Analyzer diagnostic                                                          | Positive and negative analyzer tests; analyzer README, event-contract docs, and bundled-analyzer packaging expectations. |
 | Testing utility                                                              | Tests for the utility; `EventLoom.Testing` README and testing guide.                                   |
 | Public API or package graph                                                  | Relevant tests, package README, package docs, local pack/consumer validation, and template validation. |
 
@@ -217,8 +217,9 @@ Use this impact guide:
   `PublicAPI.Shipped.txt` and `PublicAPI.Unshipped.txt` entries synchronized
   with intentional API changes. Do not remove or alter shipped signatures
   without an explicitly documented compatibility decision.
-- Every project under `src/` is expected to produce exactly one supported
-  package. Keep package README and icon inclusion intact.
+- Every packable project under `src/` is expected to produce exactly one supported
+  package. `EventLoom.Analyzers` is bundled into `EventLoom` and is not published
+  separately. Keep package README and icon inclusion intact.
 - `EventLoom.PackageConsumerTests` must restore from `artifacts/packages`
   using its `NuGet.Config`; do not add project references as a shortcut.
 - Validate the generated template against locally packed packages after

@@ -33,7 +33,7 @@ public abstract class PostgreSqlBenchmarkBase
         {
             builder.UseSingleTenancy(Tenant)
                 .UsePostgreSql(container.GetConnectionString())
-                .AddEvent<CounterIncremented>()
+                .AddAggregateEvents<BenchmarkCounter>()
                 .AddAggregate<BenchmarkCounter, Guid>(aggregate =>
                 {
                     aggregate.ConstructWith(id => new BenchmarkCounter(id))

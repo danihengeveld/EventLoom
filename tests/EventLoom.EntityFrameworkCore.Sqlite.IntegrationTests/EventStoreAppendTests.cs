@@ -23,7 +23,7 @@ public sealed class EventStoreAppendTests
         await connection.OpenAsync();
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
-        var store = new EventStore(context, new EventSerializer(new EventRegistry().RegisterEvent<Added>()),
+        var store = new EventStore(context, new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(), TimeProvider.System);
 
         await store.AppendAsync(new AppendRequest(
@@ -52,7 +52,7 @@ public sealed class EventStoreAppendTests
         await connection.OpenAsync();
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
-        var registry = new EventRegistry().RegisterEvent<Added>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var store = new EventStore(
             context,
             new EventSerializer(registry),
@@ -85,7 +85,7 @@ public sealed class EventStoreAppendTests
         await context.Database.EnsureCreatedAsync();
         var store = new EventStore(
             context,
-            new EventSerializer(new EventRegistry().RegisterEvent<Added>()),
+            new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
             TimeProvider.System);
         await store.AppendAsync(new AppendRequest(
@@ -105,7 +105,7 @@ public sealed class EventStoreAppendTests
         await connection.OpenAsync();
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
-        var registry = new EventRegistry().RegisterEvent<Added>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         await store.AppendAsync(new AppendRequest(
@@ -124,7 +124,7 @@ public sealed class EventStoreAppendTests
         await connection.OpenAsync();
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
-        var registry = new EventRegistry().RegisterEvent<Added>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var request = new AppendRequest(
@@ -144,7 +144,7 @@ public sealed class EventStoreAppendTests
         await connection.OpenAsync();
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
-        var registry = new EventRegistry().RegisterEvent<Added>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
 
@@ -167,7 +167,7 @@ public sealed class EventStoreAppendTests
         await connection.OpenAsync();
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
-        var registry = new EventRegistry().RegisterEvent<Added>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         await store.AppendAsync(new AppendRequest(
@@ -188,7 +188,7 @@ public sealed class EventStoreAppendTests
         await connection.OpenAsync();
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
-        var registry = new EventRegistry().RegisterEvent<Added>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         await store.AppendAsync(new AppendRequest(
@@ -208,7 +208,7 @@ public sealed class EventStoreAppendTests
         await connection.OpenAsync();
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
-        var registry = new EventRegistry().RegisterEvent<Added>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         await store.AppendAsync(new AppendRequest(
@@ -229,7 +229,7 @@ public sealed class EventStoreAppendTests
         await connection.OpenAsync();
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
-        var registry = new EventRegistry().RegisterEvent<Added>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         using var cancellation = new CancellationTokenSource();
@@ -245,12 +245,14 @@ public sealed class EventStoreAppendTests
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
             new EventStoreOptions { TablePrefix = "test_" });
 
-    [EventType("tests.added")]
-    private sealed record Added(int Amount) : IDomainEvent<TestAggregate>;
-
-    private sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed record Added(int Amount) : IDomainEvent<Added, TestAggregate>
     {
-        private void Apply(Added @event)
+        public static string EventType => "tests.added";
+    }
+
+    private sealed class TestAggregate(Guid id) : Aggregate<TestAggregate, Guid>(id), IApply<Added>
+    {
+        void IApply<Added>.Apply(Added @event)
         {
         }
     }

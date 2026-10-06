@@ -7,7 +7,7 @@ public sealed partial class EventSerializerTests
     [Test]
     public async Task Reflection_serializer_round_trips_registered_event()
     {
-        var registry = new EventRegistry().RegisterEvent<SerializedEvent>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var serializer = new EventSerializer(registry);
 
         var payload = serializer.Serialize(new SerializedEvent("abc", 4));
@@ -17,35 +17,67 @@ public sealed partial class EventSerializerTests
     }
 
     [Test]
-    public async Task Historical_payload_is_upcast_to_current_event_type()
+    public async Task Historical_payload_is_upcast_to_current_event_type_without_a_legacy_clr_type()
     {
-        var registry = new EventRegistry()
-            .RegisterEvent<VersionOneEvent>()
-            .RegisterEvent<VersionTwoEvent>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var serializer = new EventSerializer(registry, upcasters: [new AddQuantityUpcaster()]);
 
         var result = serializer.Deserialize("tests.evolving", 1, """{"name":"abc"}""");
 
-        await Assert.That(result).IsEqualTo(new VersionTwoEvent("abc", 1));
+        await Assert.That(result).IsEqualTo(new EvolvingEvent("abc", 1));
+    }
+
+    [Test]
+    public async Task Historical_payload_without_an_upcaster_chain_is_rejected()
+    {
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
+        var serializer = new EventSerializer(registry);
+
+        await Assert.That(() => serializer.Deserialize("tests.evolving", 1, """{"name":"abc"}"""))
+            .Throws<EventUpcastChainException>();
+    }
+
+    [Test]
+    public async Task Payload_newer_than_the_registered_version_is_rejected()
+    {
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
+        var serializer = new EventSerializer(registry);
+
+        var exception = await Assert.That(() => serializer.Deserialize("tests.evolving", 3, "{}"))
+            .Throws<EventNotRegisteredException>();
+
+        await Assert.That(exception!.Message).Contains("tests.evolving");
+    }
+
+    [Test]
+    public async Task Non_positive_payload_version_is_rejected()
+    {
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
+        var serializer = new EventSerializer(registry);
+
+        await Assert.That(() => serializer.Deserialize("tests.serialized", 0, "{}"))
+            .Throws<ArgumentOutOfRangeException>();
     }
 
     [Test]
     public async Task Serialize_payload_contains_stable_name_and_version()
     {
-        var registry = new EventRegistry().RegisterEvent<SerializedEvent>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var serializer = new EventSerializer(registry);
 
         var result = serializer.SerializePayload(new SerializedEvent("abc", 4));
+        var evolving = serializer.SerializePayload(new EvolvingEvent("abc", 4));
 
         await Assert.That(result.EventName).IsEqualTo("tests.serialized");
         await Assert.That(result.Version).IsEqualTo(1);
         await Assert.That(result.Payload).Contains("\"name\":\"abc\"");
+        await Assert.That(evolving.Version).IsEqualTo(2);
     }
 
     [Test]
     public async Task Corrupt_payload_reports_safe_event_identity()
     {
-        var registry = new EventRegistry().RegisterEvent<SerializedEvent>();
+        var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
         var serializer = new EventSerializer(registry);
 
         var exception = await Assert.That(() => serializer.Deserialize("tests.serialized", 1, "{"))
@@ -55,14 +87,17 @@ public sealed partial class EventSerializerTests
         await Assert.That(exception.Message).DoesNotContain("{");
     }
 
-    [EventType("tests.serialized")]
-    private sealed record SerializedEvent(string Name, int Quantity) : IDomainEvent<TestAggregate>;
+    private sealed record SerializedEvent(string Name, int Quantity) : IDomainEvent<SerializedEvent, TestAggregate>
+    {
+        public static string EventType => "tests.serialized";
+    }
 
-    [EventType("tests.evolving", Version = 1)]
-    private sealed record VersionOneEvent(string Name) : IDomainEvent<TestAggregate>;
+    private sealed record EvolvingEvent(string Name, int Quantity) : IDomainEvent<EvolvingEvent, TestAggregate>
+    {
+        public static string EventType => "tests.evolving";
 
-    [EventType("tests.evolving", Version = 2)]
-    private sealed record VersionTwoEvent(string Name, int Quantity) : IDomainEvent<TestAggregate>;
+        public static int EventVersion => 2;
+    }
 
     private sealed class AddQuantityUpcaster : IEventUpcaster
     {
@@ -76,17 +111,15 @@ public sealed partial class EventSerializerTests
             JsonSerializer.SerializeToElement(new { name = payload.GetProperty("name").GetString(), quantity = 1 });
     }
 
-    public sealed class TestAggregate(Guid id) : Aggregate<Guid>(id)
+    private sealed class TestAggregate(Guid id) : Aggregate<TestAggregate, Guid>(id),
+        IApply<SerializedEvent>,
+        IApply<EvolvingEvent>
     {
-        private void Apply(SerializedEvent @event)
+        void IApply<SerializedEvent>.Apply(SerializedEvent @event)
         {
         }
 
-        private void Apply(VersionOneEvent @event)
-        {
-        }
-
-        private void Apply(VersionTwoEvent @event)
+        void IApply<EvolvingEvent>.Apply(EvolvingEvent @event)
         {
         }
     }
