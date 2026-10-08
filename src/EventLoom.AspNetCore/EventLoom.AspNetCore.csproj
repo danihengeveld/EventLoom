@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\EventLoom.Hosting\EventLoom.Hosting.csproj" />
+    <ProjectReference Include="..\EventLoom.Storage\EventLoom.Storage.csproj" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 

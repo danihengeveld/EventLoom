@@ -5,7 +5,7 @@ public sealed class PostgreSqlProviderTests : PostgreSqlIntegrationTest
     [Test]
     public async Task Event_store_schema_helper_creates_configured_schema_and_tables()
     {
-        var options = new EventStoreOptions
+        var options = new EntityFrameworkStorageOptions
         {
             UseSchema = true,
             Schema = "eventloom_provider_test",

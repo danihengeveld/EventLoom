@@ -18,7 +18,9 @@
   <PropertyGroup>
     <IsPackable>false</IsPackable>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom'">true</IsEventLoomPackage>
+    <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.Storage'">true</IsEventLoomPackage>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore'">true</IsEventLoomPackage>
+    <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.MongoDb'">true</IsEventLoomPackage>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.Hosting'">true</IsEventLoomPackage>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.AspNetCore'">true</IsEventLoomPackage>
     <IsEventLoomPackage Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.PostgreSql'">true</IsEventLoomPackage>
@@ -37,7 +39,7 @@
     <RepositoryUrl>https://github.com/danihengeveld/EventLoom.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <Description>EventLoom event sourcing framework component.</Description>
-    <PackageTags>event-sourcing;ef-core;postgresql;sqlite</PackageTags>
+    <PackageTags>event-sourcing;event-store;dotnet</PackageTags>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageIcon>eventloom-icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -49,12 +51,16 @@
 
   <PropertyGroup>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom'">Core abstractions for building versioned event-sourced aggregates with EventLoom.</Description>
-    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore'">Infrastructure dependency containing EF Core event-store persistence, aggregate repositories, snapshots, projections, and outbox support for EventLoom.</Description>
+    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.Storage'">Storage-agnostic event store, aggregate repositories, and the provider contract that EventLoom storage providers implement.</Description>
+    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore'">Provider-neutral EF Core storage implementation for EventLoom: event store, snapshots, projections, outbox, and worker leases over a relational database.</Description>
+    <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.MongoDb'">MongoDB storage provider for EventLoom, built directly on the official MongoDB driver and multi-document transactions.</Description>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.Hosting'">Application composition, background-worker, health-check, and OpenTelemetry integration for EventLoom.</Description>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.AspNetCore'">ASP.NET Core endpoint integration for EventLoom health checks.</Description>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.PostgreSql'">PostgreSQL storage provider with distributed append and worker correctness for EventLoom.</Description>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.Sqlite'">SQLite storage provider for local and controlled single-node EventLoom deployments.</Description>
     <Description Condition="'$(MSBuildProjectName)' == 'EventLoom.Testing'">Aggregate scenario testing and a managed SQLite test host for EventLoom.</Description>
+    <PackageTags Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore'">event-sourcing;ef-core;event-store</PackageTags>
+    <PackageTags Condition="'$(MSBuildProjectName)' == 'EventLoom.MongoDb'">event-sourcing;mongodb;nosql;event-store</PackageTags>
     <PackageTags Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.PostgreSql'">event-sourcing;ef-core;postgresql;event-store</PackageTags>
     <PackageTags Condition="'$(MSBuildProjectName)' == 'EventLoom.EntityFrameworkCore.Sqlite'">event-sourcing;ef-core;sqlite;event-store</PackageTags>
     <PackageTags Condition="'$(MSBuildProjectName)' == 'EventLoom.Testing'">event-sourcing;testing;aggregate-testing</PackageTags>

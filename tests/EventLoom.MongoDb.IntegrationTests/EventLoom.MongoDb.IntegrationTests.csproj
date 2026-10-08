@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\EventLoom.MongoDb\EventLoom.MongoDb.csproj" />
+    <PackageReference Include="TUnit" />
+    <PackageReference Include="Testcontainers.MongoDb" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\EventLoom.Storage.Conformance\*.cs" LinkBase="Conformance" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="EventLoom.Storage" />
+  </ItemGroup>
+  <PropertyGroup>
+    <IsTestProject>true</IsTestProject>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>

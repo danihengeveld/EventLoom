@@ -9,7 +9,7 @@ public sealed class PostgreSqlEventStoreTests : PostgreSqlIntegrationTest
         await using var context = database.CreateContext();
 
         var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var streamId = Guid.NewGuid().ToString("D");
 
@@ -33,7 +33,7 @@ public sealed class PostgreSqlEventStoreTests : PostgreSqlIntegrationTest
         await using var database = await Server.CreateDatabaseAsync();
         await using var context = database.CreateContext();
         var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
-        var failedStore = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var failedStore = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         await Assert.That(async () => await failedStore.AppendAsync(new AppendRequest(
                 "tenant-a", "failed", new string('x', 257), ExpectedVersion.NoStream,
@@ -41,7 +41,7 @@ public sealed class PostgreSqlEventStoreTests : PostgreSqlIntegrationTest
             .Throws<EventStoreConcurrencyException>();
 
         await using var verificationContext = database.CreateContext();
-        var store = new EventStore(verificationContext, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(verificationContext, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var result = await store.AppendAsync(new AppendRequest(
             "tenant-a", "accepted", "order", ExpectedVersion.NoStream,

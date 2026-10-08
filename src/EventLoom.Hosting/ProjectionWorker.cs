@@ -1,4 +1,4 @@
-using EventLoom.EntityFrameworkCore;
+using EventLoom.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -69,7 +69,7 @@ internal sealed class ProjectionWorker(
             return false;
         }
 
-        var leases = serviceProvider.GetRequiredService<WorkerLeaseStore>();
+        var leases = serviceProvider.GetRequiredService<IWorkerLeaseStorage>();
         var lease = await leases.TryAcquireAsync(
             tenantId,
             ProjectionStore.GetLeaseName(key),

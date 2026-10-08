@@ -17,7 +17,7 @@ internal static class EventStoreModelBuilderExtensions
     /// <exception cref="ArgumentException">The schema or table prefix is empty.</exception>
     internal static ModelBuilder ApplyEventStoreConfiguration(
         this ModelBuilder modelBuilder,
-        EventStoreOptions options)
+        EntityFrameworkStorageOptions options)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
         ArgumentNullException.ThrowIfNull(options);

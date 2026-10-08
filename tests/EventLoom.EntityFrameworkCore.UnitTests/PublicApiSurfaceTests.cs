@@ -3,6 +3,7 @@ using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
+using EventLoom.Storage;
 
 namespace EventLoom.UnitTests;
 
@@ -11,7 +12,12 @@ public sealed class PublicApiSurfaceTests
     [Test]
     public async Task Persistence_implementation_types_are_not_exported()
     {
-        var exportedTypeNames = typeof(EventStore)
+        var storageTypeNames = typeof(EventStore)
+            .Assembly
+            .GetExportedTypes()
+            .Select(type => type.FullName!)
+            .ToHashSet(StringComparer.Ordinal);
+        var efTypeNames = typeof(EventStoreDbContext)
             .Assembly
             .GetExportedTypes()
             .Select(type => type.FullName!)
@@ -19,21 +25,30 @@ public sealed class PublicApiSurfaceTests
 
         foreach (var typeName in new[]
                  {
-                     "EventLoom.EntityFrameworkCore.EventStoreModelBuilderExtensions",
-                     "EventLoom.EntityFrameworkCore.SnapshotStore",
-                     "EventLoom.EntityFrameworkCore.SnapshotWriteRequest",
-                     "EventLoom.EntityFrameworkCore.SnapshotEnvelope",
-                     "EventLoom.EntityFrameworkCore.WorkerLeaseStore",
-                     "EventLoom.EntityFrameworkCore.WorkerLease",
-                     "EventLoom.EntityFrameworkCore.WorkerLeaseConflictException",
-                     "EventLoom.EntityFrameworkCore.OutboxStore",
-                     "EventLoom.EntityFrameworkCore.OutboxLeaseLostException",
-                     "EventLoom.EntityFrameworkCore.ProjectionStore",
-                     "EventLoom.EntityFrameworkCore.ProjectionDeliveryResult",
-                     "EventLoom.EntityFrameworkCore.ProjectionLeaseLostException"
+                     "EventLoom.Storage.SnapshotStore",
+                     "EventLoom.Storage.SnapshotWriteRequest",
+                     "EventLoom.Storage.OutboxStore",
+                     "EventLoom.Storage.ProjectionStore",
+                     "EventLoom.Storage.EventStoreOptions"
                  })
         {
-            await Assert.That(exportedTypeNames.Contains(typeName)).IsFalse();
+            await Assert.That(storageTypeNames.Contains(typeName)).IsFalse();
+        }
+
+        foreach (var typeName in new[]
+                 {
+                     "EventLoom.EntityFrameworkCore.EventStoreModelBuilderExtensions",
+                     "EventLoom.EntityFrameworkCore.EfEventStorage",
+                     "EventLoom.EntityFrameworkCore.EfSnapshotStorage",
+                     "EventLoom.EntityFrameworkCore.EfProjectionStorage",
+                     "EventLoom.EntityFrameworkCore.EfOutboxStorage",
+                     "EventLoom.EntityFrameworkCore.EfWorkerLeaseStorage",
+                     "EventLoom.EntityFrameworkCore.EfStorageSchema",
+                     "EventLoom.EntityFrameworkCore.EfStorageDialect",
+                     "EventLoom.EntityFrameworkCore.WorkerLeaseConflictException"
+                 })
+        {
+            await Assert.That(efTypeNames.Contains(typeName)).IsFalse();
         }
     }
 
@@ -72,7 +87,7 @@ public sealed class PublicApiSurfaceTests
     [Test]
     public async Task Configuration_exposes_supported_entry_points_only()
     {
-        var eventStoreOptionProperties = typeof(EventStoreOptions)
+        var eventStoreOptionProperties = typeof(EntityFrameworkStorageOptions)
             .GetProperties(BindingFlags.Instance | BindingFlags.Public)
             .Select(property => property.Name)
             .ToArray();

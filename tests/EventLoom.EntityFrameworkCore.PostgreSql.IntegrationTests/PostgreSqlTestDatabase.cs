@@ -18,7 +18,7 @@ public sealed class PostgreSqlTestServer : IAsyncInitializer, IAsyncDisposable
     public Task InitializeAsync() => container.StartAsync();
 
     internal async Task<PostgreSqlTestDatabase> CreateDatabaseAsync(
-        EventStoreOptions? options = null,
+        EntityFrameworkStorageOptions? options = null,
         bool initializeSchema = true)
     {
         var name = $"eventloom_test_{Guid.NewGuid():N}";
@@ -30,7 +30,7 @@ public sealed class PostgreSqlTestServer : IAsyncInitializer, IAsyncDisposable
             await command.ExecuteNonQueryAsync();
         }
 
-        var database = new PostgreSqlTestDatabase(this, name, options ?? new EventStoreOptions
+        var database = new PostgreSqlTestDatabase(this, name, options ?? new EntityFrameworkStorageOptions
         {
             UseSchema = true,
             Schema = "eventloom_test",
@@ -93,9 +93,11 @@ public sealed class PostgreSqlTestServer : IAsyncInitializer, IAsyncDisposable
 internal sealed class PostgreSqlTestDatabase(
     PostgreSqlTestServer server,
     string name,
-    EventStoreOptions options) : IAsyncDisposable
+    EntityFrameworkStorageOptions options) : IAsyncDisposable
 {
-    public EventStoreOptions Options { get; } = options;
+    public EntityFrameworkStorageOptions Options { get; } = options;
+
+    public string ConnectionString => server.ConnectionStringFor(name);
 
     public EventStoreDbContext CreateContext() =>
         new(

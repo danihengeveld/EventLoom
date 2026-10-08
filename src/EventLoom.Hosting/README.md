@@ -18,7 +18,12 @@ non-web host:
 - `EventLoom.EntityFrameworkCore.PostgreSql` for the distributed production
   path;
 - `EventLoom.EntityFrameworkCore.Sqlite` for local and controlled single-node
-  use.
+  use;
+- `EventLoom.MongoDb` for MongoDB replica sets and sharded clusters.
+
+Hosting is storage-agnostic. A provider plugs in through
+`EventLoomBuilder.UseStorage(StorageCapabilities, ...)`, and hosting validates
+that the provider supports the requested projection modes and unit of work.
 
 Aggregate registration is compiler-checked: `AddAggregate<TAggregate, TId>`
 registers the repository and every event owned by the aggregate's
@@ -50,8 +55,10 @@ eventLoom.AddProjection("orders.summary", projection => projection
     .Asynchronous<OrderNotificationsProjection, OrderPlaced>());
 ```
 
-`Asynchronous` is at-least-once, `Transactional` commits EF read-model changes
-with its checkpoint, and `Inline` runs within the event append transaction.
+`Asynchronous` is at-least-once, `Transactional` commits read-model changes
+with its checkpoint (the handler interface is provider-specific:
+`IEfProjectionHandler<TEvent>` for EF Core and `IMongoProjectionHandler<TEvent>`
+for MongoDB), and `Inline` runs within the event append transaction.
 The projection worker renews its fenced lease between events according to
 `LeaseRenewalInterval`; an expired or superseded lease cannot commit a
 checkpoint.

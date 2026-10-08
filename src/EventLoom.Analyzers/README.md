@@ -46,3 +46,21 @@ The `EL0001`-`EL0010` IDs are retired and are not reused.
 
 A committed event-contract baseline file to catch renamed `EventType` strings
 and version decreases is planned but not yet available.
+
+## Project layout
+
+For contributors adding or changing a diagnostic:
+
+| Path | Responsibility |
+| --- | --- |
+| `AggregateContractAnalyzer.cs` | Entry point. Registers the rules with the compiler and nothing else. |
+| `DiagnosticIds.cs` | The public `EL01xx` identifier constants. |
+| `Descriptors.cs` | Titles, messages, severities, and descriptions for every diagnostic. |
+| `Checks/AggregateChecks.cs` | Rules about the aggregate class (`EL0101`, `EL0109`). |
+| `Checks/HandlerChecks.cs` | Rules about command methods and `Apply`/snapshot callbacks (`EL0102`–`EL0105`, `EL0110`). |
+| `Checks/ContractChecks.cs` | Rules about event and snapshot types (`EL0108` and auto-property identities). |
+| `Checks/IdentityChecks.cs` | Persisted name/version validation and duplicates (`EL0106`, `EL0107`). |
+| `Symbols/` | `KnownSymbols` resolves EventLoom and BCL types once per compilation; the identity helper types. |
+
+A new diagnostic adds an ID, a descriptor (listed in `SupportedDiagnostics`), a
+check, and positive and negative tests.

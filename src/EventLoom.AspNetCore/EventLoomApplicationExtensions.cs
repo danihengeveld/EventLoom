@@ -1,4 +1,4 @@
-using EventLoom.EntityFrameworkCore;
+using EventLoom.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -12,7 +12,7 @@ public static class EventLoomApplicationExtensions
     /// <remarks>
     /// This helper refuses to run outside the Development environment. It does not
     /// migrate an existing schema; production schema changes belong in reviewed,
-    /// deployment-managed EF Core migrations.
+    /// deployment-managed migrations owned by the host.
     /// </remarks>
     /// <param name="app">The configured web application.</param>
     /// <param name="cancellationToken">Cancels schema initialization.</param>
@@ -26,11 +26,11 @@ public static class EventLoomApplicationExtensions
         {
             throw new InvalidOperationException(
                 "EventLoom development database initialization is only available in the Development environment. " +
-                "Apply reviewed host-owned EF Core migrations during production deployment.");
+                "Apply reviewed host-owned schema migrations during production deployment.");
         }
 
         await using var scope = app.Services.CreateAsyncScope();
-        var context = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
-        await EventStoreSchema.EnsureCreatedAsync(context, cancellationToken);
+        var schema = scope.ServiceProvider.GetRequiredService<IStorageSchema>();
+        await schema.EnsureCreatedAsync(cancellationToken);
     }
 }

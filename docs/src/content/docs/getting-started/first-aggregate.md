@@ -4,7 +4,9 @@ description: Define immutable events, configure EventLoom, and save and reload a
 ---
 
 This guide creates a small counter aggregate using SQLite. It uses the same
-aggregate and repository APIs that a PostgreSQL application uses.
+aggregate and repository APIs that PostgreSQL and MongoDB applications use.
+To follow it on MongoDB instead, see the complete quick start in
+[Use MongoDB](/guides/use-mongodb/#quick-start).
 
 ## Define the event and aggregate
 
@@ -50,8 +52,8 @@ matching `IApply<TEvent>` handler fails to compile.
 
 An aggregate changes state only by raising an event. `Raise` applies the event
 immediately and stores it in `PendingEvents`; replay applies persisted history
-without adding pending events. Implement handlers explicitly so application
-code cannot call them directly.
+without adding pending events. Implement handlers explicitly so application code
+cannot call them directly.
 
 ## Configure services
 
@@ -66,6 +68,9 @@ services
         .ConstructWith(id => new Counter(id))
         .UseStream("counter", id => id.ToString("D")));
 ```
+
+Application code that injects `AggregateRepository<Counter, Guid>` or
+`EventStore` uses `using EventLoom.Storage;`.
 
 Single-tenancy is the default and uses the stable internal tenant ID `default`.
 Applications that need tenant isolation opt in with
@@ -84,8 +89,9 @@ if (app.Environment.IsDevelopment())
 ```
 
 The helper refuses to run outside Development and does not migrate an existing
-schema. Use reviewed, host-owned EF Core migrations in production. See
-[Production deployment](/guides/production-deployment).
+schema. Use reviewed, host-owned EF Core migrations in production for
+PostgreSQL or SQLite, and explicit bootstrap plus validation for MongoDB. See
+[Deploy and recover](/guides/production-deployment).
 
 ## Save and reload
 

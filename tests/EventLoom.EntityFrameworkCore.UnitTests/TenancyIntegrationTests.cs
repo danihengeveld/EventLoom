@@ -11,7 +11,7 @@ public sealed class TenancyIntegrationTests
         await using var connection = new SqliteConnection("Data Source=:memory:");
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options);
-        var store = new EventStore(
+        var store = EfTestStores.EventStore(
             context,
             new EventSerializer(new EventRegistry()),
             new UuidV7EventIdGenerator(),
@@ -30,11 +30,10 @@ public sealed class TenancyIntegrationTests
         await connection.OpenAsync();
         var options = new EventStoreOptions { TenancyMode = TenancyMode.MultiTenant };
         await using var context = new EventStoreDbContext(
-            new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            options);
+            new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
-        var requestStore = new EventStore(
+        var requestStore = EfTestStores.EventStore(
             context,
             new EventSerializer(registry),
             new UuidV7EventIdGenerator(),
@@ -48,7 +47,7 @@ public sealed class TenancyIntegrationTests
             ExpectedVersion.NoStream,
             [new ItemAdded()],
             new EventMetadata()));
-        var backgroundStore = new EventStore(
+        var backgroundStore = EfTestStores.EventStore(
             context,
             new EventSerializer(registry),
             new UuidV7EventIdGenerator(),

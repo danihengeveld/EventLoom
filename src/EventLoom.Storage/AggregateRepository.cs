@@ -2,7 +2,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace EventLoom.EntityFrameworkCore;
+namespace EventLoom.Storage;
 
 /// <summary>Loads and saves aggregates through the EventLoom event store.</summary>
 public sealed class AggregateRepository<TAggregate, TId>
@@ -142,7 +142,7 @@ public sealed class AggregateRepository<TAggregate, TId>
         var snapshotUsed = false;
         if (snapshotStore is not null && snapshotDispatcher is not null)
         {
-            SnapshotEnvelope? snapshot;
+            SnapshotRecord? snapshot;
             using (var snapshotActivity = EventLoomTelemetry.ActivitySource.StartActivity(
                        "eventloom.snapshot.read",
                        ActivityKind.Client))
@@ -366,7 +366,7 @@ public sealed class AggregateRepository<TAggregate, TId>
     }
 
     private async Task LogSnapshotFallbackAsync(
-        SnapshotEnvelope snapshot,
+        SnapshotRecord snapshot,
         SnapshotInvalidationReason reason,
         CancellationToken cancellationToken)
     {

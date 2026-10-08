@@ -10,7 +10,7 @@ public sealed class EventStoreModelTests
     public async Task Event_store_model_uses_deterministic_table_names()
     {
         var modelBuilder = new ModelBuilder();
-        modelBuilder.ApplyEventStoreConfiguration(new EventStoreOptions { TablePrefix = "custom_" });
+        modelBuilder.ApplyEventStoreConfiguration(new EntityFrameworkStorageOptions { TablePrefix = "custom_" });
 
         var tables = modelBuilder.Model.GetEntityTypes()
             .Select(entity => StoreObjectIdentifier.Create(entity, StoreObjectType.Table).GetValueOrDefault().Name)

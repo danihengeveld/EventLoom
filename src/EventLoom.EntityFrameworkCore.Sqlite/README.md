@@ -26,19 +26,19 @@ builder.Services
         .UseStream("order", id => id.ToString("D")));
 ```
 
-For an intentionally explicit empty-database initialization, resolve the
-dedicated `EventStoreDbContext` during startup and call
-`EventStoreSchema.EnsureCreatedAsync(context)`. Provider registration
+For an intentionally explicit empty-database initialization, resolve
+`IStorageSchema` from a scope during startup and call `EnsureCreatedAsync()`;
+`ValidateAsync()` reports missing or incompatible objects. Provider registration
 does not create or migrate storage automatically. This operation creates the
 configured tables and table prefix, but does not evolve an existing schema.
 
-The package restores the core, EF Core, and hosting packages transitively.
+The package restores the core, storage, EF Core, and hosting packages transitively.
 ASP.NET Core applications should reference `EventLoom.AspNetCore` alongside
 this provider for application composition and endpoint integration. SQLite
 does not support distributed workers or multiple application instances against
 one event store. Use
 `EventLoom.EntityFrameworkCore.PostgreSql` for production distributed
-deployments.
+deployments (or `EventLoom.MongoDb` for MongoDB).
 
 EventLoom is currently pre-release. See the
 [EF Core configuration guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/guides/configure-ef-core.md)

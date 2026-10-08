@@ -66,7 +66,7 @@ public sealed class EventLoomHealthCheckTests
             await using (var scope = provider.CreateAsyncScope())
             {
                 var key = new ProjectionKey("tests.health", 1);
-                var leaseStore = scope.ServiceProvider.GetRequiredService<WorkerLeaseStore>();
+                var leaseStore = scope.ServiceProvider.GetRequiredService<IWorkerLeaseStorage>();
                 var lease = await leaseStore.TryAcquireAsync(
                     "tenant-a",
                     ProjectionStore.GetLeaseName(key),

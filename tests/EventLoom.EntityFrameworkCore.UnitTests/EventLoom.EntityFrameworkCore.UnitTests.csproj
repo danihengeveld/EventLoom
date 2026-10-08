@@ -8,6 +8,11 @@
     <PackageReference Include="TUnit" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
   </ItemGroup>
+  <ItemGroup>
+    <Using Include="EventLoom.Storage" />
+    <Using Include="EventLoom.EntityFrameworkCore.TestSupport" />
+    <Compile Include="..\EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests\EfTestStores.cs" Link="EfTestStores.cs" />
+  </ItemGroup>
   <PropertyGroup>
     <IsTestProject>true</IsTestProject>
     <TargetFramework>net10.0</TargetFramework>

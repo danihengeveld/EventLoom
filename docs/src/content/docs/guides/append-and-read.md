@@ -9,8 +9,10 @@ There are two EventLoom application paths:
 2. Use `EventStore` when a process needs explicit stream identity or consumes
    position-ordered envelopes.
 
-Both paths require events to be registered and a provider to be configured;
-see [Configure the event store](/guides/configure-ef-core).
+Both types live in the `EventLoom.Storage` namespace. Both paths require events
+to be registered and a provider to be configured; see
+[Configure the EF Core store](/guides/configure-ef-core) or
+[Use MongoDB](/guides/use-mongodb).
 
 ## Save and load an aggregate
 
@@ -41,12 +43,12 @@ var reloaded = await repository.LoadAsync(orderId, cancellationToken);
 
 `SaveAsync` returns an empty result when no events are pending. On a normal
 successful append it clears pending events; an idempotent replay retains the
-aggregate's pending events because the caller may need to resolve the
-ambiguous-command outcome explicitly.
+aggregate's pending events because the caller may need to resolve the ambiguous
+command outcome explicitly.
 
-`EventMetadata` stores correlation ID, causation ID, and actor in nullable
-columns. Application headers are serialized only when nonempty; an empty header
-collection is stored as `NULL` and is rehydrated as an empty read-only
+`EventMetadata` stores correlation ID, causation ID, and actor in durable
+metadata fields. Application headers are serialized only when nonempty; an empty
+header collection is stored as `NULL` and is rehydrated as an empty read-only
 dictionary.
 
 ## Use the explicit store API
@@ -66,8 +68,8 @@ var result = await store.AppendAsync(new AppendRequest(
     cancellationToken);
 ```
 
-The event batch is committed atomically. Versions begin at 1, and all events
-in a batch receive consecutive stream versions and tenant offsets.
+The event batch is committed atomically. Versions begin at 1, and all events in
+a batch receive consecutive stream versions and tenant offsets.
 
 ## Read one stream
 
@@ -96,7 +98,6 @@ var batch = await store.ReadTenantOffsetsAsync(
 
 foreach (var envelope in batch)
 {
-    // Dispatch to application-owned handling code.
     checkpoint = envelope.TenantOffset;
 }
 ```
@@ -110,12 +111,13 @@ this lower-level reader for explicit background or administrative processing.
 
 - `WrongExpectedVersionException` means the stream changed relative to the
   request's expectation. Reload and reevaluate the business command.
-- `EventStoreConcurrencyException` means the database reported a concurrent
+- `EventStoreConcurrencyException` means the provider reported a concurrent
   append conflict. Treat it like an optimistic-concurrency failure.
-- PostgreSQL retries classified transient, deadlock, and serialization failures
-  a bounded number of times. It never silently retries logical conflicts.
-- Reuse the same caller-owned `AppendId` after an ambiguous failure. Do not
-  reuse an append ID for a different command in the same tenant.
+- PostgreSQL and MongoDB install bounded provider-specific retry policies for
+  transient infrastructure failures. SQLite surfaces conflicts directly.
+- Reuse the same caller-owned `AppendId` after an ambiguous failure. Append IDs
+  are tenant-wide; reusing one for a different command in the same tenant is
+  invalid.
 
 See [Tenancy and ordering](/concepts/tenancy-and-ordering) for the full
 concurrency and retry model.

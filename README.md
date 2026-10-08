@@ -7,14 +7,16 @@
   <img src="assets/eventloom-icon.svg" width="128" alt="EventLoom" />
 </p>
 
-EventLoom is an opinionated event-sourcing library for .NET 10 and EF Core 10.
-It favors explicit contracts and operationally safe defaults: immutable,
-versioned events; compiler-checked aggregate wiring; a dedicated event-store
-context; short aggregate repository operations; tenant-scoped ordering;
-snapshots; checkpointed projections; and a transactional outbox.
+EventLoom is an opinionated event-sourcing library for .NET 10. It favors
+explicit contracts and operationally safe defaults: immutable, versioned
+events; compiler-checked aggregate wiring; short aggregate repository
+operations; tenant-scoped ordering; snapshots; checkpointed projections; and a
+transactional outbox.
 
-PostgreSQL is the distributed production provider. SQLite supports local,
-embedded, and controlled single-node applications.
+Storage is pluggable behind a provider-neutral SPI, and every provider passes
+the same conformance suite. PostgreSQL (through EF Core) and MongoDB (through
+the official driver) are the distributed production providers. SQLite supports
+local, embedded, and controlled single-node applications.
 
 > **Pre-release:** EventLoom `0.1.0-alpha.0` is available on
 > [NuGet](https://www.nuget.org/packages/EventLoom.AspNetCore/0.1.0-alpha.0). APIs and persistence
@@ -23,8 +25,8 @@ embedded, and controlled single-node applications.
 ## Choose a package
 
 Most web applications should reference `EventLoom.AspNetCore` and exactly one
-provider package. The provider brings the core and EF Core infrastructure
-dependencies with it. The analyzer is bundled inside the `EventLoom` package
+provider package. The provider brings the core and storage dependencies with
+it. The analyzer is bundled inside the `EventLoom` package
 and is enabled automatically; there is no separate analyzer package to install.
 
 | Package | Install directly? | Use it for |
@@ -32,7 +34,9 @@ and is enabled automatically; there is no separate analyzer package to install.
 | `EventLoom` | Yes | Domain event contracts, aggregates, identifiers, serialization, and bundled analyzer diagnostics. |
 | `EventLoom.EntityFrameworkCore.PostgreSql` | Yes | PostgreSQL event storage and distributed worker correctness. |
 | `EventLoom.EntityFrameworkCore.Sqlite` | Yes | Local development, tests, embedded apps, and one controlled process. |
-| `EventLoom.EntityFrameworkCore` | No, normally transitive | Shared EF Core storage, aggregate repositories, snapshots, projections, and outbox infrastructure. |
+| `EventLoom.MongoDb` | Yes | MongoDB (replica set or sharded cluster) event storage through the official driver. |
+| `EventLoom.EntityFrameworkCore` | No, normally transitive | The EF Core storage provider: model, event store, snapshots, projections, outbox, and leases. |
+| `EventLoom.Storage` | Only to write a provider | The storage SPI plus the provider-neutral engine: `EventStore`, `AggregateRepository<,>`, units of work, and projection and outbox administration. |
 | `EventLoom.AspNetCore` | Yes for web apps | Canonical ASP.NET Core composition, workers, health checks, and endpoint helpers. |
 | `EventLoom.Hosting` | Usually transitive | Host-neutral composition and worker implementation. |
 | `EventLoom.Testing` | Yes, for test projects | Aggregate Given/When/Then scenarios and a managed SQLite test host. |
@@ -85,6 +89,13 @@ builder.Services
         .UseStream("counter", id => id.ToString("D")));
 ```
 
+To use MongoDB instead, install `EventLoom.MongoDb` and call
+`UseMongoDb(connectionString, "eventloom")`. MongoDB must run as a replica set
+because EventLoom relies on multi-document transactions.
+
+Application code that injects `EventStore` or `AggregateRepository<,>` adds
+`using EventLoom.Storage;`.
+
 For a local-only application, install
 `EventLoom.EntityFrameworkCore.Sqlite` instead and call
 `UseSqlite("Data Source=eventloom.db")`. Do not use SQLite to validate
@@ -93,8 +104,8 @@ multi-instance or distributed-worker behavior.
 ## Operational model
 
 - **Append order:** `StreamVersion` provides optimistic concurrency within a
-  stream; PostgreSQL tenant offsets provide the committed global ordering for
-  projections.
+  stream; tenant offsets, allocated transactionally by PostgreSQL and MongoDB,
+  provide the committed global ordering for projections.
 - **Tenancy:** single-tenant by default with an internal stable tenant;
   multi-tenancy is an explicit opt-in with `UseMultiTenancy<TAccessor>()`.
 - **Projections and outbox:** asynchronous, at-least-once delivery is the
@@ -112,13 +123,16 @@ Start with the [documentation site](https://eventloom.hengeveld.dev), especially
 [installation](https://eventloom.hengeveld.dev/getting-started/installation.md),
 [first aggregate](https://eventloom.hengeveld.dev/getting-started/first-aggregate.md),
 [EF Core configuration](https://eventloom.hengeveld.dev/guides/configure-ef-core.md),
+[MongoDB](https://eventloom.hengeveld.dev/guides/use-mongodb.md),
 and [production deployment](https://eventloom.hengeveld.dev/guides/production-deployment.md)
 guides.
 
-The Ordering API sample runs PostgreSQL and the API through Aspire:
+The Ordering API sample runs PostgreSQL (or MongoDB) and the API through
+Aspire:
 
 ```bash
 dotnet run --project samples/EventLoom.Ordering.AppHost
+dotnet run --project samples/EventLoom.Ordering.AppHost -- --EventLoom:Provider MongoDb
 ```
 
 Aspire prints a dashboard URL where you can inspect resources, logs, traces,
@@ -130,5 +144,6 @@ and metrics. The API also exposes its development-only OpenAPI document at
 ```bash
 dotnet build EventLoom.slnx
 dotnet run --project tests/EventLoom.UnitTests
+dotnet run --project tests/EventLoom.MongoDb.IntegrationTests # requires Docker
 pnpm --dir docs build
 ```

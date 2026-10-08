@@ -1,4 +1,4 @@
-using EventLoom.EntityFrameworkCore;
+using EventLoom.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EventLoom.Hosting;
@@ -8,7 +8,7 @@ internal sealed class ProjectionRegistry(IEnumerable<ProjectionHandlerRegistrati
     private readonly IReadOnlyList<ProjectionHandlerRegistration> registrations = Validate(registrations);
 
     public IReadOnlyList<ProjectionKey> AsynchronousProjections { get; } = registrations
-        .Where(value => value.Mode == ProjectionMode.Asynchronous)
+        .Where(value => value.Mode != ProjectionMode.Inline)
         .Select(value => value.Key)
         .Distinct()
         .OrderBy(value => value.Name, StringComparer.Ordinal)
@@ -19,11 +19,11 @@ internal sealed class ProjectionRegistry(IEnumerable<ProjectionHandlerRegistrati
         ProjectionKey key,
         IServiceProvider serviceProvider,
         EventEnvelope envelope,
-        EventStoreDbContext context,
+        IProjectionTransactionContext context,
         CancellationToken cancellationToken)
     {
         foreach (var registration in registrations.Where(value =>
-                     value.Mode == ProjectionMode.Asynchronous &&
+                     value.Mode != ProjectionMode.Inline &&
                      value.Key == key &&
                      value.EventType.IsInstanceOfType(envelope.Event)))
         {
@@ -77,6 +77,7 @@ internal sealed class ProjectionRegistry(IEnumerable<ProjectionHandlerRegistrati
 internal enum ProjectionMode
 {
     Asynchronous,
+    Transactional,
     Inline
 }
 
@@ -85,7 +86,7 @@ internal sealed record ProjectionHandlerRegistration(
     ProjectionMode Mode,
     Type EventType,
     Type HandlerType,
-    Func<IServiceProvider?, EventEnvelope, EventStoreDbContext?, CancellationToken, Task> DispatchAsync)
+    Func<IServiceProvider?, EventEnvelope, IProjectionTransactionContext?, CancellationToken, Task> DispatchAsync)
 {
     public static ProjectionHandlerRegistration CreateAsynchronous<THandler, TEvent>(ProjectionKey key)
         where THandler : class, IProjectionHandler<TEvent> =>
@@ -102,22 +103,25 @@ internal sealed record ProjectionHandlerRegistration(
                 await handler.HandleAsync(ToTyped<TEvent>(envelope), cancellationToken);
             });
 
-    public static ProjectionHandlerRegistration CreateEf<THandler, TEvent>(ProjectionKey key)
-        where THandler : class, IEfProjectionHandler<TEvent> =>
+    public static ProjectionHandlerRegistration CreateTransactional<THandler, TEvent>(
+        ProjectionKey key,
+        Func<THandler, EventEnvelope<TEvent>, IProjectionTransactionContext, CancellationToken, Task> invoke)
+        where THandler : class =>
         new(
             key,
-            ProjectionMode.Asynchronous,
+            ProjectionMode.Transactional,
             typeof(TEvent),
             typeof(THandler),
-            static async (services, envelope, context, cancellationToken) =>
+            async (services, envelope, context, cancellationToken) =>
             {
                 var handler = services?.GetRequiredService<THandler>()
                               ?? throw new InvalidOperationException(
-                                  "EF projection dispatch requires a service provider.");
-                await handler.HandleAsync(
+                                  "Transactional projection dispatch requires a service provider.");
+                await invoke(
+                    handler,
                     ToTyped<TEvent>(envelope),
                     context ?? throw new InvalidOperationException(
-                        "EF projection dispatch requires an EventLoom context."),
+                        "Transactional projection dispatch requires a storage transaction context."),
                     cancellationToken);
             });
 

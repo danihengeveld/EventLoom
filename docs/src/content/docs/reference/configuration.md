@@ -4,14 +4,11 @@ description: Complete reference for EventLoom composition methods, options, defa
 ---
 
 This page is a lookup reference for the public configuration surface. For
-worked examples, use the [configuration guide](/guides/configure-ef-core), the
-[projections guide](/guides/projections), or the
-[outbox guide](/guides/outbox).
+worked examples, use [Configure the EF Core store](/guides/configure-ef-core),
+[Use MongoDB](/guides/use-mongodb), [Build projections](/guides/projections),
+or [Publish integration messages](/guides/outbox).
 
 ## Start from one of these configurations
-
-Use these as minimal, complete composition baselines. Add projection, snapshot,
-and outbox registrations after choosing the provider.
 
 ### PostgreSQL service
 
@@ -24,13 +21,17 @@ builder.Services.AddEventLoom(eventLoom => eventLoom
         .UseStream("order", id => id.ToString("D"))));
 ```
 
-### Multi-tenant PostgreSQL event-store-only service
+### MongoDB service
 
 ```csharp
 builder.Services.AddEventLoom(eventLoom => eventLoom
-    .UsePostgreSql(builder.Configuration.GetConnectionString("EventStore")!)
-    .UseMultiTenancy<AuthenticatedTenantAccessor>()
-    .AddAggregateEvents<Order>());
+    .UseMongoDb(
+        builder.Configuration.GetConnectionString("EventStore")!,
+        databaseName: "eventloom")
+    .UseSingleTenancy()
+    .AddAggregate<Order, Guid>(aggregate => aggregate
+        .ConstructWith(id => new Order(id))
+        .UseStream("order", id => id.ToString("D"))));
 ```
 
 ### Local or single-process SQLite application
@@ -44,9 +45,7 @@ builder.Services.AddEventLoom(eventLoom => eventLoom
         .UseStream("order", id => id.ToString("D"))));
 ```
 
-Choose one provider per application. Use PostgreSQL when separate processes
-can write, project, or publish against the same event store; SQLite is limited
-to a controlled single process.
+Choose one provider per application.
 
 ## Service composition
 
@@ -58,25 +57,20 @@ to a controlled single process.
 | `AddAggregateEvents<TAggregate>()` | Registers events owned by an aggregate without registering a repository. |
 | `AddUpcaster(upcaster)` | Registers one deterministic event-payload upcaster. |
 | `ConfigureEventSerialization(configure)` | Configures JSON serialization for persisted events. |
+| `UseStorage(capabilities, register)` | Extension point for custom storage providers. Applications normally use a provider package instead. |
 | `UseSingleTenancy(tenantId)` | Uses one stable tenant; defaults to `default`. |
 | `UseMultiTenancy<TAccessor>()` | Enables multi-tenancy and registers a scoped `ITenantAccessor`. |
 | `UseMultiTenancy()` | Enables multi-tenancy when the application registers `ITenantAccessor` itself. |
-| `ConfigureEventStore(configure)` | Configures table prefix, schema, and tenancy options. |
 | `ConfigureWorkers(configure)` | Configures asynchronous projection workers. |
 | `ConfigureSnapshotRetention(policy)` | Sets the default snapshot retention policy. |
-| `ConfigureProjectionModel(configure)` | Adds EF Core mappings for transactional projection read models. |
 | `AddProjection(name, configure, version)` | Registers one named projection with one or more handlers. |
 | `AddOutboxPublisher<TPublisher>(configure)` | Enables transactional outbox messages and registers the publisher worker. |
 | `UseTimeProvider(provider)` | Replaces the system clock; useful for deterministic tests. |
 
 `AddProjection(name, configure, version)` is the preferred projection API. Its
 registration builder makes the durable projection name and version explicit and
-chooses `Asynchronous`, `Transactional`, or `Inline` per handler.
-
-`AddAggregate<TAggregate, TId>` validates its factory and stream mapping and
-registers the aggregate's owned events. Registering the same aggregate twice is
-idempotent. Handlers for events owned by other aggregates are ignored by event
-registration.
+chooses `Asynchronous`, provider-specific `Transactional`, or `Inline` per
+handler.
 
 ## Provider selection
 
@@ -85,24 +79,40 @@ Select exactly one storage provider.
 | Method | Effect |
 | --- | --- |
 | `UsePostgreSql(connectionString[, configure])` | Configures PostgreSQL, enables schemas, and installs the PostgreSQL retry policy. |
-| `UsePostgreSql(connectionFactory[, configure])` | Uses a scoped `DbConnection`; required when sharing an application transaction. |
+| `UsePostgreSql(connectionFactory[, configure])` | Uses a scoped `DbConnection`; required when sharing a relational unit of work. |
 | `UseSqlite(connectionString[, configure])` | Configures SQLite, initializes its bundled native dependency, and disables schemas. |
-| `UseSqlite(connectionFactory[, configure])` | Uses a scoped SQLite `DbConnection`; required when sharing an application transaction. |
+| `UseSqlite(connectionFactory[, configure])` | Uses a scoped SQLite `DbConnection`; required when sharing a relational unit of work. |
+| `UseMongoDb(connectionString, databaseName[, configure])` | Configures MongoDB storage for one database and installs the MongoDB retry policy. |
+| `UseMongoDb(clientFactory, databaseName[, configure])` | Uses an application-supplied `IMongoClient`. |
 
-The optional provider callback configures the normal EF Core provider options.
-Provider selection owns `UseSchema`: PostgreSQL enables it and SQLite disables
-it. Do not override that setting in `ConfigureEventStore`.
+Provider packages also add provider-specific APIs:
 
-## `EventStoreOptions`
+- EF Core: `ConfigureEntityFramework(...)`, `ConfigureProjectionModel(...)`,
+  `IEfProjectionHandler<TEvent>`, `unitOfWork.EnlistAsync(...)`, and
+  `unitOfWork.DbTransaction`
+- MongoDB: `IMongoProjectionHandler<TEvent>`, `MongoSessionAccessor`, and
+  `unitOfWork.Session`
+
+## `EntityFrameworkStorageOptions`
+
+Use `ConfigureEntityFramework(...)` from `EventLoom.EntityFrameworkCore`.
 
 | Property | Default | Rules and guidance |
 | --- | --- | --- |
-| `Schema` | `eventloom` | PostgreSQL schema name. Change only through a data migration after data exists. |
+| `Schema` | `eventloom` | PostgreSQL schema name. Keep stable after data exists. Ignored by SQLite. |
 | `TablePrefix` | `eventloom_` | Prefix for every EventLoom table. Keep stable after storage is created. |
 
-Tenancy and schema support are configured through `UseSingleTenancy`,
-`UseMultiTenancy`, and the selected provider rather than by mutating storage
-options.
+Schema support is provider-owned: PostgreSQL enables it, SQLite disables it.
+
+## `MongoDbStorageOptions`
+
+Pass these options to `UseMongoDb(..., configure)`.
+
+| Property | Default | Rules and guidance |
+| --- | --- | --- |
+| `CollectionPrefix` | `eventloom_` | Prefix for every EventLoom collection. Keep stable after data exists. |
+| `TransactionTimeout` | 30 seconds | Must be positive. Sets the maximum MongoDB transaction commit time EventLoom requests. |
+| `RegisterStandardGuidSerializer` | `true` | Best-effort process-wide registration of `GuidSerializer(GuidRepresentation.Standard)` so application documents can hold `Guid` values. Set `false` when the application registers its own `Guid` serializer. |
 
 ## `EventSerializationOptions`
 
@@ -113,9 +123,6 @@ options.
 | `PropertyNameCaseInsensitive` | `false` | Strict matching exposes payload drift. |
 | `NumberHandling` | `Strict` | Do not loosen without a deliberate stored-data compatibility decision. |
 | `ReferenceHandler` | `null` | Events should normally be acyclic; reference metadata changes the payload contract. |
-
-EventLoom validates registered events during configuration. Treat every
-serializer option and converter as part of the persisted-data contract.
 
 ## `EventStoreWorkerOptions`
 
@@ -164,3 +171,15 @@ registration. The typed builder accepts:
 
 The default capture cadence is every 100 events. The default retention policy
 keeps the latest snapshot for each tenant and aggregate stream.
+
+## Store bootstrap and validation
+
+Resolve `IStorageSchema` when you need provider-neutral bootstrap or validation:
+
+| Method | Effect |
+| --- | --- |
+| `EnsureCreatedAsync()` | Creates the provider's storage objects when they do not already exist. Never migrates existing data. |
+| `ValidateAsync()` | Returns `CanConnect`, `MissingCount`, `IncompatibleCount`, and `IsCompatible`. |
+
+Use `InitializeEventLoomDevelopmentDatabaseAsync()` only for development
+bootstrap in ASP.NET Core applications.

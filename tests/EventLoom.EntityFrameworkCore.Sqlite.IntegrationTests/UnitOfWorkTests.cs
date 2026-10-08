@@ -31,7 +31,7 @@ public sealed class UnitOfWorkTests
         await using var verificationApplicationContext = new ApplicationDbContext(CreateApplicationOptions(connection));
         await Assert.That((await CreateEventStore(verificationContext).ReadStreamAsync("tenant-a", "order-1")).Count)
             .IsEqualTo(1);
-        await Assert.That((await new OutboxStore(verificationContext, TimeProvider.System).ReadPendingAsync("tenant-a"))
+        await Assert.That((await EfTestStores.Outbox(verificationContext, TimeProvider.System).ReadPendingAsync("tenant-a"))
                 .Count)
             .IsEqualTo(1);
         await Assert.That((await verificationApplicationContext.Records.SingleAsync()).Name).IsEqualTo("committed");
@@ -62,7 +62,7 @@ public sealed class UnitOfWorkTests
         await using var verificationApplicationContext = new ApplicationDbContext(CreateApplicationOptions(connection));
         await Assert.That((await CreateEventStore(verificationContext).ReadStreamAsync("tenant-a", "order-1")).Count)
             .IsEqualTo(0);
-        await Assert.That((await new OutboxStore(verificationContext, TimeProvider.System).ReadPendingAsync("tenant-a"))
+        await Assert.That((await EfTestStores.Outbox(verificationContext, TimeProvider.System).ReadPendingAsync("tenant-a"))
                 .Count)
             .IsEqualTo(0);
         await Assert.That(await verificationApplicationContext.Records.CountAsync()).IsEqualTo(0);
@@ -129,12 +129,12 @@ public sealed class UnitOfWorkTests
     }
 
     private static EventStore CreateEventStore(EventStoreDbContext context) =>
-        new(
+        EfTestStores.EventStore(
             context,
             new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
             TimeProvider.System,
-            context.Configuration);
+            new EventStoreOptions { OutboxEnabled = true });
 
     private static AppendRequest Request(IReadOnlyList<object> events) =>
         new("tenant-a", "order-1", "order", ExpectedVersion.NoStream, events, new EventMetadata());
@@ -145,7 +145,7 @@ public sealed class UnitOfWorkTests
     private static DbContextOptions<ApplicationDbContext> CreateApplicationOptions(SqliteConnection connection) =>
         new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options;
 
-    private static EventStoreOptions Options() => new() { TablePrefix = "test_", OutboxEnabled = true };
+    private static EntityFrameworkStorageOptions Options() => new() { TablePrefix = "test_" };
 
     private static async Task CreateApplicationTableAsync(SqliteConnection connection)
     {

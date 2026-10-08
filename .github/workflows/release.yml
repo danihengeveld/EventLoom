@@ -70,6 +70,8 @@ jobs:
         run: docker version
       - name: Run PostgreSQL integration tests
         run: dotnet run --project tests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests --configuration Release --no-build -p:EventLoomPackageVersion=${{ steps.version.outputs.version }}
+      - name: Run MongoDB integration tests
+        run: dotnet run --project tests/EventLoom.MongoDb.IntegrationTests --configuration Release --no-build -p:EventLoomPackageVersion=${{ steps.version.outputs.version }}
       - name: Pack
         shell: bash
         run: ./scripts/pack.sh '${{ steps.version.outputs.version }}'

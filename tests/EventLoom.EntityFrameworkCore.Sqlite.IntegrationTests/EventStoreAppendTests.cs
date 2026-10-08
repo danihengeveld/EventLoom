@@ -23,7 +23,7 @@ public sealed class EventStoreAppendTests
         await connection.OpenAsync();
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
-        var store = new EventStore(context, new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
+        var store = EfTestStores.EventStore(context, new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(), TimeProvider.System);
 
         await store.AppendAsync(new AppendRequest(
@@ -53,7 +53,7 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
-        var store = new EventStore(
+        var store = EfTestStores.EventStore(
             context,
             new EventSerializer(registry),
             new UuidV7EventIdGenerator(),
@@ -83,7 +83,7 @@ public sealed class EventStoreAppendTests
         await connection.OpenAsync();
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
-        var store = new EventStore(
+        var store = EfTestStores.EventStore(
             context,
             new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
@@ -106,7 +106,7 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         await store.AppendAsync(new AppendRequest(
             "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream, [new Added(1)], new EventMetadata()));
@@ -125,7 +125,7 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var request = new AppendRequest(
             "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream, [new Added(1)], new EventMetadata(), "same");
@@ -145,7 +145,7 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
 
         await store.AppendAsync(new AppendRequest(
@@ -168,7 +168,7 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         await store.AppendAsync(new AppendRequest(
             "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream,
@@ -189,7 +189,7 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         await store.AppendAsync(new AppendRequest(
             " ACME ", "cart-1", "cart", ExpectedVersion.NoStream, [new Added(1)], new EventMetadata()));
@@ -209,7 +209,7 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         await store.AppendAsync(new AppendRequest(
             "tenant-a", "cart-1", "cart", ExpectedVersion.NoStream, [new Added(1)], new EventMetadata()));
@@ -230,7 +230,7 @@ public sealed class EventStoreAppendTests
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
         var registry = new EventRegistry().RegisterAggregate<TestAggregate>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         using var cancellation = new CancellationTokenSource();
         cancellation.Cancel();
@@ -243,7 +243,7 @@ public sealed class EventStoreAppendTests
     private static EventStoreDbContext CreateContext(SqliteConnection connection) =>
         new(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            new EventStoreOptions { TablePrefix = "test_" });
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
 
     private sealed record Added(int Amount) : IDomainEvent<Added, TestAggregate>
     {

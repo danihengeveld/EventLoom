@@ -1,5 +1,4 @@
-using EventLoom.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
+using EventLoom.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
@@ -25,8 +24,8 @@ public static class EventLoomServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Adds EventLoom's event registry, serializer, event store, clock, and EF Core context.
-    /// Events and a database provider must be explicitly configured through <paramref name="configure"/>.
+    /// Adds EventLoom's event registry, serializer, event store, and clock.
+    /// Events and a storage provider must be explicitly configured through <paramref name="configure"/>.
     /// </summary>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configure">Configures event registrations, serialization, storage, and aggregate repositories.</param>
@@ -55,13 +54,12 @@ public sealed partial class EventLoomBuilder
     private readonly EventRegistry registry = new();
     private readonly List<IEventUpcaster> upcasters = [];
     private readonly List<ProjectionHandlerRegistration> projectionRegistrations = [];
-    private readonly List<Action<ModelBuilder>> projectionModelConfigurations = [];
-    private EventStoreOptions eventStoreOptions = new();
+    private readonly EventStoreOptions eventStoreOptions = new();
     private EventStoreWorkerOptions workerOptions = new();
     private readonly OutboxOptions outboxOptions = new();
     private ISnapshotRetentionPolicy snapshotRetentionPolicy = new KeepLatestSnapshotsPolicy(1);
     private TimeProvider timeProvider = TimeProvider.System;
-    private Action<IServiceProvider, DbContextOptionsBuilder>? configureDbContext;
+    private StorageCapabilities? storageCapabilities;
     private bool outboxPublisherRegistered;
     private bool servicesRegistered;
     private ServiceDescriptor? singleTenantAccessorDescriptor;
@@ -99,16 +97,37 @@ public sealed partial class EventLoomBuilder
         return this;
     }
 
+    /// <summary>Gets the service collection EventLoom registers into, for use by storage providers.</summary>
+    public IServiceCollection Services => services;
+
     /// <summary>
-    /// Configures the names and schema used by the EventLoom event-store tables.
+    /// Registers the storage provider that persists events, snapshots, projections, the outbox, and leases.
     /// </summary>
-    /// <param name="configure">Configures the event-store options.</param>
+    /// <remarks>
+    /// This is the extension point for storage providers; applications call a provider-specific method such as
+    /// <c>UsePostgreSql</c>, <c>UseSqlite</c>, or <c>UseMongoDb</c> instead. The <paramref name="register"/>
+    /// callback must register scoped implementations of <see cref="IEventStorage"/>,
+    /// <see cref="ISnapshotStorage"/>, <see cref="IProjectionStorage"/>, <see cref="IOutboxStorage"/>,
+    /// <see cref="IWorkerLeaseStorage"/>, and <see cref="IStorageSchema"/>.
+    /// </remarks>
+    /// <param name="capabilities">Describes what the provider guarantees beyond the mandatory contract.</param>
+    /// <param name="register">Registers the provider's services.</param>
     /// <returns>This builder.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="configure"/> is <see langword="null"/>.</exception>
-    public EventLoomBuilder ConfigureEventStore(Action<EventStoreOptions> configure)
+    /// <exception cref="ArgumentNullException"><paramref name="capabilities"/> or <paramref name="register"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException">A storage provider has already been configured.</exception>
+    public EventLoomBuilder UseStorage(StorageCapabilities capabilities, Action<IServiceCollection> register)
     {
-        ArgumentNullException.ThrowIfNull(configure);
-        configure(eventStoreOptions);
+        ArgumentNullException.ThrowIfNull(capabilities);
+        ArgumentNullException.ThrowIfNull(register);
+        if (storageCapabilities is not null)
+        {
+            throw new InvalidOperationException(
+                $"An EventLoom storage provider has already been configured ({storageCapabilities.ProviderName}).");
+        }
+
+        storageCapabilities = capabilities;
+        services.AddSingleton(capabilities);
+        register(services);
         return this;
     }
 
@@ -162,15 +181,6 @@ public sealed partial class EventLoomBuilder
         return this;
     }
 
-    /// <summary>Adds read-model mappings to the EventLoom context used by transactional projections.</summary>
-    /// <param name="configure">Configures one or more EF Core read-model entity mappings.</param>
-    /// <returns>This builder.</returns>
-    public EventLoomBuilder ConfigureProjectionModel(Action<ModelBuilder> configure)
-    {
-        projectionModelConfigurations.Add(configure ?? throw new ArgumentNullException(nameof(configure)));
-        return this;
-    }
-
     /// <summary>Registers an asynchronous, at-least-once typed projection handler.</summary>
     /// <typeparam name="TProjection">The projection handler type.</typeparam>
     /// <typeparam name="TEvent">The event type handled by the projection.</typeparam>
@@ -189,20 +199,19 @@ public sealed partial class EventLoomBuilder
     }
 
     /// <summary>
-    /// Registers a typed projection handler whose read-model changes and checkpoint commit in one EF Core transaction.
+    /// Registers a typed projection handler whose read-model changes and checkpoint commit in one provider transaction.
     /// </summary>
-    /// <typeparam name="TProjection">The projection handler type.</typeparam>
-    /// <typeparam name="TEvent">The event type handled by the projection.</typeparam>
-    /// <param name="name">The stable projection name.</param>
-    /// <param name="version">The positive projection version and checkpoint namespace.</param>
-    /// <returns>This builder.</returns>
-    internal EventLoomBuilder AddEfProjection<TProjection, TEvent>(string name, int version = 1)
-        where TProjection : class, IEfProjectionHandler<TEvent>
+    internal EventLoomBuilder AddTransactionalProjection<TProjection, TEvent>(
+        string name,
+        int version,
+        Func<TProjection, EventEnvelope<TEvent>, IProjectionTransactionContext, CancellationToken, Task> invoke)
+        where TProjection : class
     {
+        ArgumentNullException.ThrowIfNull(invoke);
         var key = new ProjectionKey(name, version);
         key.Validate();
         services.TryAddScoped<TProjection>();
-        projectionRegistrations.Add(ProjectionHandlerRegistration.CreateEf<TProjection, TEvent>(key));
+        projectionRegistrations.Add(ProjectionHandlerRegistration.CreateTransactional(key, invoke));
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ProjectionWorker>());
         return this;
     }
@@ -312,51 +321,6 @@ public sealed partial class EventLoomBuilder
         return this;
     }
 
-    /// <summary>
-    /// Configures the EF Core options for the EventLoom event-store context.
-    /// </summary>
-    /// <param name="configure">Configures the context options, including its database provider.</param>
-    /// <returns>This builder.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="configure"/> is <see langword="null"/>.</exception>
-    /// <exception cref="InvalidOperationException">A database provider has already been configured.</exception>
-    public EventLoomBuilder ConfigureDbContext(Action<DbContextOptionsBuilder> configure)
-    {
-        if (configureDbContext is not null)
-        {
-            throw new InvalidOperationException("An EventLoom database provider has already been configured.");
-        }
-
-        ArgumentNullException.ThrowIfNull(configure);
-        configureDbContext = (_, options) => configure(options);
-        return this;
-    }
-
-    /// <summary>
-    /// Configures the EF Core options for the EventLoom event-store context using scoped services.
-    /// </summary>
-    /// <remarks>
-    /// This advanced overload is intended for sharing a scoped <c>DbConnection</c> with an
-    /// application context so that it can share a unit of work with EventLoom through
-    /// <see cref="EventStore.BeginUnitOfWorkAsync"/>, or through the lower-level
-    /// <see cref="EventStore.AppendInTransactionAsync"/> for callers that manage a
-    /// <see cref="System.Data.Common.DbTransaction"/> directly.
-    /// </remarks>
-    /// <param name="configure">Configures the context options, including its database provider.</param>
-    /// <returns>This builder.</returns>
-    /// <exception cref="ArgumentNullException"><paramref name="configure"/> is <see langword="null"/>.</exception>
-    /// <exception cref="InvalidOperationException">A database provider has already been configured.</exception>
-    public EventLoomBuilder ConfigureDbContext(
-        Action<IServiceProvider, DbContextOptionsBuilder> configure)
-    {
-        if (configureDbContext is not null)
-        {
-            throw new InvalidOperationException("An EventLoom database provider has already been configured.");
-        }
-
-        configureDbContext = configure ?? throw new ArgumentNullException(nameof(configure));
-        return this;
-    }
-
     internal void RegisterServices()
     {
         if (servicesRegistered)
@@ -365,14 +329,6 @@ public sealed partial class EventLoomBuilder
         }
 
         servicesRegistered = true;
-        Action<ModelBuilder> configureProjectionModel = modelBuilder =>
-        {
-            foreach (var configure in projectionModelConfigurations)
-            {
-                configure(modelBuilder);
-            }
-        };
-
         services.AddSingleton(registry);
         services.AddSingleton(_ => { return new EventSerializer(registry, SerializationOptions, upcasters); });
         services.AddSingleton<IEventIdGenerator, UuidV7EventIdGenerator>();
@@ -395,21 +351,9 @@ public sealed partial class EventLoomBuilder
         services.AddSingleton(workerOptions);
         services.AddSingleton(outboxOptions);
         services.AddSingleton(_ => snapshotRetentionPolicy);
-        services.AddSingleton(configureProjectionModel);
         services.AddSingleton(_ => new ProjectionRegistry(projectionRegistrations));
-        services.AddDbContext<EventStoreDbContext>((serviceProvider, options) =>
-        {
-            var configure = configureDbContext
-                            ?? throw new InvalidOperationException(
-                                "Configure an EventLoom database provider with a provider-specific UsePostgreSql or UseSqlite extension.");
-            configure(serviceProvider, options);
-        });
-        services.AddScoped(serviceProvider => new EventStoreDbContext(
-            serviceProvider.GetRequiredService<DbContextOptions<EventStoreDbContext>>(),
-            serviceProvider.GetRequiredService<EventStoreOptions>(),
-            serviceProvider.GetRequiredService<Action<ModelBuilder>>()));
         services.AddScoped(serviceProvider => new EventStore(
-            serviceProvider.GetRequiredService<EventStoreDbContext>(),
+            serviceProvider.GetRequiredService<IEventStorage>(),
             serviceProvider.GetRequiredService<EventSerializer>(),
             serviceProvider.GetRequiredService<IEventIdGenerator>(),
             serviceProvider.GetRequiredService<TimeProvider>(),
@@ -418,12 +362,18 @@ public sealed partial class EventLoomBuilder
             serviceProvider.GetService<IEventStoreRetryPolicy>(),
             serviceProvider.GetService<IInlineProjectionDispatcher>(),
             serviceProvider.GetRequiredService<ILogger<EventStore>>()));
-        services.AddScoped<SnapshotStore>();
-        services.AddScoped<ProjectionStore>();
+        services.AddScoped(serviceProvider => new SnapshotStore(
+            serviceProvider.GetRequiredService<ISnapshotStorage>(),
+            serviceProvider.GetRequiredService<TimeProvider>(),
+            serviceProvider.GetRequiredService<ISnapshotRetentionPolicy>()));
+        services.AddScoped(serviceProvider => new ProjectionStore(
+            serviceProvider.GetRequiredService<IProjectionStorage>(),
+            serviceProvider.GetRequiredService<IEventStorage>(),
+            serviceProvider.GetRequiredService<ILogger<ProjectionStore>>()));
         services.AddScoped(serviceProvider => new ProjectionAdministration(
             serviceProvider.GetRequiredService<ProjectionStore>()));
-        services.AddScoped<WorkerLeaseStore>();
-        services.AddScoped<OutboxStore>();
+        services.AddScoped(serviceProvider => new OutboxStore(
+            serviceProvider.GetRequiredService<IOutboxStorage>()));
         services.AddScoped(serviceProvider => new OutboxAdministration(
             serviceProvider.GetRequiredService<OutboxStore>()));
         services.AddScoped(serviceProvider => new EventLoomOperationalDiagnostics(
@@ -434,10 +384,26 @@ public sealed partial class EventLoomBuilder
 
     internal void ValidateConfiguration()
     {
-        if (configureDbContext is null)
+        if (storageCapabilities is null)
         {
             throw new InvalidOperationException(
-                "Configure an EventLoom database provider with a provider-specific UsePostgreSql or UseSqlite extension.");
+                "Configure an EventLoom storage provider with a provider-specific extension such as " +
+                "UsePostgreSql, UseSqlite, or UseMongoDb.");
+        }
+
+        foreach (var registration in projectionRegistrations)
+        {
+            if (registration.Mode == ProjectionMode.Transactional && !storageCapabilities.SupportsTransactionalProjections)
+            {
+                throw new InvalidOperationException(
+                    $"The {storageCapabilities.ProviderName} storage provider does not support transactional projections.");
+            }
+
+            if (registration.Mode == ProjectionMode.Inline && !storageCapabilities.SupportsInlineProjections)
+            {
+                throw new InvalidOperationException(
+                    $"The {storageCapabilities.ProviderName} storage provider does not support inline projections.");
+            }
         }
 
         new EventSerializer(registry, SerializationOptions).ValidateRegisteredEvents();

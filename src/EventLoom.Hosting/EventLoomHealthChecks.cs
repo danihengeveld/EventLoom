@@ -1,4 +1,4 @@
-using EventLoom.EntityFrameworkCore;
+using EventLoom.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -65,25 +65,23 @@ internal sealed class EventStoreHealthCheck(IServiceScopeFactory scopeFactory) :
         CancellationToken cancellationToken = default)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
-        var eventStoreContext = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
+        var schema = scope.ServiceProvider.GetRequiredService<IStorageSchema>();
         try
         {
-            if (!await eventStoreContext.Database.CanConnectAsync(cancellationToken).ConfigureAwait(false))
+            var validation = await schema.ValidateAsync(cancellationToken).ConfigureAwait(false);
+            if (!validation.CanConnect)
             {
                 return HealthCheckResult.Unhealthy("EventLoom event-store connectivity failed.");
             }
 
-            var validation = await EventStoreSchema.ValidateAsync(eventStoreContext, cancellationToken)
-                .ConfigureAwait(false);
             return validation.IsCompatible
                 ? HealthCheckResult.Healthy("EventLoom event-store schema is compatible.")
                 : HealthCheckResult.Unhealthy(
                     "EventLoom event-store schema is incompatible.",
                     data: new Dictionary<string, object>
                     {
-                        ["missing_table_count"] = validation.MissingTables.Count,
-                        ["missing_column_count"] = validation.MissingColumns.Count,
-                        ["incompatible_column_count"] = validation.IncompatibleColumns.Count
+                        ["missing_object_count"] = validation.MissingCount,
+                        ["incompatible_object_count"] = validation.IncompatibleCount
                     });
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

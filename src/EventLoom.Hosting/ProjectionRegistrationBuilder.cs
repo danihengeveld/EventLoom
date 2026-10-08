@@ -1,4 +1,4 @@
-using EventLoom.EntityFrameworkCore;
+using EventLoom.Storage;
 
 namespace EventLoom.Hosting;
 
@@ -32,15 +32,21 @@ public sealed class ProjectionRegistrationBuilder
     }
 
     /// <summary>
-    /// Registers a typed projection handler whose read-model changes and checkpoint commit in one transaction.
+    /// Registers a typed projection handler whose read-model changes and checkpoint commit in one provider
+    /// transaction. Storage providers expose this through a provider-specific <c>Transactional</c> extension.
     /// </summary>
-    /// <typeparam name="TProjection">The projection handler type.</typeparam>
+    /// <typeparam name="THandler">The projection handler type, resolved from the dependency-injection scope.</typeparam>
     /// <typeparam name="TEvent">The event type handled by the projection.</typeparam>
+    /// <param name="invoke">
+    /// Invokes the handler with the provider-specific <see cref="IProjectionTransactionContext"/> that carries
+    /// the checkpoint transaction.
+    /// </param>
     /// <returns>This projection registration builder.</returns>
-    public ProjectionRegistrationBuilder Transactional<TProjection, TEvent>()
-        where TProjection : class, IEfProjectionHandler<TEvent>
+    public ProjectionRegistrationBuilder RegisterTransactional<THandler, TEvent>(
+        Func<THandler, EventEnvelope<TEvent>, IProjectionTransactionContext, CancellationToken, Task> invoke)
+        where THandler : class
     {
-        eventLoom.AddEfProjection<TProjection, TEvent>(key.Name, key.Version);
+        eventLoom.AddTransactionalProjection(key.Name, key.Version, invoke);
         registrationCount++;
         return this;
     }

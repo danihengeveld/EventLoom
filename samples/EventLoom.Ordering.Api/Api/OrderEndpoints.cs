@@ -1,8 +1,7 @@
-using EventLoom.EntityFrameworkCore;
 using EventLoom.Hosting;
 using EventLoom.Ordering.Api.Domain;
 using EventLoom.Ordering.Api.Projections;
-using Microsoft.EntityFrameworkCore;
+using EventLoom.Storage;
 
 namespace EventLoom.Ordering.Api.Api;
 
@@ -138,13 +137,11 @@ internal static class OrderEndpoints
 
     private static async Task<IResult> GetSummaryAsync(
         Guid id,
-        EventStoreDbContext context,
+        IOrderSummaryReader reader,
         ITenantAccessor tenantAccessor,
         CancellationToken cancellationToken)
     {
-        var summary = await context.Set<OrderSummary>().SingleOrDefaultAsync(
-            value => value.TenantId == tenantAccessor.TenantId!.Value.Value && value.OrderId == id,
-            cancellationToken);
+        var summary = await reader.FindAsync(tenantAccessor.TenantId!.Value.Value, id, cancellationToken);
         return summary is null ? Results.NotFound() : Results.Ok(summary);
     }
 

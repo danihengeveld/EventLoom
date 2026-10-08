@@ -30,15 +30,20 @@ builder.Services
         .UseStream("order", id => id.ToString("D")));
 ```
 
-For an intentionally explicit empty-database initialization, resolve the
-dedicated `EventStoreDbContext` during startup and call
-`EventStoreSchema.EnsureCreatedAsync(context)`. Provider registration
+For an intentionally explicit empty-database initialization, resolve
+`IStorageSchema` from a scope during startup and call `EnsureCreatedAsync()`;
+`ValidateAsync()` reports missing or incompatible objects. Provider registration
 does not create or migrate storage automatically. This operation creates the
 configured schema and table prefix, but does not evolve an existing schema;
 production migrations remain owned and reviewed by the host application's
 deployment process.
 
-The package restores the core, EF Core, and hosting packages transitively.
+EF-specific options (`Schema`, `TablePrefix`) are configured with
+`ConfigureEntityFramework(...)`. Tables that hold transactional projection
+read models are added with `ConfigureProjectionModel(...)`. To store events in
+MongoDB instead, use `EventLoom.MongoDb`.
+
+The package restores the core, storage, EF Core, and hosting packages transitively.
 ASP.NET Core applications should reference `EventLoom.AspNetCore` alongside
 this provider for application composition and endpoint integration. Use
 PostgreSQL for any production application that runs multiple instances, uses

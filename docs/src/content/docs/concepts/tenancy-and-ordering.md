@@ -69,9 +69,9 @@ await repository.SaveAsync(order, appendId: commandId);
 ```
 
 If the original append committed, retrying with the same append ID returns the
-original envelopes with `WasIdempotentReplay` set. Generating a new append ID
-for every retry creates a second command; reusing one for different commands is
-invalid.
+original envelopes with `WasIdempotentReplay` set. Append IDs are **tenant-wide**:
+reusing the same append ID for a different stream in the same tenant replays the
+original result instead of creating a second command.
 
 ## Read the right order
 

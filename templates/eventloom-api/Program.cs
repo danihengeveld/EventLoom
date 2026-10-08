@@ -1,8 +1,8 @@
 using EventLoom;
 using EventLoom.AspNetCore;
-using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
+using EventLoom.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services

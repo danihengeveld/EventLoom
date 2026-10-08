@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace EventLoom.EntityFrameworkCore;
+namespace EventLoom.Storage;
 
 internal static partial class EventLoomLogMessages
 {

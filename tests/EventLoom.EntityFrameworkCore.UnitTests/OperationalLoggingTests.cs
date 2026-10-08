@@ -44,8 +44,8 @@ public sealed class OperationalLoggingTests
         var logger = new RecordingLogger<EventStore>();
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite("Data Source=:memory:").Options,
-            new EventStoreOptions());
-        var store = new EventStore(
+            new EntityFrameworkStorageOptions());
+        var store = EfTestStores.EventStore(
             context,
             new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
@@ -75,9 +75,9 @@ public sealed class OperationalLoggingTests
         await connection.OpenAsync();
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            new EventStoreOptions());
+            new EntityFrameworkStorageOptions());
         await context.Database.EnsureCreatedAsync();
-        var store = new EventStore(
+        var store = EfTestStores.EventStore(
             context,
             new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),

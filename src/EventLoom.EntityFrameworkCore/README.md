@@ -1,18 +1,22 @@
 # EventLoom.EntityFrameworkCore
 
-`EventLoom.EntityFrameworkCore` is EventLoom's shared EF Core infrastructure
-package. It provides the dedicated `EventStoreDbContext`, transactional
-appends, aggregate repositories, snapshots, checkpointed projections, the
-transactional outbox model, and a unit-of-work API
-(`EventStore.BeginUnitOfWorkAsync`) for coordinating an append with
-application database changes in the same transaction.
+`EventLoom.EntityFrameworkCore` is EventLoom's EF Core storage provider. It
+implements the `EventLoom.Storage` provider contract (events, snapshots,
+projections, outbox, and worker leases) over the dedicated
+`EventStoreDbContext`. The provider-neutral `EventStore`,
+`AggregateRepository<,>`, and unit-of-work API (`EventStore.BeginUnitOfWorkAsync`)
+live in `EventLoom.Storage`; this package adds the EF-specific parts:
 
-The EF Core package uses standard .NET logging for unexpected append
-failures, rejected appends, snapshot replay fallback, and successful
-projection administration changes. Host registration supplies the logger
-automatically; applications control providers and levels normally. Direct
-construction without a logger remains supported and uses a no-op logger.
-Logs omit persisted identifiers, payloads, and exception messages.
+- `ConfigureEntityFramework(options => ...)` for the schema and table prefix;
+- `ConfigureProjectionModel` and `ConfigureDbContext` for read models and
+  context customization;
+- `IEfProjectionHandler<TEvent>` for projections that commit EF read-model
+  changes in the same transaction as their checkpoint;
+- `unitOfWork.EnlistAsync(dbContext)` and `unitOfWork.DbTransaction` for
+  coordinating an append with application database changes.
+
+Storage logging comes from the provider-neutral engine and uses standard .NET
+logging; logs omit persisted identifiers, payloads, and exception messages.
 
 Snapshots are aggregate-owned state caches. Declare a snapshot as
 `IAggregateSnapshot<TSnapshot, TAggregate>`, implement
@@ -26,6 +30,9 @@ entry point. Install one provider package instead:
   multiple instances or distributed workers;
 - `EventLoom.EntityFrameworkCore.Sqlite` for local development, tests,
   embedded applications, and one controlled process.
+
+To store events in MongoDB, use `EventLoom.MongoDb` instead; it does not use
+EF Core.
 
 Web applications should install `EventLoom.AspNetCore` plus one provider; the
 provider brings this package into the dependency graph. Reference this package

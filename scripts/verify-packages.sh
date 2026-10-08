@@ -13,6 +13,8 @@ package_ids=(
   EventLoom.EntityFrameworkCore.PostgreSql
   EventLoom.EntityFrameworkCore.Sqlite
   EventLoom.Hosting
+  EventLoom.MongoDb
+  EventLoom.Storage
   EventLoom.Testing
 )
 

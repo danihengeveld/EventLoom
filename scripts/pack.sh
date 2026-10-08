@@ -14,6 +14,8 @@ projects=(
   src/EventLoom.EntityFrameworkCore.PostgreSql/EventLoom.EntityFrameworkCore.PostgreSql.csproj
   src/EventLoom.EntityFrameworkCore.Sqlite/EventLoom.EntityFrameworkCore.Sqlite.csproj
   src/EventLoom.Hosting/EventLoom.Hosting.csproj
+  src/EventLoom.MongoDb/EventLoom.MongoDb.csproj
+  src/EventLoom.Storage/EventLoom.Storage.csproj
   src/EventLoom.Testing/EventLoom.Testing.csproj
 )
 

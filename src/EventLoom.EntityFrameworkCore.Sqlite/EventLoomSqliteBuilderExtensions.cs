@@ -42,17 +42,15 @@ public static class EventLoomSqliteBuilderExtensions
         ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
         Batteries_V2.Init();
 
-        return builder
-            .ConfigureEventStore(options => options.UseSchema = false)
-            .ConfigureDbContext(options => options.UseSqlite(connectionString, configure));
+        return Use(builder, (_, options) => options.UseSqlite(connectionString, configure));
     }
 
     /// <summary>
     /// Uses a scoped SQLite connection shared with an application context.
     /// </summary>
     /// <remarks>
-    /// This advanced overload supports <see cref="EventStore.AppendInTransactionAsync"/>.
-    /// The application context must use the same connection instance for each unit of work.
+    /// This advanced overload lets application contexts join an EventLoom unit of work through
+    /// <c>EnlistAsync</c>. The application context must use the same connection instance for each unit of work.
     /// </remarks>
     /// <param name="builder">The EventLoom builder to configure.</param>
     /// <param name="connectionFactory">Returns the scoped connection shared with the application context.</param>
@@ -66,8 +64,8 @@ public static class EventLoomSqliteBuilderExtensions
     /// Uses a scoped SQLite connection shared with an application context.
     /// </summary>
     /// <remarks>
-    /// This advanced overload supports <see cref="EventStore.AppendInTransactionAsync"/>.
-    /// The application context must use the same connection instance for each unit of work.
+    /// This advanced overload lets application contexts join an EventLoom unit of work through
+    /// <c>EnlistAsync</c>. The application context must use the same connection instance for each unit of work.
     /// </remarks>
     /// <param name="builder">The EventLoom builder to configure.</param>
     /// <param name="connectionFactory">Returns the scoped connection shared with the application context.</param>
@@ -82,9 +80,17 @@ public static class EventLoomSqliteBuilderExtensions
         ArgumentNullException.ThrowIfNull(connectionFactory);
         Batteries_V2.Init();
 
-        return builder
-            .ConfigureEventStore(options => options.UseSchema = false)
-            .ConfigureDbContext((services, options) =>
-                options.UseSqlite(connectionFactory(services), configure));
+        return Use(builder, (services, options) => options.UseSqlite(connectionFactory(services), configure));
     }
+
+    private static EventLoomBuilder Use(
+        EventLoomBuilder builder,
+        Action<IServiceProvider, DbContextOptionsBuilder> configure) =>
+        EventLoomEntityFrameworkBuilderExtensions.UseEntityFramework(
+            builder,
+            "SQLite",
+            isDistributed: false,
+            useSchema: false,
+            EfStorageDialect.Default,
+            configure);
 }

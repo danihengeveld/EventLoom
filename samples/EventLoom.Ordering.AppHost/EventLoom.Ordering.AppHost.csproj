@@ -9,6 +9,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\EventLoom.Ordering.Api\EventLoom.Ordering.Api.csproj" />
+    <PackageReference Include="Aspire.Hosting.MongoDB" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
   </ItemGroup>
 </Project>

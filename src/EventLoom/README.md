@@ -40,8 +40,9 @@ registered upcaster for the same stable `EventType` string.
 
 This package has no application composition or storage provider. Web
 applications should add `EventLoom.AspNetCore` plus exactly one provider:
-`EventLoom.EntityFrameworkCore.PostgreSql` for distributed production or
-`EventLoom.EntityFrameworkCore.Sqlite` for local and single-node use.
+`EventLoom.EntityFrameworkCore.PostgreSql` or `EventLoom.MongoDb` for
+distributed production, or `EventLoom.EntityFrameworkCore.Sqlite` for local and
+single-node use.
 
 EventLoom is currently pre-release. See the
 [getting started guide](https://github.com/danihengeveld/EventLoom/tree/main/docs/src/content/docs/getting-started)

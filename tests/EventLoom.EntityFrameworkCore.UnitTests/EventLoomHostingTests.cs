@@ -3,6 +3,7 @@ using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
+using EventLoom.Storage;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -104,6 +105,50 @@ public sealed class EventLoomHostingTests
     }
 
     [Test]
+    public async Task A_storage_provider_is_required()
+    {
+        var services = new ServiceCollection();
+
+        await Assert.That(() => services.AddEventLoom(eventLoom => eventLoom.AddAggregateEvents<Counter>()))
+            .Throws<InvalidOperationException>()
+            .WithMessage("Configure an EventLoom storage provider with a provider-specific extension such as UsePostgreSql, UseSqlite, or UseMongoDb.");
+    }
+
+    [Test]
+    public async Task Only_one_storage_provider_can_be_configured()
+    {
+        var services = new ServiceCollection();
+
+        await Assert.That(() => services.AddEventLoom(eventLoom => eventLoom
+                .UseSqlite("Data Source=:memory:")
+                .UseStorage(new StorageCapabilities("Other", true, true, true, true), _ => { })))
+            .Throws<InvalidOperationException>()
+            .WithMessage("An EventLoom storage provider has already been configured (SQLite).");
+    }
+
+    [Test]
+    public async Task Projection_modes_the_provider_does_not_support_are_rejected_at_startup()
+    {
+        var limited = new StorageCapabilities("Limited", false, false, false, false);
+        var services = new ServiceCollection();
+
+        await Assert.That(() => services.AddEventLoom(eventLoom => eventLoom
+                .AddAggregateEvents<Counter>()
+                .UseStorage(limited, _ => { })
+                .AddProjection("tests.transactional", projection => projection
+                    .Transactional<NoopProjection, CounterIncremented>())))
+            .Throws<InvalidOperationException>()
+            .WithMessage("The Limited storage provider does not support transactional projections.");
+        await Assert.That(() => new ServiceCollection().AddEventLoom(eventLoom => eventLoom
+                .AddAggregateEvents<Counter>()
+                .UseStorage(limited, _ => { })
+                .AddProjection("tests.inline", projection => projection
+                    .Inline<NoopProjection, CounterIncremented>())))
+            .Throws<InvalidOperationException>()
+            .WithMessage("The Limited storage provider does not support inline projections.");
+    }
+
+    [Test]
     public async Task Named_projection_registration_requires_at_least_one_handler()
     {
         var services = new ServiceCollection();
@@ -137,20 +182,20 @@ public sealed class EventLoomHostingTests
         var sqliteServices = new ServiceCollection();
         sqliteServices.AddEventLoom(eventLoom => eventLoom
             .AddAggregateEvents<Counter>()
-            .ConfigureEventStore(options => options.UseSchema = true)
+            .ConfigureEntityFramework(options => options.Schema = "custom")
             .UseSqlite("Data Source=:memory:"));
 
         using var sqliteProvider = sqliteServices.BuildServiceProvider();
-        await Assert.That(sqliteProvider.GetRequiredService<EventStoreOptions>().UseSchema).IsFalse();
+        await Assert.That(sqliteProvider.GetRequiredService<EntityFrameworkStorageOptions>().UseSchema).IsFalse();
 
         var postgreSqlServices = new ServiceCollection();
         postgreSqlServices.AddEventLoom(eventLoom => eventLoom
             .AddAggregateEvents<Counter>()
-            .ConfigureEventStore(options => options.UseSchema = false)
+            .ConfigureEntityFramework(options => options.Schema = "custom")
             .UsePostgreSql("Host=localhost;Database=eventloom;Username=eventloom;Password=eventloom"));
 
         using var postgreSqlProvider = postgreSqlServices.BuildServiceProvider();
-        await Assert.That(postgreSqlProvider.GetRequiredService<EventStoreOptions>().UseSchema).IsTrue();
+        await Assert.That(postgreSqlProvider.GetRequiredService<EntityFrameworkStorageOptions>().UseSchema).IsTrue();
         await Assert.That(postgreSqlProvider.GetRequiredService<IEventStoreRetryPolicy>())
             .IsTypeOf<PostgreSqlRetryPolicy>();
     }
@@ -252,6 +297,17 @@ public sealed class EventLoomHostingTests
             SqliteConnection.ClearAllPools();
             File.Delete(databasePath);
         }
+    }
+
+    private sealed class NoopProjection : IEfProjectionHandler<CounterIncremented>, IInlineProjectionHandler<CounterIncremented>
+    {
+        public Task HandleAsync(
+            EventEnvelope<CounterIncremented> envelope,
+            EventStoreDbContext context,
+            CancellationToken cancellationToken) => Task.CompletedTask;
+
+        public Task HandleAsync(EventEnvelope<CounterIncremented> envelope, CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     private sealed record CounterIncremented : IDomainEvent<CounterIncremented, Counter>

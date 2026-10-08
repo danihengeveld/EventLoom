@@ -1,17 +1,23 @@
 ---
-title: Configure event storage
-description: Register EventLoom with PostgreSQL or SQLite and customize event-store storage.
+title: Configure the EF Core store
+description: Register EventLoom with PostgreSQL or SQLite and customize the shared EF Core provider.
 ---
 
-Use the hosting composition API for normal applications. It registers the
-event registry, serializer, UUIDv7 generator, time provider, dedicated
-`EventStoreDbContext`, `EventStore`, worker-lease store, and configured
-aggregate repositories.
+Use this guide when you want the **EF Core storage provider**. If you are still
+choosing a backend, start with [Storage providers](/concepts/storage-providers).
+If you want MongoDB instead, use [Use MongoDB](/guides/use-mongodb).
+
+The EF Core provider is split across packages:
+
+- `EventLoom.Storage` contains the engine your application code uses;
+- `EventLoom.EntityFrameworkCore` implements the storage SPI;
+- `EventLoom.EntityFrameworkCore.PostgreSql` and
+  `EventLoom.EntityFrameworkCore.Sqlite` select the relational database.
 
 ## PostgreSQL
 
-PostgreSQL is required for multiple application instances and distributed
-workers:
+PostgreSQL is the EF Core option for multiple application instances and
+distributed workers:
 
 ```csharp
 using EventLoom;
@@ -26,12 +32,12 @@ builder.Services
         .UseStream("order", id => id.ToString("D")));
 ```
 
-`UsePostgreSql` enables the default `eventloom` schema and adds the bounded
-PostgreSQL retry policy. It retries only transient connection failures,
-deadlocks, and serialization failures. Unique-constraint and logical
-expected-version conflicts remain visible to the caller.
+`UsePostgreSql` enables the default `eventloom` schema and installs the bounded
+PostgreSQL retry policy. It retries transient connection failures, deadlocks,
+and serialization failures. Expected-version and other logical conflicts remain
+visible to the caller.
 
-Pass the provider's options callback when required:
+Pass the provider callback when you need normal Npgsql EF Core options:
 
 ```csharp
 eventLoom.UsePostgreSql(connectionString, npgsql =>
@@ -54,21 +60,20 @@ builder.Services
         .UseStream("order", id => id.ToString("D")));
 ```
 
-`UseSqlite` disables schemas and initializes the SQLite provider from its
-bundled native dependency, so applications do not need a system SQLite library.
-It does not support distributed workers; use PostgreSQL for multi-instance
-correctness.
+`UseSqlite` disables schemas and initializes SQLite from the package's bundled
+native dependency. It does not support distributed workers; use PostgreSQL or
+MongoDB for multi-instance correctness.
 
-## Storage names and tenancy
+## Configure storage names and tenancy
 
-Configure these before selecting the provider:
+Relational naming moved to `ConfigureEntityFramework(...)`:
 
 ```csharp
 builder.Services
     .AddEventLoom()
     .UsePostgreSql(connectionString)
     .UseMultiTenancy<AuthenticatedTenantAccessor>()
-    .ConfigureEventStore(options =>
+    .ConfigureEntityFramework(options =>
     {
         options.Schema = "events";
         options.TablePrefix = "app_";
@@ -78,21 +83,47 @@ builder.Services
         .UseStream("order", id => id.ToString("D")));
 ```
 
-| `EventStoreOptions` property | Default | Notes |
+| `EntityFrameworkStorageOptions` property | Default | Notes |
 | --- | --- | --- |
-| `Schema` | `eventloom` | PostgreSQL only. |
-| `TablePrefix` | `eventloom_` | Applied to every EventLoom table. |
+| `Schema` | `eventloom` | PostgreSQL only. Keep stable after data exists. |
+| `TablePrefix` | `eventloom_` | Applied to every EventLoom table. Keep stable after storage is created. |
 
 Configure tenancy with `UseSingleTenancy`, `UseMultiTenancy<TAccessor>`, or
 `UseMultiTenancy()` when the application registers `ITenantAccessor` itself.
 The selected provider owns schema support: PostgreSQL enables it, while SQLite
 disables it.
 
+## Register transactional read models
+
+EF transactional projections map their read models into the dedicated
+`EventStoreDbContext` and implement `IEfProjectionHandler<TEvent>`:
+
+```csharp
+using EventLoom.EntityFrameworkCore;
+
+builder.Services
+    .AddEventLoom()
+    .UsePostgreSql(connectionString)
+    .ConfigureProjectionModel(modelBuilder =>
+        modelBuilder.Entity<OrderSummary>(entity =>
+        {
+            entity.ToTable("order_summaries");
+            entity.HasKey(value => new { value.TenantId, value.OrderId });
+        }))
+    .AddProjection("orders.summary", projection => projection
+        .Transactional<OrderSummaryProjection, OrderPlaced>());
+```
+
+Keep EF-specific projection registration in files that import
+`EventLoom.EntityFrameworkCore`. If the same file also imports
+`EventLoom.MongoDb`, the two provider-specific `Transactional<,>()` extensions
+become ambiguous.
+
 ## Worker and retry settings
 
 Both the projection worker and the outbox worker use fenced, tenant-scoped
-leases, but each has its own dedicated options so their polling, batching,
-lease, and retry behavior can be tuned independently.
+leases, but each has its own options so polling, batching, lease, and retry
+behavior can be tuned independently.
 
 Configure the projection worker with `ConfigureWorkers`:
 
@@ -108,29 +139,12 @@ eventLoom.ConfigureWorkers(options =>
 });
 ```
 
-Configure the outbox worker through `AddOutboxPublisher`'s optional callback
-instead; it groups the same worker controls together with successful-delivery
-retention. See [Outbox and application integration](./outbox/) to register a
-publisher.
+Configure the outbox worker through `AddOutboxPublisher(...)` instead; see
+[Publish integration messages](./outbox/).
 
-EventLoom validates these values during registration. Registering an
-asynchronous projection adds the projection worker automatically; registering
-an outbox publisher adds the outbox worker automatically. PostgreSQL safely
-supports multiple worker instances; SQLite is limited to one controlled
-application instance.
+## Schema creation and validation
 
-## OpenTelemetry
-
-`EventLoom.Hosting` provides optional convenience registration for the
-dependency-free EventLoom activity source and meter. See
-[Observability](./observability/) for tracing, metrics, and data-safety
-guidance.
-
-## Schema creation and migrations
-
-The current pre-release includes the EF Core model but does not ship static
-provider migrations because schema and table names are configurable. The
-sample explicitly initializes a local empty database:
+For a new local database, explicitly bootstrap the store in Development:
 
 ```csharp
 if (app.Environment.IsDevelopment())
@@ -139,11 +153,17 @@ if (app.Environment.IsDevelopment())
 }
 ```
 
-The helper refuses to run outside Development and does not migrate an existing
-schema. For production, create and review migrations in the host application
-against the dedicated `EventStoreDbContext`, then apply them through your
-deployment process. `EventStoreSchema.MigrateAsync` applies those host-owned
-migrations when an application-controlled migration step is appropriate.
+For validation or deployment tooling, resolve `IStorageSchema` and use the
+provider-neutral API:
 
-`EventStoreSchema.GetTableNames(options)` returns the table names EventLoom
-manages for diagnostics and health checks.
+```csharp
+await using var scope = app.Services.CreateAsyncScope();
+var schema = scope.ServiceProvider.GetRequiredService<IStorageSchema>();
+
+await schema.EnsureCreatedAsync();
+var validation = await schema.ValidateAsync();
+```
+
+`ValidateAsync()` returns `CanConnect`, `MissingCount`, `IncompatibleCount`, and
+`IsCompatible`. For production PostgreSQL or SQLite deployments, keep using
+reviewed, host-owned EF Core migrations for schema changes.

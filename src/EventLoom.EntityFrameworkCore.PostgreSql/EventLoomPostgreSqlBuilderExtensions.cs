@@ -37,18 +37,15 @@ public static class EventLoomPostgreSqlBuilderExtensions
             ArgumentNullException.ThrowIfNull(builder);
             ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
-            return builder
-                .AddEventStoreRetryPolicy<PostgreSqlRetryPolicy>()
-                .ConfigureEventStore(options => options.UseSchema = true)
-                .ConfigureDbContext(options => options.UseNpgsql(connectionString, configure));
+            return Use(builder, (_, options) => options.UseNpgsql(connectionString, configure));
         }
 
         /// <summary>
         /// Uses a scoped PostgreSQL connection shared with an application context.
         /// </summary>
         /// <remarks>
-        /// This advanced overload supports <see cref="EventStore.AppendInTransactionAsync"/>.
-        /// The application context must use the same connection instance for each unit of work.
+        /// This advanced overload lets application contexts join an EventLoom unit of work through
+        /// <c>EnlistAsync</c>. The application context must use the same connection instance for each unit of work.
         /// </remarks>
         /// <param name="connectionFactory">Returns the scoped connection shared with the application context.</param>
         /// <returns>The configured builder.</returns>
@@ -59,8 +56,8 @@ public static class EventLoomPostgreSqlBuilderExtensions
         /// Uses a scoped PostgreSQL connection shared with an application context.
         /// </summary>
         /// <remarks>
-        /// This advanced overload supports <see cref="EventStore.AppendInTransactionAsync"/>.
-        /// The application context must use the same connection instance for each unit of work.
+        /// This advanced overload lets application contexts join an EventLoom unit of work through
+        /// <c>EnlistAsync</c>. The application context must use the same connection instance for each unit of work.
         /// </remarks>
         /// <param name="connectionFactory">Returns the scoped connection shared with the application context.</param>
         /// <param name="configure">Optional PostgreSQL-specific EF Core configuration.</param>
@@ -71,11 +68,22 @@ public static class EventLoomPostgreSqlBuilderExtensions
             ArgumentNullException.ThrowIfNull(builder);
             ArgumentNullException.ThrowIfNull(connectionFactory);
 
-            return builder
-                .AddEventStoreRetryPolicy<PostgreSqlRetryPolicy>()
-                .ConfigureEventStore(options => options.UseSchema = true)
-                .ConfigureDbContext((services, options) =>
-                    options.UseNpgsql(connectionFactory(services), configure));
+            return Use(builder, (services, options) =>
+                options.UseNpgsql(connectionFactory(services), configure));
         }
+    }
+
+    private static EventLoomBuilder Use(
+        EventLoomBuilder builder,
+        Action<IServiceProvider, DbContextOptionsBuilder> configure)
+    {
+        builder.AddEventStoreRetryPolicy<PostgreSqlRetryPolicy>();
+        return EventLoomEntityFrameworkBuilderExtensions.UseEntityFramework(
+            builder,
+            "PostgreSQL",
+            isDistributed: true,
+            useSchema: true,
+            new PostgreSqlStorageDialect(),
+            configure);
     }
 }

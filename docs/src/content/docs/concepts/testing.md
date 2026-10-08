@@ -1,6 +1,6 @@
 ---
 title: Test an EventLoom application
-description: Test event-sourced domain behavior separately from relational and distributed storage behavior.
+description: Test event-sourced domain behavior separately from provider contracts, storage behavior, and distributed-worker behavior.
 ---
 
 ## Test domain behavior without a database
@@ -35,26 +35,30 @@ AggregateScenario.For<Order, Guid>(id => new Order(id))
 `ThenThrows<TException>()` asserts that a command was rejected.
 
 Keep tests for aggregate invariants, event payloads, registration,
-serialization, and upcasters independent of EF Core.
+serialization, and upcasters independent of storage providers.
 
-## Test relational behavior with real providers
+## Test provider behavior with real stores
 
-Use a real relational provider for append, rollback, unique-index, and query
+Use real providers for append, rollback, unique-index, lease, and query
 behavior:
 
 - `EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests` uses in-memory
-  SQLite for schema, append/read, and aggregate repository coverage.
-- `EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests` uses
-  PostgreSQL Testcontainers for provider behavior, concurrent appends,
-  per-tenant offsets, and worker lease fencing.
+  SQLite for local relational behavior.
+- `EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests` uses PostgreSQL
+  Testcontainers for distributed relational behavior.
+- `EventLoom.MongoDb.IntegrationTests` uses MongoDB Testcontainers or an
+  explicit `EVENTLOOM_MONGODB_CONNECTION_STRING` for distributed document-store
+  behavior.
+- `tests/EventLoom.Storage.Conformance` is a shared provider-neutral suite that
+  each integration project runs against its provider implementation.
 
-SQLite is useful for local integration tests, but it cannot prove PostgreSQL
-transaction isolation or multi-instance behavior.
+SQLite is useful for local integration tests, but it cannot prove PostgreSQL or
+MongoDB multi-instance behavior.
 
-`EventLoomSqliteTestHost` (in `EventLoom.Testing`) wraps that SQLite setup: a
+`EventLoomSqliteTestHost` (in `EventLoom.Testing`) wraps the SQLite setup: a
 kept-open in-memory connection, a fully wired EventLoom container, schema
-creation, and deterministic time (`ManualTimeProvider`) and event identifiers
-(`SequentialEventIdGenerator`).
+creation, deterministic time (`ManualTimeProvider`), and deterministic event
+identifiers.
 
 ```csharp
 await using var host = await EventLoomSqliteTestHost.CreateAsync(options =>
@@ -68,41 +72,28 @@ await host.RunScopedAsync(async (services, cancellationToken) =>
     var repository = services.GetRequiredService<AggregateRepository<Order, Guid>>();
     var order = new Order(Guid.NewGuid());
     order.Place("coffee", 2);
-    await repository.SaveAsync(order);
+    await repository.SaveAsync(order, cancellationToken: cancellationToken);
 });
 ```
 
-This host does not include a managed PostgreSQL fixture. The repository's
-PostgreSQL integration tests share one container through a TUnit
-assembly-scoped fixture. Each test creates its own database and independent
-contexts for simulated application instances. See below.
+## Test distributed providers deliberately
 
-## Test a PostgreSQL application path
+### PostgreSQL
 
 Use Testcontainers for PostgreSQL integration tests that claim distributed
-correctness. The repository's TUnit fixture starts one container for the test
-assembly:
+correctness. Create independent contexts for simulated application instances and
+test competing appends, first-write races, per-tenant offsets, and stale lease
+fencing.
 
-```csharp
-private readonly PostgreSqlContainer container = new PostgreSqlBuilder("postgres:18-alpine").Build();
+### MongoDB
 
-public Task InitializeAsync() => container.StartAsync();
-```
+Use a replica set, not a standalone `mongod`. The repository's MongoDB provider
+supports Testcontainers or an explicit local server through
+`EVENTLOOM_MONGODB_CONNECTION_STRING`. Validate transactional projections,
+shared unit-of-work sessions, tenant offsets, idempotent append replay, and
+lease fencing.
 
-Each test requests a fresh database and creates its own context:
-
-```csharp
-await using var database = await Server.CreateDatabaseAsync();
-await using var context = database.CreateContext();
-```
-
-Create each simulated application instance with an independent
-`EventStoreDbContext`. Test competing stream appends, first-write races,
-tenant-isolated reads, idempotent append retries, and checkpoint advancement.
-
-The current repository needs `TESTCONTAINERS_RYUK_DISABLED=true` on Docker
-Desktop setups that block Testcontainers' Ryuk resource reaper. Use that
-workaround only when Docker lifecycle cleanup is otherwise guaranteed.
+For local developer setup, see [Use MongoDB](/guides/use-mongodb).
 
 ## What to assert
 
@@ -110,15 +101,15 @@ workaround only when Docker lifecycle cleanup is otherwise guaranteed.
 | --- | --- |
 | Aggregate command | Event type, payload, state, and pending event count. |
 | Replay | Same state after loading persisted history. |
-| Append | All events appear once with consecutive stream versions. |
+| Append | All events appear once with consecutive stream versions and tenant offsets. |
 | Concurrency | One command succeeds; the other is a visible conflict or reevaluated retry. |
 | Tenant access | A tenant never reads another tenant's stream or offsets. |
-| Idempotency | The same append ID returns the original envelopes. |
-| Projection | Checkpoint advances only after a handler succeeds; EF read-model effects are atomic with it. |
+| Idempotency | The same append ID returns the original envelopes across the whole tenant scope. |
+| Projection | Checkpoint advances only after a handler succeeds; transactional projection effects commit with it. |
+| Lease fencing | Stale workers cannot record checkpoint or outbox progress. |
+| Lease release | Releasing a lease expires it without resetting fencing-token monotonicity. |
 | Outbox | Event and message commit together; retries reuse the stable message ID and persist attempt history. |
 
-Snapshot replay and projection storage are covered by SQLite integration tests.
-The hosted projection worker has restart, retry, pause, and inline-transaction
-coverage; PostgreSQL integration tests cover stale lease fencing. Outbox
-delivery is covered with file-backed SQLite persistence, an idempotent retrying
-publisher, and PostgreSQL stale-lease fencing.
+Run the provider-neutral conformance suite plus the smallest provider-specific
+tests that prove capabilities or operational differences your application relies
+on.

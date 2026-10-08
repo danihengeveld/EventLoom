@@ -9,7 +9,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
         await using var context = database.CreateContext();
         context.TenantOffsets.Add(new TenantOffsetEntity { TenantId = "empty", NextOffset = 0 });
         await context.SaveChangesAsync();
-        var projections = new ProjectionStore(context, TimeProvider.System);
+        var projections = EfTestStores.Projections(context, TimeProvider.System);
         var firstKey = new ProjectionKey("tests.first", 1);
         var secondKey = new ProjectionKey("tests.second", 1);
         var empty = await projections.GetHealthSummaryAsync([firstKey, secondKey]);
@@ -18,7 +18,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
         await Assert.That(empty.ProjectionCount).IsEqualTo(2);
         await Assert.That((await projections.GetHealthSummaryAsync([])).ProjectionCount).IsEqualTo(0);
 
-        var store = new EventStore(
+        var store = EfTestStores.EventStore(
             context,
             new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
@@ -29,7 +29,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
         await store.AppendAsync(new AppendRequest(
             "tenant-b", "order-2", "order", ExpectedVersion.NoStream,
             [new ItemAdded()], new EventMetadata()));
-        var lease = (await new WorkerLeaseStore(context, TimeProvider.System).TryAcquireAsync(
+        var lease = (await EfTestStores.Leases(context, TimeProvider.System).TryAcquireAsync(
             "tenant-a", ProjectionStore.GetLeaseName(firstKey), "node-a", TimeSpan.FromMinutes(1)))!;
         await projections.ProcessAsync("tenant-a", firstKey, first[0], lease, (_, _) => Task.CompletedTask);
 
@@ -46,7 +46,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
     {
         await using var database = await Server.CreateDatabaseAsync();
         await using var context = database.CreateContext();
-        var leases = new WorkerLeaseStore(context, TimeProvider.System);
+        var leases = EfTestStores.Leases(context, TimeProvider.System);
 
         var first = await leases.TryAcquireAsync("tenant-a", "orders", "node-a", TimeSpan.FromMinutes(1));
         var renewed = await leases.TryAcquireAsync("tenant-a", "orders", "node-a", TimeSpan.FromMinutes(1));
@@ -62,8 +62,8 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
         await using var database = await Server.CreateDatabaseAsync();
         await using var firstContext = database.CreateContext();
         await using var secondContext = database.CreateContext();
-        var first = new WorkerLeaseStore(firstContext, TimeProvider.System);
-        var second = new WorkerLeaseStore(secondContext, TimeProvider.System);
+        var first = EfTestStores.Leases(firstContext, TimeProvider.System);
+        var second = EfTestStores.Leases(secondContext, TimeProvider.System);
 
         var acquisitions = await Task.WhenAll(
             first.TryAcquireAsync("tenant-a", "orders", "node-a", TimeSpan.FromMinutes(1)),
@@ -78,7 +78,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
     {
         await using var database = await Server.CreateDatabaseAsync();
         await using var context = database.CreateContext();
-        var eventStore = new EventStore(
+        var eventStore = EfTestStores.EventStore(
             context,
             new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
@@ -91,7 +91,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
             [new ItemAdded()],
             new EventMetadata()))).Events.Single();
         var key = new ProjectionKey("tests.orders", 1);
-        var leases = new WorkerLeaseStore(context, TimeProvider.System);
+        var leases = EfTestStores.Leases(context, TimeProvider.System);
         var stale = (await leases.TryAcquireAsync(
             "tenant-a",
             ProjectionStore.GetLeaseName(key),
@@ -102,7 +102,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
             ProjectionStore.GetLeaseName(key),
             "node-a",
             TimeSpan.FromMinutes(1));
-        var projections = new ProjectionStore(context, TimeProvider.System);
+        var projections = EfTestStores.Projections(context, TimeProvider.System);
 
         await Assert.That(async () => await projections.ProcessAsync(
                 "tenant-a",
@@ -122,7 +122,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
         await using var firstContext = database.CreateContext();
         await using var secondContext = database.CreateContext();
         var clock = new AdjustableTimeProvider();
-        var eventStore = new EventStore(
+        var eventStore = EfTestStores.EventStore(
             firstContext,
             new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
@@ -132,8 +132,8 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
             [new ItemAdded()], new EventMetadata()))).Events.Single();
         var key = new ProjectionKey("tests.orders", 1);
         var leaseName = ProjectionStore.GetLeaseName(key);
-        var first = new WorkerLeaseStore(firstContext, clock);
-        var second = new WorkerLeaseStore(secondContext, clock);
+        var first = EfTestStores.Leases(firstContext, clock);
+        var second = EfTestStores.Leases(secondContext, clock);
         var initial = (await first.TryAcquireAsync(
             "tenant-a", leaseName, "node-a", TimeSpan.FromMilliseconds(300)))!;
 
@@ -151,7 +151,7 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
         var competing = (await second.TryAcquireAsync(
             "tenant-a", leaseName, "node-b", TimeSpan.FromMilliseconds(300)))!;
         await Assert.That(competing.FencingToken).IsGreaterThan(renewed.FencingToken);
-        var projections = new ProjectionStore(firstContext, clock);
+        var projections = EfTestStores.Projections(firstContext, clock);
         await Assert.That(async () => await projections.ProcessAsync(
                 "tenant-a", key, envelope, renewed, (_, _) => Task.CompletedTask))
             .Throws<ProjectionLeaseLostException>();
@@ -172,21 +172,20 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
     [Test]
     public async Task Stale_postgresql_lease_cannot_record_an_outbox_delivery()
     {
-        var options = new EventStoreOptions
+        var options = new EntityFrameworkStorageOptions
         {
             UseSchema = true,
             Schema = "eventloom_test",
-            TablePrefix = "eventloom_",
-            OutboxEnabled = true
+            TablePrefix = "eventloom_"
         };
         await using var database = await Server.CreateDatabaseAsync(options);
         await using var context = database.CreateContext();
-        var eventStore = new EventStore(
+        var eventStore = EfTestStores.EventStore(
             context,
             new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
             TimeProvider.System,
-            options);
+            new EventStoreOptions { OutboxEnabled = true });
         var eventId = (await eventStore.AppendAsync(new AppendRequest(
             "tenant-a",
             "order-1",
@@ -194,9 +193,9 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
             ExpectedVersion.NoStream,
             [new ItemAdded()],
             new EventMetadata()))).Events.Single().EventId;
-        var outbox = new OutboxStore(context, TimeProvider.System);
+        var outbox = EfTestStores.Outbox(context, TimeProvider.System);
         var message = (await outbox.ReadPendingAsync("tenant-a")).Single();
-        var leases = new WorkerLeaseStore(context, TimeProvider.System);
+        var leases = EfTestStores.Leases(context, TimeProvider.System);
         var stale = (await leases.TryAcquireAsync(
             "tenant-a",
             OutboxStore.OutboxPublisherLeaseName,
@@ -216,21 +215,20 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
     [Test]
     public async Task PostgreSql_purges_successful_outbox_messages_and_attempts()
     {
-        var options = new EventStoreOptions
+        var options = new EntityFrameworkStorageOptions
         {
             UseSchema = true,
             Schema = "eventloom_test",
-            TablePrefix = "eventloom_",
-            OutboxEnabled = true
+            TablePrefix = "eventloom_"
         };
         await using var database = await Server.CreateDatabaseAsync(options);
         await using var context = database.CreateContext();
-        var eventStore = new EventStore(
+        var eventStore = EfTestStores.EventStore(
             context,
             new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
             TimeProvider.System,
-            options);
+            new EventStoreOptions { OutboxEnabled = true });
         var eventId = (await eventStore.AppendAsync(new AppendRequest(
             "tenant-a",
             "order-1",
@@ -238,9 +236,9 @@ public sealed class PostgreSqlLeaseTests : PostgreSqlIntegrationTest
             ExpectedVersion.NoStream,
             [new ItemAdded()],
             new EventMetadata()))).Events.Single().EventId;
-        var outbox = new OutboxStore(context, TimeProvider.System);
+        var outbox = EfTestStores.Outbox(context, TimeProvider.System);
         var message = (await outbox.ReadPendingAsync("tenant-a")).Single();
-        var lease = (await new WorkerLeaseStore(context, TimeProvider.System).TryAcquireAsync(
+        var lease = (await EfTestStores.Leases(context, TimeProvider.System).TryAcquireAsync(
             "tenant-a",
             OutboxStore.OutboxPublisherLeaseName,
             "node-a",

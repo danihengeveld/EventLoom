@@ -1,7 +1,8 @@
 using EventLoom;
-using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
+using EventLoom.MongoDb;
+using EventLoom.Storage;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,8 +18,7 @@ try
 
     await using var provider = services.BuildServiceProvider();
     await using var scope = provider.CreateAsyncScope();
-    var context = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
-    await EventStoreSchema.EnsureCreatedAsync(context);
+    await scope.ServiceProvider.GetRequiredService<IStorageSchema>().EnsureCreatedAsync();
 
     var eventStore = scope.ServiceProvider.GetRequiredService<EventStore>();
     await eventStore.AppendAsync(new AppendRequest(
@@ -33,6 +33,21 @@ try
     if (history.Count != 1 || history[0].Event is not ItemAdded { Sku: "coffee" })
     {
         throw new InvalidOperationException("The package consumer did not read the event it appended.");
+    }
+
+    // The MongoDB provider must compose from its package without opening a connection.
+    var mongoServices = new ServiceCollection();
+    mongoServices
+        .AddEventLoom()
+        .UseMongoDb("mongodb://localhost:27017/?directConnection=true", "consumer")
+        .UseSingleTenancy("consumer")
+        .AddAggregateEvents<Cart>();
+    await using var mongoProvider = mongoServices.BuildServiceProvider();
+    await using var mongoScope = mongoProvider.CreateAsyncScope();
+    _ = mongoScope.ServiceProvider.GetRequiredService<EventStore>();
+    if (mongoProvider.GetRequiredService<StorageCapabilities>().ProviderName != "MongoDB")
+    {
+        throw new InvalidOperationException("The MongoDB provider package did not register its storage.");
     }
 }
 finally

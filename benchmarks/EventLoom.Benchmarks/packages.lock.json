@@ -20,6 +20,15 @@
           "System.Management": "9.0.5"
         }
       },
+      "Testcontainers.MongoDb": {
+        "type": "Direct",
+        "requested": "[4.15.0, )",
+        "resolved": "4.15.0",
+        "contentHash": "580TtnAkbtfbSumIonCk9dTu1CweRGBumXUdHP+OGwAznRcSAZ/a9Xem5kTh8W8rOFihZi/FnqB80CFwOXSIrg==",
+        "dependencies": {
+          "Testcontainers": "4.15.0"
+        }
+      },
       "Testcontainers.PostgreSql": {
         "type": "Direct",
         "requested": "[4.15.0, )",
@@ -43,6 +52,11 @@
         "type": "Transitive",
         "resolved": "2.9.1",
         "contentHash": "OE0sl1/sQ37bjVsPKKtwQlWDgqaxWgtme3xZz7JssWUzg5JpMIyHgCTY9MVMxOg48fJ1AgGT3tgdH5m/kQ5xhA=="
+      },
+      "DnsClient": {
+        "type": "Transitive",
+        "resolved": "1.6.1",
+        "contentHash": "4H/f2uYJOZ+YObZjpY9ABrKZI+JNw3uizp6oMzTXwDw6F+2qIPhpRl/1t68O/6e98+vqNiYGu+lswmwdYUy3gg=="
       },
       "Docker.DotNet.Enhanced": {
         "type": "Transitive",
@@ -301,6 +315,11 @@
         "resolved": "10.0.12",
         "contentHash": "dYfCLR52UA+3DL7C4I/pvSaRPkNqxrUAQmbFL2u0zvYKKzqgrFCJl08Df+F1aYc8leu9JvpC9bsURUdpExcBXQ=="
       },
+      "MongoDB.Bson": {
+        "type": "Transitive",
+        "resolved": "3.12.0",
+        "contentHash": "2iYGykWDl6Wkx2GHjWaPEGAS49lxQN5YFFT1a7l/pKraMo1gqT4aZckhwu53WMinQTc10R4FxUHoo7X9M20GFg=="
+      },
       "OpenTelemetry.Api": {
         "type": "Transitive",
         "resolved": "1.19.1",
@@ -328,10 +347,20 @@
         "resolved": "3.2.4",
         "contentHash": "I5qFifWw/gaTQT52MhzjZpkm/JPlfjSeO/DTZJjO7+hTKI+0aGRgOgZ3NN6D96dDuuqbIAZSeA5RimtHjqrA2A=="
       },
+      "SharpCompress": {
+        "type": "Transitive",
+        "resolved": "0.48.1",
+        "contentHash": "SqGaVniGG943Gph/gHhUQUiZPyC7y0tXZyMf0/B2oGsMav9dqs7JJOuUA+xOkwKYaWM2TM7aZQjNK91f4bX71A=="
+      },
       "SharpZipLib": {
         "type": "Transitive",
         "resolved": "1.4.2",
         "contentHash": "yjj+3zgz8zgXpiiC3ZdF/iyTBbz2fFvMxZFEBPUcwZjIvXOf37Ylm+K58hqMfIBt5JgU/Z2uoUS67JmTLe973A=="
+      },
+      "Snappier": {
+        "type": "Transitive",
+        "resolved": "1.3.1",
+        "contentHash": "DOdDQiO8YZ5rBtVLY+6CmR1yp9WYoJRgEEktPBrR0tEj9QO2djA/zv0O3DX0OZpEAfosbY8pytQ9tQUogwQsEA=="
       },
       "SSH.NET": {
         "type": "Transitive",
@@ -372,13 +401,19 @@
           "SharpZipLib": "1.4.2"
         }
       },
+      "ZstdSharp.Port": {
+        "type": "Transitive",
+        "resolved": "0.7.3",
+        "contentHash": "U9Ix4l4cl58Kzz1rJzj5hoVTjmbx1qGMwzAcbv1j/d3NzrFaESIurQyg+ow4mivCgkE3S413y+U9k4WdnEIkRA=="
+      },
       "eventloom": {
         "type": "Project"
       },
       "eventloom.entityframeworkcore": {
         "type": "Project",
         "dependencies": {
-          "EventLoom": "[0.1.0-alpha.0, )",
+          "EventLoom.Hosting": "[0.1.0-alpha.0, )",
+          "EventLoom.Storage": "[0.1.0-alpha.0, )",
           "Microsoft.EntityFrameworkCore": "[10.0.12, )",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.12, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.12, )"
@@ -395,11 +430,27 @@
       "eventloom.hosting": {
         "type": "Project",
         "dependencies": {
-          "EventLoom.EntityFrameworkCore": "[0.1.0-alpha.0, )",
+          "EventLoom.Storage": "[0.1.0-alpha.0, )",
           "Microsoft.Extensions.DependencyInjection": "[10.0.12, )",
           "Microsoft.Extensions.Diagnostics.HealthChecks": "[10.0.12, )",
           "Microsoft.Extensions.Hosting.Abstractions": "[10.0.12, )",
           "OpenTelemetry": "[1.19.1, )"
+        }
+      },
+      "eventloom.mongodb": {
+        "type": "Project",
+        "dependencies": {
+          "EventLoom.Hosting": "[0.1.0-alpha.0, )",
+          "EventLoom.Storage": "[0.1.0-alpha.0, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.12, )",
+          "MongoDB.Driver": "[3.12.0, )"
+        }
+      },
+      "eventloom.storage": {
+        "type": "Project",
+        "dependencies": {
+          "EventLoom": "[0.1.0-alpha.0, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.12, )"
         }
       },
       "Microsoft.CodeAnalysis.CSharp": {
@@ -477,6 +528,20 @@
         "contentHash": "+24lC4plfbEDNfLAdTV/SWKS7dW+16X4HdydO3R++134kSNTzcbYA4KpR1Hdh6uWisB8Za3AzwyOn+K+NxWIug==",
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.12"
+        }
+      },
+      "MongoDB.Driver": {
+        "type": "CentralTransitive",
+        "requested": "[3.12.0, )",
+        "resolved": "3.12.0",
+        "contentHash": "KiUb/h/p5JZ15Vmxa5uuJKHzbsjGkN9aH6RrAtwTUGTelhgypZ784hKjdu8IM18ag93Ck/i9GgyP/erb17Cbqw==",
+        "dependencies": {
+          "DnsClient": "1.6.1",
+          "Microsoft.Extensions.Logging.Abstractions": "2.0.0",
+          "MongoDB.Bson": "3.12.0",
+          "SharpCompress": "0.48.1",
+          "Snappier": "1.3.1",
+          "ZstdSharp.Port": "0.7.3"
         }
       },
       "Npgsql": {

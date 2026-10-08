@@ -6,8 +6,9 @@ takes precedence for files in its directory; in particular, also follow
 
 ## Repository purpose
 
-EventLoom is an opinionated event-sourcing framework for .NET 10 and EF Core
-10. It is a monorepo containing the runtime libraries, storage providers,
+EventLoom is an opinionated event-sourcing framework for .NET 10 with
+pluggable storage providers (EF Core 10 for PostgreSQL/SQLite and the direct
+MongoDB driver). It is a monorepo containing the runtime libraries, storage providers,
 hosting integrations, analyzers, testing utilities, tests, documentation, a
 sample application, and a `dotnet new` template.
 
@@ -20,7 +21,8 @@ defaults:
 - tenant boundaries and ordering guarantees must remain explicit;
 - projections and outbox delivery are at least once, so consumers must be
   idempotent;
-- PostgreSQL is the production/distributed provider;
+- PostgreSQL and MongoDB are the production/distributed providers (MongoDB
+  requires a replica set or mongos for multi-document transactions);
 - SQLite is for local, embedded, test, and controlled single-process use;
 - snapshots optimize replay but never replace event history;
 - default telemetry must not expose event payloads or identifiers.
@@ -38,10 +40,12 @@ All projects below except the analyzer project are packable NuGet packages.
 | Project                                    | Responsibility                                                                                                                                                                          |
 | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `EventLoom`                                | Dependency-light domain kernel: aggregates, event contracts, envelopes, identifiers, expected versions, tenancy, serialization, upcasting, snapshots, projections, and telemetry names. |
-| `EventLoom.EntityFrameworkCore`            | Provider-neutral EF Core persistence: entities and model, event store, repositories, unit of work, snapshots, projections, outbox, retries, and worker leases.                          |
+| `EventLoom.Storage`                        | Storage SPI (`IEventStorage`, `ISnapshotStorage`, `IProjectionStorage`, `IOutboxStorage`, `IWorkerLeaseStorage`, `IStorageSchema`, `StorageCapabilities`) and the provider-neutral engine: `EventStore`, `AggregateRepository`, unit of work, projection/outbox/snapshot façades, and the retry policy contract. |
+| `EventLoom.EntityFrameworkCore`            | The EF Core storage provider: entities and model, SPI implementations (`Ef*Storage`), EF projection handlers, EF unit-of-work enlistment, and EF builder options.                       |
+| `EventLoom.MongoDb`                        | The direct-driver MongoDB storage provider: SPI implementations, transactional projection handlers, unit-of-work session, replica-set validation, and retry classification.            |
 | `EventLoom.EntityFrameworkCore.PostgreSql` | PostgreSQL registration, schema conventions, and retry behavior required for distributed ordering and workers.                                                                          |
 | `EventLoom.EntityFrameworkCore.Sqlite`     | SQLite registration, schema conventions, native SQLite setup, and explicitly single-node behavior.                                                                                      |
-| `EventLoom.Hosting`                        | Dependency injection, aggregate/projection registration, hosted projection and outbox workers, health checks, worker identity, options, and OpenTelemetry wiring.                       |
+| `EventLoom.Hosting`                        | Storage-agnostic dependency injection (`UseStorage`), aggregate/projection registration, hosted projection and outbox workers, health checks, worker identity, options, and OpenTelemetry wiring. |
 | `EventLoom.AspNetCore`                     | ASP.NET Core application and endpoint integration over `EventLoom.Hosting`.                                                                                                             |
 | `EventLoom.Testing`                        | Given/When/Then aggregate scenarios, deterministic IDs/time, and a managed SQLite test host. It intentionally does not provide a managed PostgreSQL host.                               |
 | `EventLoom.Analyzers`                      | Roslyn diagnostics bundled into the `EventLoom` package, not published separately. This project targets `netstandard2.0`; do not accidentally move it to the runtime target framework. |
@@ -50,19 +54,24 @@ Keep the intended dependency direction:
 
 ```text
 EventLoom
-  -> EventLoom.EntityFrameworkCore
+  -> EventLoom.Storage
        -> EventLoom.Hosting
             -> EventLoom.AspNetCore
-       -> PostgreSql / Sqlite providers
+            -> EventLoom.EntityFrameworkCore
+                 -> PostgreSql / Sqlite providers
+            -> EventLoom.MongoDb
 
 EventLoom.Testing -> EventLoom + Hosting + Sqlite
 EventLoom.Analyzers -> Roslyn only (bundled into EventLoom package)
 ```
 
-Provider-specific behavior belongs in its provider project. ASP.NET-specific
-behavior belongs in `EventLoom.AspNetCore`; host-neutral registration and
-workers belong in `EventLoom.Hosting`. Do not make the domain kernel depend on
-EF Core, hosting, or a storage provider.
+Provider-specific behavior belongs in its provider project. Storage-agnostic
+behavior (tenancy, serialization, telemetry, retry, snapshot policy, unit of
+work, projection/outbox orchestration) belongs in `EventLoom.Storage`.
+ASP.NET-specific behavior belongs in `EventLoom.AspNetCore`; host-neutral
+registration and workers belong in `EventLoom.Hosting`. Do not make the domain
+kernel, `EventLoom.Storage`, or `EventLoom.Hosting` depend on EF Core, MongoDB,
+or a concrete storage provider.
 
 Each package has a package-facing `README.md` beside its project file. Keep it
 accurate for the APIs and support boundary of that package.
@@ -77,16 +86,20 @@ is `dotnet run --project ...`, not an assumed test-framework command.
 | `EventLoom.UnitTests`                                       | Domain kernel, registry, serialization, and event/snapshot upcasting.                                            |
 | `EventLoom.Analyzers.Tests`                                 | Analyzer diagnostics EL0101–EL0110 and compiler-enforced contract guarantees (CS0311, CS0535, CS0122).          |
 | `EventLoom.EntityFrameworkCore.UnitTests`                   | EF model, hosting registration, workers, health checks, tenancy, options, AggregateScenario testing utilities, and provider-independent behavior. |
-| `EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests`     | Real SQLite append/read, repositories, transactions, projections, outbox, and leases.                            |
-| `EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests` | Real PostgreSQL behavior, concurrency, ordering, and leases through Testcontainers. Docker must be available.    |
+| `EventLoom.Storage.Conformance`                             | Not a project: the shared provider conformance suite (linked sources) run by every provider integration project. New provider-neutral guarantees belong here. |
+| `EventLoom.MongoDb.IntegrationTests`                        | Real MongoDB (replica set via Testcontainers or `EVENTLOOM_MONGODB_CONNECTION_STRING`): conformance suite plus transactional projections, unit-of-work session, and schema validation. |
+| `EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests`     | Real SQLite append/read, repositories, transactions, projections, outbox, and leases, plus the conformance suite. |
+| `EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests` | Real PostgreSQL behavior, concurrency, ordering, and leases through Testcontainers, plus the conformance suite. Docker must be available. |
 | `EventLoom.PackageConsumerTests`                            | Consumer compiled and run against packed NuGet artifacts only. It must remain independent of project references. |
 
 ### Samples (`samples/`)
 
 - `EventLoom.Ordering.Api` is the end-to-end example. It demonstrates domain
-  events and aggregates, tenant access, PostgreSQL registration, projections,
-  outbox publishing, OpenAPI, and endpoints.
-- `EventLoom.Ordering.AppHost` starts PostgreSQL and the API through .NET
+  events and aggregates, tenant access, PostgreSQL or MongoDB registration
+  (`EventLoom:Provider`), a read-model projection per provider, outbox
+  publishing, OpenAPI, and endpoints.
+- `EventLoom.Ordering.AppHost` starts PostgreSQL (default) or a single-node
+  MongoDB replica set (`--EventLoom:Provider MongoDb`) and the API through .NET
   Aspire.
 - `EventLoom.ServiceDefaults` contains the sample's service discovery,
   resilience, health, and OpenTelemetry defaults.
@@ -155,10 +168,12 @@ The content types are intentional:
    `Apply` handlers and must be reproducible during replay.
 6. Assume projections and outbox publishers can receive duplicate work.
    Changes must remain safe for at-least-once processing.
-7. Keep provider-neutral contracts in `EventLoom.EntityFrameworkCore` and
-   isolate provider SQL, capabilities, and transient-failure handling.
+7. Keep provider-neutral contracts and engine behavior in `EventLoom.Storage`
+   and isolate provider queries, capabilities, and transient-failure handling
+   in the provider projects. A guarantee every provider must honor needs a test
+   in the shared conformance suite, not a provider-only test.
 8. Do not imply distributed guarantees for SQLite. Validate distributed
-   behavior against PostgreSQL.
+   behavior against PostgreSQL and MongoDB.
 9. Use cancellation tokens and asynchronous EF/hosting APIs consistently.
    Do not hide storage, serialization, or worker failures.
 10. Follow existing TUnit style: `[Test]`, focused behavior-oriented method
@@ -200,7 +215,9 @@ Use this impact guide:
 | Change                                                                       | Minimum accompanying work                                                                              |
 | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Domain contract, serialization, or upcasting                                 | Core unit tests; core package README and relevant concept/reference docs.                              |
+| Storage SPI or engine (`EventLoom.Storage`) behavior                         | Conformance suite additions that run on every provider; EF unit tests; Storage README; guarantees docs. |
 | EF model, repository, snapshot, projection, outbox, or unit-of-work behavior | EF unit tests plus affected provider integration tests; guarantees/configuration docs.                 |
+| MongoDB provider behavior                                                    | MongoDB integration tests (and conformance where provider-neutral); `EventLoom.MongoDb` README; Mongo guide. |
 | Provider behavior                                                            | Provider tests and provider README; explicitly document differences between PostgreSQL and SQLite.     |
 | Hosting, worker, health, or telemetry behavior                               | Hosting unit tests; configuration/observability/operations docs; sample updates when user-facing.      |
 | ASP.NET Core endpoint or composition API                                     | Hosting/API tests as applicable; ASP.NET package README; quick-start/sample/template updates.          |
@@ -249,14 +266,17 @@ dotnet run --project tests/EventLoom.EntityFrameworkCore.UnitTests --configurati
 dotnet run --project tests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests --configuration Release --no-build
 ```
 
-For PostgreSQL behavior, ensure Docker is running and execute:
+For PostgreSQL and MongoDB behavior, ensure Docker is running and execute:
 
 ```bash
 dotnet run --project tests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests --configuration Release --no-build
+dotnet run --project tests/EventLoom.MongoDb.IntegrationTests --configuration Release --no-build
 ```
 
-Do not substitute SQLite tests for PostgreSQL concurrency, lease, or
-distributed-ordering coverage.
+Do not substitute SQLite tests for PostgreSQL or MongoDB concurrency, lease, or
+distributed-ordering coverage. To reuse a local MongoDB replica set instead of
+Testcontainers, set `EVENTLOOM_MONGODB_CONNECTION_STRING`
+(for example `mongodb://localhost:27017/?directConnection=true`).
 
 ### Documentation
 
@@ -299,7 +319,7 @@ Before reporting completion:
 - public API baselines and dependency lock files are current when applicable;
 - Release build passes without warnings;
 - docs build passes when documentation or examples changed;
-- PostgreSQL tests ran for distributed/provider behavior, or any inability to
-  run Docker is reported explicitly;
+- PostgreSQL and MongoDB tests ran for distributed/provider behavior, or any
+  inability to run Docker is reported explicitly;
 - package-consumer/template validation ran for big package-facing changes;
 - generated files and unrelated local changes are not included.

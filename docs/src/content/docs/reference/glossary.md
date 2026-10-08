@@ -1,6 +1,6 @@
 ---
 title: Glossary
-description: Definitions for the EventLoom domain, persistence, and delivery terminology used throughout this documentation.
+description: Definitions for the EventLoom domain, storage, and delivery terminology used throughout this documentation.
 ---
 
 ## Domain and persistence
@@ -13,9 +13,11 @@ description: Definitions for the EventLoom domain, persistence, and delivery ter
 | **Stream** | The ordered event history for one aggregate identity and aggregate type within a tenant. |
 | **Stream version** | A consecutive number that orders events within one stream and supports optimistic concurrency. |
 | **Expected version** | The stream state an append requires: no stream, an exact version, an existing stream, or any version. |
-| **Append ID** | A caller-owned, tenant-scoped identifier used to safely retry the same command after an ambiguous failure. |
+| **Append ID** | A caller-owned, tenant-wide idempotency key used to safely retry the same command after an ambiguous failure. |
 | **Tenant offset** | A consecutive, committed position that orders all events for one tenant. It is the checkpoint position for asynchronous processing. |
 | **Snapshot** | A versioned aggregate-owned state cache, declared as `IAggregateSnapshot<TSnapshot, TAggregate>`, that shortens replay. Event history remains authoritative. |
+| **Storage provider** | A package that implements EventLoom's storage SPI for one persistence technology. |
+| **Storage schema** | The provider-specific tables, columns, collections, and indexes required by EventLoom, managed through `IStorageSchema`. |
 
 ## Processing and delivery
 
@@ -24,19 +26,21 @@ description: Definitions for the EventLoom domain, persistence, and delivery ter
 | **Projection** | Code that consumes committed events to produce a read model or perform a side effect. |
 | **Projection key** | A projection's durable identity: a stable name and positive version. Each version has independent checkpoints and failures. |
 | **Checkpoint** | The tenant offset through which a projection has durably completed processing. |
-| **Transactional EF projection** | A projection whose EventLoom-context read-model changes and checkpoint commit in one transaction. |
+| **Transactional projection** | A projection whose read-model changes and checkpoint commit in one provider transaction. EF uses `IEfProjectionHandler<TEvent>`; MongoDB uses `IMongoProjectionHandler<TEvent>`. |
 | **Asynchronous projection** | A background projection that is delivered at least once and must therefore be idempotent. |
-| **Inline projection** | A handler that runs inside the event append transaction and can veto the append. It may perform transactional database work only. |
+| **Inline projection** | A handler that runs inside the event append transaction and can veto the append. It may perform transactional provider work only. |
 | **Outbox message** | A durable integration message written atomically with an event append when an outbox publisher is configured. |
 | **Outbox publisher** | A background worker that delivers pending outbox messages. Delivery is at least once. |
-| **Lease** | Time-limited worker ownership for a tenant and processing responsibility. PostgreSQL uses fenced leases to reject stale worker commits. |
+| **Lease** | Time-limited worker ownership for a tenant and processing responsibility, fenced by a monotonic token. Releasing a lease expires it without resetting the token sequence. |
+| **Unit of work** | A provider transaction shared between EventLoom and application state through `EventLoomUnitOfWork`. |
 
 ## Operational outcomes
 
 | Term | Meaning |
 | --- | --- |
 | **At least once** | A handler or publisher can receive the same event or message more than once. Effects must be idempotent. |
-| **Effectively once** | Transactional EF projection changes and their checkpoint commit together, preventing duplicate database effects at that boundary. |
+| **Effectively once** | Transactional projection changes and their checkpoint commit together, preventing duplicate provider-level read-model effects at that boundary. |
 | **Idempotency** | Repeating an operation yields the same externally visible result as running it once. |
 | **Paused projection** | A projection version that stopped for a tenant after exhausting retry attempts. An operator must resume, skip, or rebuild it. |
 | **Replay** | Resetting a projection checkpoint so a projection version processes tenant history again. Replay does not clear a read model. |
+| **Conformance suite** | The shared provider-neutral tests that prove a storage provider satisfies EventLoom's required contract. |

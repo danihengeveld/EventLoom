@@ -11,12 +11,11 @@ public sealed class ConfigureAwaitTests
     public async Task Unit_of_work_disposal_does_not_post_to_callers_synchronization_context()
     {
         await using var context = new EventStoreDbContext(
-            new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite("Data Source=:memory:").Options,
-            new EventStoreOptions());
-        var store = new EventStore(
+            new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite("Data Source=:memory:").Options);
+        var store = EfTestStores.EventStore(
             context, new EventSerializer(new EventRegistry()), new UuidV7EventIdGenerator(), TimeProvider.System);
         var transaction = new DeferredTransaction();
-        var unitOfWork = new EventLoomUnitOfWork(store, context, transaction);
+        var unitOfWork = new EventLoomUnitOfWork(store, transaction);
         var synchronizationContext = new CountingSynchronizationContext();
         var previous = SynchronizationContext.Current;
         Task disposeTask;
@@ -109,25 +108,17 @@ public sealed class ConfigureAwaitTests
         }
     }
 
-    private sealed class DeferredTransaction : IDbContextTransaction
+    private sealed class DeferredTransaction : IStorageTransaction
     {
         private readonly TaskCompletionSource rollback = new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public Guid TransactionId { get; } = Guid.NewGuid();
 
         public bool WasDisposed { get; private set; }
 
         public void CompleteRollback() => rollback.SetResult();
 
-        public void Commit() => throw new NotSupportedException();
-
         public Task CommitAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
 
-        public void Rollback() => throw new NotSupportedException();
-
         public Task RollbackAsync(CancellationToken cancellationToken = default) => rollback.Task;
-
-        public void Dispose() => WasDisposed = true;
 
         public ValueTask DisposeAsync()
         {

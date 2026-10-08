@@ -1,36 +1,39 @@
 using EventLoom.Hosting;
 using EventLoom.Ordering.Api.Domain;
 using EventLoom.Ordering.Api.Projections;
-using Microsoft.EntityFrameworkCore;
 
 namespace EventLoom.Ordering.Api.Infrastructure;
 
-internal static class OrderingEventLoomBuilderExtensions
+internal static partial class OrderingEventLoomBuilderExtensions
 {
+    public const string PostgreSqlProvider = "PostgreSql";
+    public const string MongoDbProvider = "MongoDb";
+
+    public static EventLoomBuilder UseOrderingStorage(
+        this EventLoomBuilder eventLoom,
+        string provider,
+        string connectionString)
+    {
+        ArgumentNullException.ThrowIfNull(eventLoom);
+        return provider switch
+        {
+            PostgreSqlProvider => eventLoom.UseOrderingPostgreSql(connectionString),
+            MongoDbProvider => eventLoom.UseOrderingMongoDb(connectionString),
+            _ => throw new InvalidOperationException(
+                $"EventLoom:Provider '{provider}' is not supported. Use '{PostgreSqlProvider}' or '{MongoDbProvider}'.")
+        };
+    }
+
     public static EventLoomBuilder AddOrdering(this EventLoomBuilder eventLoom)
     {
         ArgumentNullException.ThrowIfNull(eventLoom);
         return eventLoom
             .UseMultiTenancy<RequestTenantAccessor>()
-            .ConfigureProjectionModel(ConfigureReadModels)
             .AddAggregate<Order, Guid>(aggregate => aggregate
                 .ConstructWith(id => new Order(id))
                 .UseStream("order", id => id.ToString("D"))
                 .UseSnapshots<OrderSnapshot>(snapshots => snapshots.Every(2)))
             .AddOutboxPublisher<LoggingOutboxPublisher>(options =>
-                options.SuccessfulDeliveryRetention = TimeSpan.FromDays(1))
-            .AddProjection(OrderSummaryProjection.Name, projection => projection
-                .Transactional<OrderSummaryProjection, OrderPlaced>()
-                .Transactional<OrderSummaryProjection, OrderItemAdded>()
-                .Transactional<OrderSummaryProjection, OrderCancelled>());
-    }
-
-    private static void ConfigureReadModels(ModelBuilder modelBuilder)
-    {
-        modelBuilder.Entity<OrderSummary>(entity =>
-        {
-            entity.ToTable("ordering_order_summaries");
-            entity.HasKey(value => new { value.TenantId, value.OrderId });
-        });
+                options.SuccessfulDeliveryRetention = TimeSpan.FromDays(1));
     }
 }

@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\EventLoom\EventLoom.csproj" />
+    <ProjectReference Include="..\EventLoom.Hosting\EventLoom.Hosting.csproj" />
+    <ProjectReference Include="..\EventLoom.Storage\EventLoom.Storage.csproj" />
   </ItemGroup>
 
   <ItemGroup>

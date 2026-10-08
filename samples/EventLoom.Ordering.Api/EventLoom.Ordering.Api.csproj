@@ -5,6 +5,7 @@
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\..\src\EventLoom.EntityFrameworkCore.PostgreSql\EventLoom.EntityFrameworkCore.PostgreSql.csproj" />
+    <ProjectReference Include="..\..\src\EventLoom.MongoDb\EventLoom.MongoDb.csproj" />
     <ProjectReference Include="..\EventLoom.ServiceDefaults\EventLoom.ServiceDefaults.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.OpenApi" />

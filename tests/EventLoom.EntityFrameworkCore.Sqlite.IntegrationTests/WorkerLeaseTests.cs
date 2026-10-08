@@ -12,9 +12,9 @@ public sealed class WorkerLeaseTests
         await connection.OpenAsync();
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            new EventStoreOptions { TablePrefix = "test_" });
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
-        var leases = new WorkerLeaseStore(context, TimeProvider.System);
+        var leases = EfTestStores.Leases(context, TimeProvider.System);
 
         var first = await leases.TryAcquireAsync("tenant-a", "orders", "node-a", TimeSpan.FromMinutes(1));
         var second = await leases.TryAcquireAsync("tenant-a", "orders", "node-a", TimeSpan.FromMinutes(1));

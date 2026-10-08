@@ -5,6 +5,8 @@
     <Project Path="src/EventLoom.EntityFrameworkCore.Sqlite/EventLoom.EntityFrameworkCore.Sqlite.csproj" />
     <Project Path="src/EventLoom.EntityFrameworkCore/EventLoom.EntityFrameworkCore.csproj" />
     <Project Path="src/EventLoom.AspNetCore/EventLoom.AspNetCore.csproj" />
+    <Project Path="src/EventLoom.MongoDb/EventLoom.MongoDb.csproj" />
+    <Project Path="src/EventLoom.Storage/EventLoom.Storage.csproj" />
     <Project Path="src/EventLoom.Hosting/EventLoom.Hosting.csproj" />
     <Project Path="src/EventLoom.Testing/EventLoom.Testing.csproj" />
     <Project Path="src/EventLoom/EventLoom.csproj" />
@@ -20,7 +22,15 @@
     <Project Path="tests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests.csproj" />
     <Project Path="tests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests/EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests.csproj" />
     <Project Path="tests/EventLoom.EntityFrameworkCore.UnitTests/EventLoom.EntityFrameworkCore.UnitTests.csproj" />
+    <Project Path="tests/EventLoom.MongoDb.IntegrationTests/EventLoom.MongoDb.IntegrationTests.csproj" />
     <Project Path="tests/EventLoom.UnitTests/EventLoom.UnitTests.csproj" />
+    <File Path="tests/EventLoom.Storage.Conformance/StorageEnvironment.cs" />
+    <File Path="tests/EventLoom.Storage.Conformance/StorageConformanceTests.Events.cs" />
+    <File Path="tests/EventLoom.Storage.Conformance/StorageConformanceTests.Snapshots.cs" />
+    <File Path="tests/EventLoom.Storage.Conformance/StorageConformanceTests.Leases.cs" />
+    <File Path="tests/EventLoom.Storage.Conformance/StorageConformanceTests.Projections.cs" />
+    <File Path="tests/EventLoom.Storage.Conformance/StorageConformanceTests.Outbox.cs" />
+    <File Path="tests/EventLoom.Storage.Conformance/StorageConformanceTests.Schema.cs" />
   </Folder>
   <Folder Name="/benchmarks/">
     <Project Path="benchmarks/EventLoom.Benchmarks/EventLoom.Benchmarks.csproj" />

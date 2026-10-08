@@ -58,7 +58,7 @@ public static class EventStoreSchema
     /// <param name="options">The event-store naming options.</param>
     /// <returns>The tables managed by EventLoom, in a stable order.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
-    private static string[] GetTableNames(EventStoreOptions options)
+    private static string[] GetTableNames(EntityFrameworkStorageOptions options)
     {
         ArgumentNullException.ThrowIfNull(options);
         return

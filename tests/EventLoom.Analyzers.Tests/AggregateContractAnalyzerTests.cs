@@ -98,7 +98,7 @@ public sealed class AggregateContractAnalyzerTests
             public sealed class Impostor(Guid id) : Aggregate<Order, Guid>(id);
             """);
 
-        await Assert.That(ids).IsEquivalentTo([AggregateContractAnalyzer.InvalidSelfTypeDiagnosticId]);
+        await Assert.That(ids).IsEquivalentTo([DiagnosticIds.InvalidSelfType]);
     }
 
     [Test]
@@ -148,7 +148,7 @@ public sealed class AggregateContractAnalyzerTests
             }
             """);
 
-        await Assert.That(ids).IsEquivalentTo(Enumerable.Repeat(AggregateContractAnalyzer.RaiseInHandlerDiagnosticId, 4));
+        await Assert.That(ids).IsEquivalentTo(Enumerable.Repeat(DiagnosticIds.RaiseInHandler, 4));
     }
 
     [Test]
@@ -175,7 +175,7 @@ public sealed class AggregateContractAnalyzerTests
             }
             """);
 
-        await Assert.That(ids).IsEquivalentTo([AggregateContractAnalyzer.RaiseInConstructorDiagnosticId]);
+        await Assert.That(ids).IsEquivalentTo([DiagnosticIds.RaiseInConstructor]);
     }
 
     [Test]
@@ -209,7 +209,7 @@ public sealed class AggregateContractAnalyzerTests
             }
             """);
 
-        await Assert.That(ids).IsEquivalentTo(Enumerable.Repeat(AggregateContractAnalyzer.DirectHandlerCallDiagnosticId, 3));
+        await Assert.That(ids).IsEquivalentTo(Enumerable.Repeat(DiagnosticIds.DirectHandlerCall, 3));
     }
 
     [Test]
@@ -238,7 +238,7 @@ public sealed class AggregateContractAnalyzerTests
             }
             """);
 
-        await Assert.That(ids.Distinct()).IsEquivalentTo([AggregateContractAnalyzer.NondeterministicHandlerDiagnosticId]);
+        await Assert.That(ids.Distinct()).IsEquivalentTo([DiagnosticIds.NondeterministicHandler]);
         await Assert.That(ids.Length).IsGreaterThanOrEqualTo(6);
     }
 
@@ -287,7 +287,7 @@ public sealed class AggregateContractAnalyzerTests
             }
             """);
 
-        await Assert.That(ids).IsEquivalentTo(Enumerable.Repeat(AggregateContractAnalyzer.NonConstantIdentityDiagnosticId, 5));
+        await Assert.That(ids).IsEquivalentTo(Enumerable.Repeat(DiagnosticIds.NonConstantIdentity, 5));
     }
 
     [Test]
@@ -310,7 +310,7 @@ public sealed class AggregateContractAnalyzerTests
             }
             """);
 
-        await Assert.That(ids).IsEquivalentTo(Enumerable.Repeat(AggregateContractAnalyzer.DuplicateIdentityDiagnosticId, 2));
+        await Assert.That(ids).IsEquivalentTo(Enumerable.Repeat(DiagnosticIds.DuplicateIdentity, 2));
     }
 
     [Test]
@@ -347,7 +347,7 @@ public sealed class AggregateContractAnalyzerTests
             }
             """);
 
-        await Assert.That(ids).IsEquivalentTo(Enumerable.Repeat(AggregateContractAnalyzer.MutableContractDiagnosticId, 3));
+        await Assert.That(ids).IsEquivalentTo(Enumerable.Repeat(DiagnosticIds.MutableContract, 3));
     }
 
     [Test]
@@ -364,7 +364,7 @@ public sealed class AggregateContractAnalyzerTests
             """);
 
         await Assert.That(diagnostics.Select(value => value.Id))
-            .IsEquivalentTo([AggregateContractAnalyzer.ForeignApplyHandlerDiagnosticId]);
+            .IsEquivalentTo([DiagnosticIds.ForeignApplyHandler]);
         await Assert.That(diagnostics[0].Severity).IsEqualTo(DiagnosticSeverity.Info);
     }
 
@@ -399,10 +399,10 @@ public sealed class AggregateContractAnalyzerTests
             source,
             new Dictionary<string, ReportDiagnostic>
             {
-                [AggregateContractAnalyzer.StateChangedOutsideApplyDiagnosticId] = ReportDiagnostic.Info
+                [DiagnosticIds.StateChangedOutsideApply] = ReportDiagnostic.Info
             });
 
         await Assert.That(defaults).IsEmpty();
-        await Assert.That(enabled).IsEquivalentTo([AggregateContractAnalyzer.StateChangedOutsideApplyDiagnosticId]);
+        await Assert.That(enabled).IsEquivalentTo([DiagnosticIds.StateChangedOutsideApply]);
     }
 }

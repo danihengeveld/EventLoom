@@ -1,5 +1,5 @@
-using EventLoom.EntityFrameworkCore;
 using EventLoom.Hosting;
+using EventLoom.Storage;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Http;
@@ -68,32 +68,32 @@ public static class EventLoomEndpointRouteBuilderExtensions
     }
 
     private static async Task<IResult> GetSchemaDiagnosticsAsync(
-        EventStoreDbContext context,
+        IStorageSchema schema,
         CancellationToken cancellationToken)
     {
-        var validation = await EventStoreSchema.ValidateAsync(context, cancellationToken);
+        var validation = await schema.ValidateAsync(cancellationToken);
         return Results.Ok(new
         {
             validation.IsCompatible,
-            MissingTableCount = validation.MissingTables.Count,
-            MissingColumnCount = validation.MissingColumns.Count,
-            IncompatibleColumnCount = validation.IncompatibleColumns.Count
+            validation.CanConnect,
+            validation.MissingCount,
+            validation.IncompatibleCount
         });
     }
 
     private static async Task<IResult> GetDiagnosticsAsync(
-        EventStoreDbContext context,
+        IStorageSchema storageSchema,
         EventLoomOperationalDiagnostics diagnostics,
         CancellationToken cancellationToken)
     {
-        var schema = await EventStoreSchema.ValidateAsync(context, cancellationToken);
+        var schema = await storageSchema.ValidateAsync(cancellationToken);
         var operational = await diagnostics.GetAsync(cancellationToken);
         return Results.Ok(new
         {
             SchemaCompatible = schema.IsCompatible,
-            MissingTableCount = schema.MissingTables.Count,
-            MissingColumnCount = schema.MissingColumns.Count,
-            IncompatibleColumnCount = schema.IncompatibleColumns.Count,
+            schema.CanConnect,
+            schema.MissingCount,
+            schema.IncompatibleCount,
             operational.Projections.ProjectionCount,
             operational.Projections.UnresolvedFailureCount,
             operational.Projections.MaximumLag,

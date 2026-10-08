@@ -1,5 +1,5 @@
-using EventLoom.EntityFrameworkCore;
 using EventLoom.Hosting;
+using EventLoom.Storage;
 
 namespace EventLoom.Ordering.Api.Infrastructure;
 

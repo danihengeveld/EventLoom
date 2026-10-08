@@ -1,20 +1,21 @@
 ---
 title: EventLoom
-description: Event sourcing for .NET 10 applications using EF Core.
+description: Event sourcing for .NET 10 applications.
 ---
 
-EventLoom is an opinionated event-sourcing library for .NET 10 and EF Core 10.
-It gives .NET applications an explicit event model, a dedicated relational
-event store, aggregate repositories, snapshots, projections, and a
-transactional outbox.
+EventLoom is an opinionated event-sourcing framework for .NET 10. It gives
+applications explicit aggregates and events, a provider-neutral storage engine,
+and built-in providers for PostgreSQL, SQLite, and MongoDB.
 
 ```mermaid
 flowchart LR
     App[Application] --> Domain[Aggregates and events]
-    Domain --> Store[EventLoom event store]
-    Store --> Postgres[PostgreSQL<br/>distributed production]
-    Store --> Sqlite[SQLite<br/>local or single process]
-    Store --> Workers[Projections and outbox]
+    Domain --> Engine[EventLoom.Storage<br/>engine]
+    Engine --> Ef[EF Core provider]
+    Ef --> Postgres[PostgreSQL<br/>distributed production]
+    Ef --> Sqlite[SQLite<br/>local or single process]
+    Engine --> Mongo[MongoDB provider<br/>replica set or mongos]
+    Engine --> Workers[Projections and outbox]
 ```
 
 ## Choose your next step
@@ -23,11 +24,12 @@ flowchart LR
 | --- | --- |
 | Evaluate EventLoom from this repository | [Installation](/getting-started/installation) |
 | Learn the event-sourcing programming model | [Build your first aggregate](/getting-started/first-aggregate) |
-| Decide where and how to persist events | [Architecture](/concepts/architecture) |
-| Understand correctness and delivery guarantees | [Tenancy and ordering](/concepts/tenancy-and-ordering) and [Delivery model](/concepts/delivery-model) |
-| Add EventLoom to an application | [Configure the event store](/guides/configure-ef-core) |
-| Build read models or external integration | [Projections](/guides/projections) and [Outbox and application integration](/guides/outbox) |
-| Run EventLoom in production | [Production deployment](/guides/production-deployment) |
+| Choose a storage provider | [Storage providers](/concepts/storage-providers) |
+| Understand boundaries and guarantees | [Architecture](/concepts/architecture) and [Delivery model](/concepts/delivery-model) |
+| Configure relational storage | [Configure the EF Core store](/guides/configure-ef-core) |
+| Configure MongoDB storage | [Use MongoDB](/guides/use-mongodb) |
+| Build read models or external integration | [Build projections](/guides/projections) and [Publish integration messages](/guides/outbox) |
+| Run EventLoom in production | [Deploy and recover](/guides/production-deployment) |
 
 ## The developer model
 
@@ -38,7 +40,8 @@ flowchart LR
 
 The [Aggregates and events](/concepts/aggregates-and-events) concept explains
 why these boundaries matter. The [Ordering API sample](/guides/ordering-api)
-shows the complete application path in an ASP.NET Core service.
+shows the complete application path in an ASP.NET Core service that can run on
+PostgreSQL or MongoDB.
 
 ## What EventLoom provides
 
@@ -47,15 +50,21 @@ shows the complete application path in an ASP.NET Core service.
 - Stable event names and versions through `[EventType]`, explicit registration,
   and JSON serialization.
 - Deterministic JSON upcaster chains for changing persisted event schemas.
-- Transactional append and bounded read APIs with expected-version checks,
-  UUIDv7 event IDs, and authoritative per-tenant offsets.
-- A PostgreSQL provider for multi-instance deployments and a SQLite provider
-  for local, embedded, and controlled single-node use.
+- `EventLoom.Storage`, which contains the provider-neutral engine used by
+  application code: `EventStore`, `AggregateRepository<TAggregate, TId>`,
+  `EventLoomUnitOfWork`, projections, snapshots, and outbox administration.
+- Built-in storage providers:
+  - `EventLoom.EntityFrameworkCore.PostgreSql` for distributed relational
+    deployments;
+  - `EventLoom.EntityFrameworkCore.Sqlite` for local, embedded, and controlled
+    single-node use;
+  - `EventLoom.MongoDb` for direct-driver MongoDB persistence on a replica set
+    or sharded deployment.
 - Optional required tenancy with a scoped `ITenantAccessor`.
-- A configured `AggregateRepository<TAggregate, TId>` path that keeps tenant,
-  aggregate type, and stream-ID plumbing out of normal command handlers.
-- Checkpointed asynchronous projections, atomic EF projection handlers, and
-  explicitly registered inline projections.
+- Checkpointed asynchronous projections, provider-transactional projections,
+  explicitly registered inline projections, and a transactional outbox.
+- A shared storage conformance suite that runs the same provider-neutral
+  guarantees against every built-in provider.
 
 ## Current status
 
@@ -63,5 +72,5 @@ EventLoom is pre-release software. Version `0.1.0-alpha.0` is available from
 [NuGet](https://www.nuget.org/profiles/danihengeveld); APIs and persistence
 contracts may change before the first stable release. Check the
 [packages and compatibility reference](/reference/packages) and
-[configuration reference](/reference/configuration) before relying on a
-feature that affects persisted data or operational behavior.
+[configuration reference](/reference/configuration) before relying on a feature
+that affects persisted data or operational behavior.

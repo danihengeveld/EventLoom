@@ -29,7 +29,7 @@ public sealed class PostgreSqlConcurrencyTests : PostgreSqlIntegrationTest
     [Test]
     public async Task Concurrent_first_appends_with_the_same_append_id_replay_one_result()
     {
-        var options = new EventStoreOptions
+        var options = new EntityFrameworkStorageOptions
         { UseSchema = true, Schema = "eventloom_idempotency", TablePrefix = "eventloom_" };
         await using var database = await Server.CreateDatabaseAsync(options);
         await using var firstContext = database.CreateContext();
@@ -60,7 +60,7 @@ public sealed class PostgreSqlConcurrencyTests : PostgreSqlIntegrationTest
     [Test]
     public async Task Concurrent_instances_assign_contiguous_committed_tenant_offsets()
     {
-        var options = new EventStoreOptions
+        var options = new EntityFrameworkStorageOptions
         { UseSchema = true, Schema = "eventloom_offsets", TablePrefix = "eventloom_" };
         await using var database = await Server.CreateDatabaseAsync(options);
 
@@ -106,7 +106,7 @@ public sealed class PostgreSqlConcurrencyTests : PostgreSqlIntegrationTest
         EventStoreDbContext context,
         EventRegistry registry,
         IEventStoreRetryPolicy? retryPolicy = null) =>
-        new(
+        EfTestStores.EventStore(
             context,
             new EventSerializer(registry),
             new UuidV7EventIdGenerator(),

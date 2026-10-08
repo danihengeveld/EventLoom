@@ -308,7 +308,8 @@
       "eventloom.entityframeworkcore": {
         "type": "Project",
         "dependencies": {
-          "EventLoom": "[0.1.0-alpha.0, )",
+          "EventLoom.Hosting": "[0.1.0-alpha.0, )",
+          "EventLoom.Storage": "[0.1.0-alpha.0, )",
           "Microsoft.EntityFrameworkCore": "[10.0.12, )",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.12, )",
           "Microsoft.Extensions.Logging.Abstractions": "[10.0.12, )"
@@ -326,11 +327,18 @@
       "eventloom.hosting": {
         "type": "Project",
         "dependencies": {
-          "EventLoom.EntityFrameworkCore": "[0.1.0-alpha.0, )",
+          "EventLoom.Storage": "[0.1.0-alpha.0, )",
           "Microsoft.Extensions.DependencyInjection": "[10.0.12, )",
           "Microsoft.Extensions.Diagnostics.HealthChecks": "[10.0.12, )",
           "Microsoft.Extensions.Hosting.Abstractions": "[10.0.12, )",
           "OpenTelemetry": "[1.19.1, )"
+        }
+      },
+      "eventloom.storage": {
+        "type": "Project",
+        "dependencies": {
+          "EventLoom": "[0.1.0-alpha.0, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.12, )"
         }
       },
       "Microsoft.EntityFrameworkCore": {

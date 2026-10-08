@@ -7,7 +7,9 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="BenchmarkDotNet" />
+    <PackageReference Include="Testcontainers.MongoDb" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <ProjectReference Include="../../src/EventLoom.EntityFrameworkCore.PostgreSql/EventLoom.EntityFrameworkCore.PostgreSql.csproj" />
+    <ProjectReference Include="../../src/EventLoom.MongoDb/EventLoom.MongoDb.csproj" />
   </ItemGroup>
 </Project>

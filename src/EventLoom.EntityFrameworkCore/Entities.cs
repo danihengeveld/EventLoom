@@ -1,3 +1,5 @@
+using EventLoom.Storage;
+
 namespace EventLoom.EntityFrameworkCore;
 
 internal interface IEntityWithId

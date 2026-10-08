@@ -5,6 +5,13 @@
     <PackageReference Include="Microsoft.Data.Sqlite.Core" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\EventLoom.Storage.Conformance\*.cs" LinkBase="Conformance" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="EventLoom.Storage" />
+    <Using Include="EventLoom.EntityFrameworkCore.TestSupport" />
+  </ItemGroup>
   <PropertyGroup>
     <IsTestProject>true</IsTestProject>
     <TargetFramework>net10.0</TargetFramework>

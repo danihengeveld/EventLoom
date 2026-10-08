@@ -12,7 +12,7 @@ export default defineConfig({
         mermaid({ enableLog: false }),
         starlight({
             title: 'EventLoom',
-            description: 'Event sourcing for .NET and EF Core.',
+            description: 'Event sourcing for .NET 10 applications.',
             favicon: '/favicon.svg',
             credits: true,
             social: [
@@ -36,6 +36,7 @@ export default defineConfig({
                     label: 'Core concepts',
                     items: [
                         { label: 'Architecture', slug: 'concepts/architecture' },
+                        { label: 'Storage providers', slug: 'concepts/storage-providers' },
                         { label: 'Aggregates and events', slug: 'concepts/aggregates-and-events' },
                         { label: 'Tenancy and ordering', slug: 'concepts/tenancy-and-ordering' },
                         { label: 'Delivery model', slug: 'concepts/delivery-model' },
@@ -45,7 +46,8 @@ export default defineConfig({
                 {
                     label: 'Guides',
                     items: [
-                        { label: 'Configure the event store', slug: 'guides/configure-ef-core' },
+                        { label: 'Configure the EF Core store', slug: 'guides/configure-ef-core' },
+                        { label: 'Use MongoDB', slug: 'guides/use-mongodb' },
                         { label: 'Append and read events', slug: 'guides/append-and-read' },
                         { label: 'Use snapshots', slug: 'guides/snapshots' },
                         { label: 'Build projections', slug: 'guides/projections' },

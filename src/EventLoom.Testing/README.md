@@ -62,22 +62,24 @@ host.Clock.Advance(TimeSpan.FromMinutes(5));
 
 The host keeps one SQLite connection open for its lifetime, because an
 in-memory SQLite database is destroyed once its last connection closes, and
-creates the event-store schema during `CreateAsync`. Disposing the host
+creates the storage schema (through `IStorageSchema`) during `CreateAsync`. Disposing the host
 disposes its dependency-injection container and closes the connection.
 `ConfigureEventLoom` registers events, aggregates, and projections the same
 way production composition does; the host applies `UseSqlite`, tenancy, and
 the deterministic time provider itself.
 
-## Boundary: no managed PostgreSQL test host
+## Boundary: no managed PostgreSQL or MongoDB test host
 
-This package intentionally does not include a managed PostgreSQL test host.
+This package intentionally does not include a managed PostgreSQL or MongoDB test host.
 PostgreSQL integration tests need Testcontainers-managed server lifecycle and
 exist to prove distributed behavior (concurrent appends across simulated
 application instances, worker lease fencing under contention) that a shared
 in-process container cannot represent. Use
 [Testcontainers.PostgreSql](https://dotnet.testcontainers.org/) directly, as
 `EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests` does, for that
-coverage.
+coverage. The same applies to MongoDB, which needs a replica set: use
+[Testcontainers.MongoDb](https://dotnet.testcontainers.org/modules/mongodb/)
+with `WithReplicaSet()`, as `EventLoom.MongoDb.IntegrationTests` does.
 
 See the [testing guide](https://github.com/danihengeveld/EventLoom/blob/main/docs/src/content/docs/concepts/testing.md)
 for the recommended domain, relational, and PostgreSQL distributed test

@@ -1,4 +1,4 @@
-namespace EventLoom.EntityFrameworkCore;
+namespace EventLoom.Storage;
 
 /// <summary>
 /// Executes an event-store operation with provider-specific retry behavior.

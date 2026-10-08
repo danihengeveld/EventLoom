@@ -37,7 +37,8 @@ app.MapEventLoomHealthChecks();
 The default endpoint is `/health`; pass a different route pattern when needed.
 The development initializer creates only an empty database and refuses to run
 outside Development. Production schema evolution remains application-owned
-through reviewed, deployment-managed EF Core migrations.
+through reviewed, deployment-managed migrations (EF Core providers) or index and
+collection management (MongoDB).
 
 For a protected, payload-safe operational summary, opt in explicitly with an
 existing named authorization policy:
@@ -49,7 +50,8 @@ app.MapEventLoomAdminDiagnostics("EventLoomOperators");
 This maps `/admin/eventloom/schema` and `/admin/eventloom/diagnostics`. Mapping
 requires a non-empty named policy and therefore refuses anonymous or
 fallback-policy-only administration. Both endpoints return aggregate counts and
-schema compatibility state only; they never expose tenants, event IDs, stream
+schema compatibility state only (`CanConnect`, `MissingCount`, and
+`IncompatibleCount`, reported by the provider's `IStorageSchema`); they never expose tenants, event IDs, stream
 IDs, payloads, metadata, or exception details.
 
 EventLoom is currently pre-release. See the

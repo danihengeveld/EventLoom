@@ -1,4 +1,4 @@
-using EventLoom.EntityFrameworkCore;
+using EventLoom.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -61,7 +61,7 @@ internal sealed class OutboxPublisherWorker(
         string tenantId,
         CancellationToken cancellationToken)
     {
-        var leases = services.GetRequiredService<WorkerLeaseStore>();
+        var leases = services.GetRequiredService<IWorkerLeaseStorage>();
         var lease = await leases.TryAcquireAsync(
             tenantId,
             OutboxStore.OutboxPublisherLeaseName,

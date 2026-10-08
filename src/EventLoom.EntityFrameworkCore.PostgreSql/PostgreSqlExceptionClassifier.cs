@@ -1,3 +1,4 @@
+using EventLoom.Storage;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
@@ -26,7 +27,7 @@ internal enum PostgreSqlExceptionClassification
 internal static class PostgreSqlExceptionClassifier
 {
     /// <summary>
-    /// Classifies an exception, including EF Core update exceptions that wrap a provider exception.
+    /// Classifies an exception, including EF Core update and EventLoom concurrency exceptions that wrap a provider exception.
     /// </summary>
     /// <param name="exception">The exception to classify.</param>
     /// <returns>The PostgreSQL classification.</returns>
@@ -36,7 +37,8 @@ internal static class PostgreSqlExceptionClassifier
         ArgumentNullException.ThrowIfNull(exception);
 
         var providerException = exception;
-        while (providerException is DbUpdateException && providerException.InnerException is not null)
+        while (providerException is DbUpdateException or EventStoreConcurrencyException &&
+               providerException.InnerException is not null)
         {
             providerException = providerException.InnerException;
         }

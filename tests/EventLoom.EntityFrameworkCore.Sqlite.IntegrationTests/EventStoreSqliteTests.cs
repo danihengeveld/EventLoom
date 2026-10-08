@@ -17,7 +17,7 @@ public sealed class EventStoreSqliteTests
             .Options;
         await using var context = new EventStoreDbContext(
             options,
-            new EventStoreOptions { TablePrefix = "test_" });
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
 
         await EventStoreSchema.EnsureCreatedAsync(context);
 

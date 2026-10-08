@@ -1,4 +1,5 @@
 using EventLoom.Hosting;
+using EventLoom.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 

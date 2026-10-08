@@ -7,16 +7,16 @@ namespace EventLoom.EntityFrameworkCore;
 /// EF Core context containing EventLoom's event-store tables.
 /// </summary>
 /// <param name="options">The EF Core options configured for this context.</param>
-/// <param name="eventStoreOptions">Optional event-store naming and schema settings.</param>
+/// <param name="eventStoreOptions">Optional table naming and schema settings.</param>
 /// <param name="configureModel">Optional application read-model mappings for transactional projections.</param>
 public sealed class EventStoreDbContext(
     DbContextOptions<EventStoreDbContext> options,
-    EventStoreOptions? eventStoreOptions = null,
+    EntityFrameworkStorageOptions? eventStoreOptions = null,
     Action<ModelBuilder>? configureModel = null) : DbContext(options)
 {
-    private readonly EventStoreOptions configuration = eventStoreOptions ?? new();
+    private readonly EntityFrameworkStorageOptions configuration = eventStoreOptions ?? new();
 
-    internal EventStoreOptions Configuration => configuration;
+    internal EntityFrameworkStorageOptions Configuration => configuration;
     internal Action<ModelBuilder>? ModelConfiguration => configureModel;
 
     internal DbSet<StreamEntity> Streams => Set<StreamEntity>();

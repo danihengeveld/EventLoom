@@ -66,6 +66,28 @@ jobs:
       - name: Run PostgreSQL integration tests
         run: dotnet run --project tests/EventLoom.EntityFrameworkCore.PostgreSql.IntegrationTests --configuration Release --no-build
 
+  mongodb:
+    name: MongoDB integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Verify Docker
+        run: docker version
+      - name: Restore
+        run: dotnet restore EventLoom.slnx --locked-mode
+      - name: Build
+        run: dotnet build EventLoom.slnx --configuration Release --no-restore
+      - name: Run MongoDB integration tests
+        run: dotnet run --project tests/EventLoom.MongoDb.IntegrationTests --configuration Release --no-build
+
   packages:
     name: Packages and template
     runs-on: ubuntu-latest

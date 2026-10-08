@@ -1,14 +1,14 @@
+using EventLoom.Storage;
 using Microsoft.EntityFrameworkCore;
 
 namespace EventLoom.EntityFrameworkCore;
 
-/// <summary>Provides tenant-scoped leases for distributed EventLoom workers.</summary>
-internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider timeProvider)
+/// <summary>Grants tenant-scoped fenced leases through an EF Core context.</summary>
+internal sealed class EfWorkerLeaseStorage(
+    EventStoreDbContext context,
+    EfStorageDialect dialect,
+    TimeProvider timeProvider) : IWorkerLeaseStorage
 {
-    private readonly EventStoreDbContext context = context ?? throw new ArgumentNullException(nameof(context));
-    private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
-
-    /// <summary>Attempts to acquire or renew a lease for the specified owner.</summary>
     public async Task<WorkerLease?> TryAcquireAsync(
         string tenantId,
         string leaseName,
@@ -22,9 +22,8 @@ internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider
         ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(duration, TimeSpan.Zero);
 
         var now = timeProvider.GetUtcNow();
-        var isPostgreSql = context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) ==
-                           true;
-        if (isPostgreSql)
+        var conditionalUpdate = dialect.UsesConditionalLeaseUpdate;
+        if (conditionalUpdate)
         {
             var leaseUntil = now.Add(duration);
             var updated = await context.ProjectionLeases
@@ -49,7 +48,7 @@ internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider
             }
         }
 
-        var leases = isPostgreSql ? context.ProjectionLeases.AsNoTracking() : context.ProjectionLeases;
+        var leases = conditionalUpdate ? context.ProjectionLeases.AsNoTracking() : context.ProjectionLeases;
         var lease = await leases.SingleOrDefaultAsync(
             value => value.TenantId == tenantId && value.LeaseName == leaseName,
             cancellationToken).ConfigureAwait(false);
@@ -85,7 +84,7 @@ internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider
             }
         }
 
-        if (!isPostgreSql)
+        if (!conditionalUpdate)
         {
             if (lease.LeaseUntil > now && lease.OwnerId != ownerId)
             {
@@ -103,31 +102,44 @@ internal sealed class WorkerLeaseStore(EventStoreDbContext context, TimeProvider
         return null;
     }
 
-    /// <summary>Releases a lease only when its owner and fencing token still match.</summary>
+    /// <inheritdoc />
     public async Task<bool> ReleaseAsync(WorkerLease lease, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(lease);
-        var affected = await context.ProjectionLeases
-            .Where(value =>
-                value.TenantId == lease.TenantId &&
-                value.LeaseName == lease.LeaseName &&
-                value.OwnerId == lease.OwnerId &&
-                value.FencingToken == lease.FencingToken)
-            .ExecuteDeleteAsync(cancellationToken).ConfigureAwait(false);
-        return affected == 1;
+        var now = timeProvider.GetUtcNow();
+        if (dialect.UsesConditionalLeaseUpdate)
+        {
+            var affected = await context.ProjectionLeases
+                .Where(value =>
+                    value.TenantId == lease.TenantId &&
+                    value.LeaseName == lease.LeaseName &&
+                    value.OwnerId == lease.OwnerId &&
+                    value.FencingToken == lease.FencingToken &&
+                    value.LeaseUntil > now)
+                .ExecuteUpdateAsync(
+                    setters => setters.SetProperty(value => value.LeaseUntil, now),
+                    cancellationToken).ConfigureAwait(false);
+            return affected == 1;
+        }
+
+        var current = await context.ProjectionLeases.SingleOrDefaultAsync(
+            value => value.TenantId == lease.TenantId && value.LeaseName == lease.LeaseName,
+            cancellationToken).ConfigureAwait(false);
+        if (current is null ||
+            current.OwnerId != lease.OwnerId ||
+            current.FencingToken != lease.FencingToken ||
+            current.LeaseUntil <= now)
+        {
+            return false;
+        }
+
+        current.LeaseUntil = now;
+        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return true;
     }
 }
 
-/// <summary>Describes an acquired tenant-scoped worker lease.</summary>
-internal sealed record WorkerLease(
-    string TenantId,
-    string LeaseName,
-    string OwnerId,
-    long FencingToken,
-    DateTimeOffset LeaseUntil);
-
 /// <summary>Indicates that a worker lease was lost to a concurrent owner.</summary>
-/// <remarks>Initializes a lease conflict exception.</remarks>
 internal sealed class WorkerLeaseConflictException(string tenantId, string leaseName, Exception innerException)
     : InvalidOperationException(
         $"Worker lease '{leaseName}' for tenant '{tenantId}' could not be acquired because it changed concurrently.",

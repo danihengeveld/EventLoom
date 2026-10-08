@@ -12,5 +12,6 @@
   <ItemGroup>
     <PackageReference Include="EventLoom.AspNetCore" Version="$(EventLoomPackageVersion)" />
     <PackageReference Include="EventLoom.EntityFrameworkCore.Sqlite" Version="$(EventLoomPackageVersion)" />
+    <PackageReference Include="EventLoom.MongoDb" Version="$(EventLoomPackageVersion)" />
   </ItemGroup>
 </Project>

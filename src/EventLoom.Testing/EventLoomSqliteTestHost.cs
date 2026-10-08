@@ -1,4 +1,4 @@
-using EventLoom.EntityFrameworkCore;
+using EventLoom.Storage;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
 using Microsoft.Data.Sqlite;
@@ -90,8 +90,8 @@ public sealed class EventLoomSqliteTestHost : IAsyncDisposable
 
             await using (var scope = provider.CreateAsyncScope())
             {
-                var context = scope.ServiceProvider.GetRequiredService<EventStoreDbContext>();
-                await EventStoreSchema.EnsureCreatedAsync(context, cancellationToken).ConfigureAwait(false);
+                var schema = scope.ServiceProvider.GetRequiredService<IStorageSchema>();
+                await schema.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
             }
 
             return new EventLoomSqliteTestHost(connection, provider, clock);

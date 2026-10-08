@@ -17,11 +17,11 @@ public sealed class AggregateRepositoryTests
         await connection.OpenAsync();
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            new EventStoreOptions { TablePrefix = "test_" });
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterAggregate<Counter>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
@@ -47,11 +47,11 @@ public sealed class AggregateRepositoryTests
         await connection.OpenAsync();
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            new EventStoreOptions { TablePrefix = "test_" });
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterAggregate<Counter>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var raisingFactory = new AggregateRepository<Counter, Guid>(
             store,
@@ -85,11 +85,11 @@ public sealed class AggregateRepositoryTests
         await connection.OpenAsync();
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            new EventStoreOptions { TablePrefix = "test_" });
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterAggregate<Counter>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
@@ -113,13 +113,13 @@ public sealed class AggregateRepositoryTests
         await connection.OpenAsync();
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            new EventStoreOptions { TablePrefix = "test_" });
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterAggregate<Counter>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
-        var snapshots = new SnapshotStore(context, TimeProvider.System);
+        var snapshots = EfTestStores.Snapshots(context, TimeProvider.System);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
             id => new Counter(id),
@@ -157,13 +157,13 @@ public sealed class AggregateRepositoryTests
         await connection.OpenAsync();
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            new EventStoreOptions { TablePrefix = "test_" });
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterAggregate<Counter>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
-        var snapshots = new SnapshotStore(context, TimeProvider.System);
+        var snapshots = EfTestStores.Snapshots(context, TimeProvider.System);
         var logs = new RecordingLogger<AggregateRepository<Counter, Guid>>();
         var repository = new AggregateRepository<Counter, Guid>(
             store,
@@ -210,13 +210,13 @@ public sealed class AggregateRepositoryTests
         await connection.OpenAsync();
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            new EventStoreOptions { TablePrefix = "test_" });
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterAggregate<Counter>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
-        var snapshots = new SnapshotStore(context, TimeProvider.System);
+        var snapshots = EfTestStores.Snapshots(context, TimeProvider.System);
         var logs = new RecordingLogger<AggregateRepository<Counter, Guid>>();
         var repository = new AggregateRepository<Counter, Guid>(
             store,
@@ -255,13 +255,13 @@ public sealed class AggregateRepositoryTests
         await connection.OpenAsync();
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            new EventStoreOptions { TablePrefix = "test_" });
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterAggregate<Counter>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
-        var snapshots = new SnapshotStore(context, TimeProvider.System);
+        var snapshots = EfTestStores.Snapshots(context, TimeProvider.System);
         var logs = new RecordingLogger<AggregateRepository<Counter, Guid>>();
         var repository = new AggregateRepository<Counter, Guid>(
             store,
@@ -306,9 +306,9 @@ public sealed class AggregateRepositoryTests
         await connection.OpenAsync();
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            new EventStoreOptions { TablePrefix = "test_" });
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
-        var snapshots = new SnapshotStore(context, TimeProvider.System);
+        var snapshots = EfTestStores.Snapshots(context, TimeProvider.System);
 
         await snapshots.WriteAsync(new SnapshotWriteRequest(
             "tenant-a", "counter-1", "counter", 1, "tests.counter", 1, """{"value":1}"""));
@@ -331,9 +331,9 @@ public sealed class AggregateRepositoryTests
         await connection.OpenAsync();
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            new EventStoreOptions { TablePrefix = "test_" });
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
-        var snapshots = new SnapshotStore(context, TimeProvider.System, new KeepLatestSnapshotsPolicy(2));
+        var snapshots = EfTestStores.Snapshots(context, TimeProvider.System, new KeepLatestSnapshotsPolicy(2));
 
         await snapshots.WriteAsync(new SnapshotWriteRequest(
             "tenant-a", "counter-1", "counter", 1, "tests.counter", 1, """{"value":1}"""));
@@ -369,11 +369,11 @@ public sealed class AggregateRepositoryTests
                 .UseSqlite(connection)
                 .AddInterceptors(new FailingSnapshotInsertInterceptor())
                 .Options,
-            new EventStoreOptions { TablePrefix = "test_" });
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
         await context.Database.EnsureCreatedAsync();
 
         var registry = new EventRegistry().RegisterAggregate<Counter>();
-        var store = new EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var repository = new AggregateRepository<Counter, Guid>(
             store,
@@ -381,7 +381,7 @@ public sealed class AggregateRepositoryTests
             "counter",
             id => id.ToString("D"),
             new TestTenantAccessor("tenant-a"),
-            new SnapshotStore(context, TimeProvider.System),
+            EfTestStores.Snapshots(context, TimeProvider.System),
             AggregateSnapshotDispatcher.Create<Counter, Guid, CounterSnapshot>(null),
             new EveryNEventsSnapshotPolicy(1));
         var aggregate = new Counter(Guid.NewGuid());

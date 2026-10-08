@@ -15,7 +15,7 @@ public sealed class ProjectionStoreTests
         await context.Database.EnsureCreatedAsync();
         var eventStore = CreateEventStore(context);
         var envelope = await AppendAsync(eventStore);
-        var projections = new ProjectionStore(context, TimeProvider.System);
+        var projections = EfTestStores.Projections(context, TimeProvider.System);
         var key = new ProjectionKey("tests.orders", 1);
         var lease = await AcquireLeaseAsync(context, key);
 
@@ -26,7 +26,7 @@ public sealed class ProjectionStoreTests
             lease,
             (projectionContext, _) =>
             {
-                projectionContext.Set<OrderReadModel>().Add(new OrderReadModel
+                ((EfProjectionTransaction)projectionContext).Context.Set<OrderReadModel>().Add(new OrderReadModel
                 {
                     TenantId = "tenant-a",
                     OrderId = envelope.StreamId,
@@ -52,7 +52,7 @@ public sealed class ProjectionStoreTests
         await context.Database.EnsureCreatedAsync();
         var eventStore = CreateEventStore(context);
         var envelope = await AppendAsync(eventStore);
-        var projections = new ProjectionStore(context, TimeProvider.System);
+        var projections = EfTestStores.Projections(context, TimeProvider.System);
         var key = new ProjectionKey("tests.orders", 1);
         var lease = await AcquireLeaseAsync(context, key);
         var calls = 0;
@@ -91,7 +91,7 @@ public sealed class ProjectionStoreTests
         await context.Database.EnsureCreatedAsync();
         var eventStore = CreateEventStore(context);
         var envelope = await AppendAsync(eventStore);
-        var projections = new ProjectionStore(context, TimeProvider.System);
+        var projections = EfTestStores.Projections(context, TimeProvider.System);
         var key = new ProjectionKey("tests.orders", 1);
         var lease = await AcquireLeaseAsync(context, key);
 
@@ -102,7 +102,7 @@ public sealed class ProjectionStoreTests
                 lease,
                 (projectionContext, _) =>
                 {
-                    projectionContext.Set<OrderReadModel>().Add(new OrderReadModel
+                    ((EfProjectionTransaction)projectionContext).Context.Set<OrderReadModel>().Add(new OrderReadModel
                     {
                         TenantId = "tenant-a",
                         OrderId = envelope.StreamId,
@@ -127,7 +127,7 @@ public sealed class ProjectionStoreTests
         var eventStore = CreateEventStore(context);
         var envelope = await AppendAsync(eventStore);
         var logs = new RecordingLogger<ProjectionStore>();
-        var projections = new ProjectionStore(context, TimeProvider.System, logs);
+        var projections = EfTestStores.Projections(context, TimeProvider.System, logs);
         var key = new ProjectionKey("tests.orders", 1);
         var lease = await AcquireLeaseAsync(context, key);
 
@@ -168,7 +168,7 @@ public sealed class ProjectionStoreTests
         var eventStore = CreateEventStore(context);
         var envelope = await AppendAsync(eventStore);
         var logs = new RecordingLogger<ProjectionStore>();
-        var projections = new ProjectionStore(context, TimeProvider.System, logs);
+        var projections = EfTestStores.Projections(context, TimeProvider.System, logs);
         var key = new ProjectionKey("tests.orders", 1);
         var lease = await AcquireLeaseAsync(context, key);
         await projections.RecordFailureAsync(
@@ -205,7 +205,7 @@ public sealed class ProjectionStoreTests
         var eventStore = CreateEventStore(context);
         var envelope = await AppendAsync(eventStore);
         var logs = new RecordingLogger<ProjectionStore>();
-        var projections = new ProjectionStore(context, TimeProvider.System, logs);
+        var projections = EfTestStores.Projections(context, TimeProvider.System, logs);
         var key = new ProjectionKey("tests.orders", 2);
         var lease = await AcquireLeaseAsync(context, key);
         var calls = 0;
@@ -248,9 +248,9 @@ public sealed class ProjectionStoreTests
         await context.Database.EnsureCreatedAsync();
         var eventStore = CreateEventStore(context);
         var envelope = await AppendAsync(eventStore);
-        var projections = new ProjectionStore(context, TimeProvider.System);
+        var projections = EfTestStores.Projections(context, TimeProvider.System);
         var key = new ProjectionKey("tests.orders", 1);
-        var leases = new WorkerLeaseStore(context, TimeProvider.System);
+        var leases = EfTestStores.Leases(context, TimeProvider.System);
         var stale = (await leases.TryAcquireAsync(
             "tenant-a", ProjectionStore.GetLeaseName(key), "node-a", TimeSpan.FromMinutes(1)))!;
         await leases.TryAcquireAsync("tenant-a", ProjectionStore.GetLeaseName(key), "node-a", TimeSpan.FromMinutes(1));
@@ -269,7 +269,7 @@ public sealed class ProjectionStoreTests
     private static EventStoreDbContext CreateContext(SqliteConnection connection) =>
         new(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
-            new EventStoreOptions { TablePrefix = "test_" },
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" },
             modelBuilder =>
             {
                 modelBuilder.Entity<OrderReadModel>(entity =>
@@ -280,7 +280,7 @@ public sealed class ProjectionStoreTests
             });
 
     private static EventStore CreateEventStore(EventStoreDbContext context) =>
-        new(
+        EfTestStores.EventStore(
             context,
             new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(),
@@ -296,7 +296,7 @@ public sealed class ProjectionStoreTests
             new EventMetadata(CorrelationId: "correlation-1")))).Events.Single();
 
     private static async Task<WorkerLease> AcquireLeaseAsync(EventStoreDbContext context, ProjectionKey key) =>
-        (await new WorkerLeaseStore(context, TimeProvider.System).TryAcquireAsync(
+        (await EfTestStores.Leases(context, TimeProvider.System).TryAcquireAsync(
             "tenant-a",
             ProjectionStore.GetLeaseName(key),
             "node-a",

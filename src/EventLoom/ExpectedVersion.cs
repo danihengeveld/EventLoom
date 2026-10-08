@@ -46,8 +46,8 @@ public readonly record struct ExpectedVersion
     /// <summary>Allows any current stream version.</summary>
     public static ExpectedVersion Any { get; } = new(ExpectedVersionKind.Any, null);
 
-    /// <summary>Determines whether a current version satisfies this expectation.</summary>
-    internal bool IsMatch(long? currentVersion) => Kind switch
+    /// <summary>Determines whether a current stream version satisfies this expectation.</summary>
+    public bool IsMatch(long? currentVersion) => Kind switch
     {
         ExpectedVersionKind.Exact => currentVersion == Value,
         ExpectedVersionKind.NoStream => currentVersion is null,

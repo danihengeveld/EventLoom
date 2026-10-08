@@ -1,62 +1,75 @@
 ---
 title: Explore the Ordering API sample
-description: Run an ASP.NET Core sample using scoped tenants, aggregate commands, snapshots, projections, and an outbox publisher.
+description: Run an ASP.NET Core sample using scoped tenants, aggregate commands, snapshots, projections, and an outbox publisher on PostgreSQL or MongoDB.
 ---
 
 [`samples/EventLoom.Ordering.Api`](https://github.com/danihengeveld/EventLoom/tree/main/samples/EventLoom.Ordering.Api)
 is a compact, production-shaped ASP.NET Core application. It demonstrates:
 
-- explicit registration of three immutable, versioned order events;
+- explicit registration of immutable, versioned order events;
 - an `Order` aggregate rebuilt from persisted history;
 - configured aggregate repository identity and short `LoadAsync` / `SaveAsync`
   operations;
 - an explicit order snapshot captured every two events;
 - scoped, required tenancy;
 - request correlation metadata and caller-provided idempotency keys;
-- adding items, cancellation, and inspecting persisted envelope metadata;
-- an EF order-summary projection with atomic checkpoint/read-model updates and
-  an endpoint for projection health;
-- a transport-neutral logging outbox publisher and tenant-scoped delivery
-  inspection;
-- PostgreSQL composed by .NET Aspire.
+- a transactional outbox publisher and tenant-scoped delivery inspection;
+- **two provider-specific projection implementations** that share the same API
+  surface for callers:
+  - PostgreSQL uses `IEfProjectionHandler<TEvent>` plus
+    `ConfigureProjectionModel(...)`;
+  - MongoDB uses `IMongoProjectionHandler<TEvent>` plus a MongoDB collection
+    reader;
+- provider selection through `EventLoom:Provider = PostgreSql | MongoDb`.
 
 ## Run with Aspire
+
+PostgreSQL is the default:
 
 ```bash
 dotnet run --project samples/EventLoom.Ordering.AppHost
 ```
 
-The AppHost starts PostgreSQL, injects the `EventStore` connection string into
-the API, waits for the database before it starts the API, and launches the
-Aspire dashboard. Open the dashboard URL printed by the AppHost. Its
-**Resources** page provides the AppHost-managed URL for the API.
+Switch the sample to MongoDB:
 
-The sample explicitly initializes a new database only in Development. Use
-reviewed, host-owned EF Core migrations before starting production instances.
+```bash
+dotnet run --project samples/EventLoom.Ordering.AppHost -- --EventLoom:Provider MongoDb
+```
 
-The sample intentionally uses only PostgreSQL. That lets it demonstrate
-EventLoom's distributed production provider and makes its telemetry available
-in the Aspire dashboard through OpenTelemetry.
+The AppHost reads `EventLoom:Provider`, starts the matching backing service, and
+passes the provider name into the API:
+
+- `PostgreSql` starts PostgreSQL;
+- `MongoDb` starts MongoDB as a **single-node replica set** because EventLoom
+  requires MongoDB transactions.
+
+The sample initializes a new store only in Development through
+`InitializeEventLoomDevelopmentDatabaseAsync()`.
+
+## Provider-specific composition
+
+The sample keeps provider-specific registration in separate files:
+
+- `Infrastructure/OrderingPostgreSqlExtensions.cs`
+- `Infrastructure/OrderingMongoDbExtensions.cs`
+
+That avoids the ambiguous `Transactional<,>()` extension methods that appear if
+one file imports both `EventLoom.EntityFrameworkCore` and `EventLoom.MongoDb`.
+Both implementations register the same durable projection name,
+`ordering.order-summary`.
 
 ## Explore the API
 
 In Development, the API resource generates an OpenAPI document with
 `Microsoft.AspNetCore.OpenApi` and exposes the Scalar interactive reference at
 `/scalar/v1`. The generated document is at `/openapi/v1.json`. Use the API URL
-from the Aspire dashboard rather than assuming a fixed local port. These
-development-only endpoints are not mapped in production and do not require the
-sample's `X-Tenant-ID` header.
+from the Aspire dashboard rather than assuming a fixed local port.
 
 The dashboard shows API logs plus ASP.NET Core and EventLoom traces and metrics.
-The API also exposes `/health` for its readiness checks and `/alive` for its
-process liveness check; both are intentionally available without a tenant
-header so Aspire can probe the service.
+The API also exposes `/health` for readiness and `/alive` for liveness. All
+sample business endpoints require `X-Tenant-ID`.
 
 ## Exercise the API
-
-All requests require `X-Tenant-ID`. The header makes tenant isolation visible
-in a small sample; a real service should derive the tenant from validated
-authentication or routing context.
 
 Create an order. Supplying `orderId` and `Idempotency-Key` lets a client repeat
 the same command after an ambiguous response:
@@ -89,21 +102,11 @@ curl -H 'X-Tenant-ID: acme' \
   "${api_url}/orders/${order_id}"
 ```
 
-Inspect persisted envelope metadata, including stream version and tenant
-offset:
+Inspect persisted envelope metadata, including stream version and tenant offset:
 
 ```bash
 curl -H 'X-Tenant-ID: acme' \
   "${api_url}/orders/${order_id}/events"
-```
-
-Cancel the order:
-
-```bash
-curl -X POST "${api_url}/orders/${order_id}/cancel" \
-  -H 'content-type: application/json' \
-  -H 'X-Tenant-ID: acme' \
-  -d '{"reason":"customer-request"}'
 ```
 
 The asynchronous order summary is intentionally eventually consistent. Poll it
@@ -113,6 +116,12 @@ after sending commands:
 curl -H 'X-Tenant-ID: acme' \
   "${api_url}/orders/${order_id}/summary"
 ```
+
+The read path stays the same regardless of provider. Behind that endpoint:
+
+- PostgreSQL reads an EF-mapped `OrderSummary` row;
+- MongoDB reads an `ordering_order_summaries` document through
+  `MongoSessionAccessor.Database`.
 
 Inspect the summary projection's tenant checkpoint and any persisted failures:
 
@@ -129,20 +138,15 @@ POST /projections/order-summary/replay
 POST /projections/order-summary/failures/{eventId}/skip
 ```
 
-They illustrate the `ProjectionAdministration` API only. A production service
-must protect them with an administrator authorization policy. Replay resets
-the checkpoint but does not clear the read model; use a new projection version
-and shadow table for a production rebuild.
-
 Each event is also written to the outbox. This sample retains successful
-delivery records for one day instead of using EventLoom's immediate-deletion
-default. Replace `<event-id>` with the event's `eventId` from the event-history
-response to inspect the logging publisher's delivery record and attempts:
+delivery records for one day. Replace `<event-id>` with the event's `eventId`
+from the event-history response to inspect the delivery record and attempts:
 
 ```bash
 curl -H 'X-Tenant-ID: acme' \
   "${api_url}/outbox/<event-id>"
 ```
 
-Run the complete command sequence in a single tenant. Repeating it with a
-different tenant demonstrates that tenant-scoped streams are isolated.
+Run the same sequence under both providers to compare behavior. Command and
+query endpoints stay stable; only the provider wiring and transactional
+projection implementation change.

@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
 using EventLoom.AspNetCore;
-using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.Hosting;
 using EventLoom.Ordering.Api.Api;
 using EventLoom.Ordering.Api.Infrastructure;
@@ -43,7 +42,9 @@ var connectionString = builder.Configuration.GetConnectionString("EventStore")
 
 builder.Services
     .AddEventLoom()
-    .UsePostgreSql(connectionString)
+    .UseOrderingStorage(
+        builder.Configuration["EventLoom:Provider"] ?? OrderingEventLoomBuilderExtensions.PostgreSqlProvider,
+        connectionString)
     .AddOrdering();
 builder.Services.AddEventLoomHealthChecks(options =>
 {

@@ -12,26 +12,20 @@ outbox delivery work normally without any telemetry configuration.
 EventLoom uses `Microsoft.Extensions.Logging` by default. `AddEventLoom()`
 registers the logging services; no EventLoom logging opt-in or OpenTelemetry
 integration is needed. Logs go to the providers configured by the application.
-ASP.NET Core and generic hosts normally configure providers already; an
-application that builds a bare service collection must add its own provider
-if it wants logs to go anywhere. Control verbosity with the host's normal
-logging configuration, for example:
+Control verbosity with the host's normal logging configuration, for example:
 
 ```csharp
 builder.Logging.AddFilter("EventLoom", LogLevel.Warning);
 ```
 
-The `EventLoom.*` logger categories include the EF Core store, PostgreSQL
-retry policy, and hosted workers. Warnings report a projection paused after
-persisted failures, an outbox delivery cycle that exhausted retries, and
-snapshot fallback to event history. An outbox message remains pending after
-its delivery cycle fails. An unexpected append failure logs at error level.
-Debug logs describe transient PostgreSQL retries, intermediate worker
-delivery retries, lease loss, and rejected appends. Successful projection
-resume, skip, and replay operations log once at information level. Ordinary
-appends, reads, successful deliveries, and empty worker polls do not log.
-Health checks and operational summaries remain the way to inspect current
-lag and backlog.
+The `EventLoom.*` logger categories include the provider-neutral engine,
+storage-provider implementations, and hosted workers. Warnings report a
+projection paused after persisted failures, an outbox delivery cycle that
+exhausted retries, and snapshot fallback to event history. Debug logs describe
+transient provider retries, intermediate worker delivery retries, lease loss,
+and rejected appends. Successful projection resume, skip, and replay operations
+log once at information level. Ordinary appends, reads, successful deliveries,
+and empty worker polls do not log.
 
 `EventLoom.Hosting` includes optional convenience extensions for applications
 using the OpenTelemetry SDK:
@@ -44,11 +38,6 @@ builder.Services.AddOpenTelemetry()
     .WithMetrics(metrics => metrics.AddEventLoomInstrumentation());
 ```
 
-`AddEventLoomInstrumentation()` registers both the `EventLoom` activity source
-and meter with the SDK builder. Configure exporters such as OTLP, Prometheus,
-or Application Insights separately according to your application’s
-observability platform.
-
 ## Traces
 
 The current instrumentation includes:
@@ -60,8 +49,7 @@ The current instrumentation includes:
 - `eventloom.aggregate.replay` when tail events are applied.
 
 Aggregate-load spans form the parent trace for snapshot lookup, tail reads, and
-replay. This shows whether load latency comes from the snapshot, database read,
-or applying a long tail.
+replay.
 
 ## Metrics
 
@@ -73,7 +61,7 @@ The `EventLoom` meter currently provides:
 - `eventloom.append.duration` in milliseconds;
 - `eventloom.aggregate.loads`;
 - `eventloom.replayed.events`;
-- `eventloom.aggregate.load.duration` in milliseconds.
+- `eventloom.aggregate.load.duration` in milliseconds;
 - `eventloom.projection.deliveries` and `eventloom.projection.failures`;
 - `eventloom.projection.lease_losses`;
 - `eventloom.outbox.deliveries`, `eventloom.outbox.failures`, and
@@ -83,21 +71,14 @@ The `EventLoom` meter currently provides:
 
 EventLoom records stable operation metadata such as aggregate type, event
 counts, snapshot use, and replay-tail count. It intentionally excludes event
-payloads, stream IDs, tenant IDs, event IDs, correlation and causation IDs,
-and application headers from default span and metric attributes. Add
-application-specific enrichment only after evaluating its cardinality and
-sensitivity.
+payloads, stream IDs, tenant IDs, event IDs, correlation and causation IDs, and
+application headers from default span and metric attributes.
 
-Default EventLoom logs include only stable operation metadata (such as
-projection or aggregate type, attempt count, snapshot schema, and exception
-type). They do not contain exception objects or messages, event payloads,
-headers, tenant IDs, stream IDs, event or outbox message IDs, or correlation
-identifiers. Persisted projection failures and outbox attempt histories
-remain available through their authorized tenant-scoped administration APIs.
-Projection skip and replay logs are not a substitute for an application audit
-record with an authenticated actor and authorized tenant. Configure logging
-providers with the same application-data safeguards; EF Core's sensitive-data
-logging is separately controlled by the application.
+Default EventLoom logs include only stable operation metadata. They do not
+contain exception objects or messages, event payloads, headers, tenant IDs,
+stream IDs, event or outbox message IDs, or correlation identifiers. Persisted
+projection failures and outbox attempt histories remain available through their
+authorized tenant-scoped administration APIs.
 
 ## Health checks
 
@@ -121,22 +102,26 @@ var app = builder.Build();
 app.MapEventLoomHealthChecks();
 ```
 
-The `eventloom.event-store` check verifies database connectivity and runs the
-read-only `EventStoreSchema.ValidateAsync` compatibility check. It reports
-counts of missing or incompatible EventLoom tables and mapped columns without
-application event data. The ASP.NET Core `MapEventLoomHealthChecks` convention
-returns 503 for both degraded and unhealthy EventLoom readiness, preventing a
-lagging or backed-up instance from being selected as ready.
+The `eventloom.event-store` check verifies connectivity and runs the read-only
+`IStorageSchema.ValidateAsync()` compatibility check. It reports
+`missing_object_count` and `incompatible_object_count` when the store is
+reachable but incompatible.
+
 `eventloom.projections` is unhealthy for unresolved projection failures and
 degraded when event-offset lag exceeds `MaximumProjectionLag`.
-Its lag uses each tenant's persisted highest offset minus the corresponding
-projection checkpoint (or zero before its first delivery); tenants without
-committed events contribute no lag. No event payload or event-row scan is
-needed for this summary.
 `eventloom.outbox` is degraded when unpublished message count exceeds
-`MaximumOutboxBacklog`. Diagnostics contain only aggregate counts and offsets,
-never payloads, tenant IDs, stream IDs, event IDs, or headers.
+`MaximumOutboxBacklog`.
 
-Call `EventStoreSchema.ValidateAsync(context)` directly in deployment tooling
-when an explicit schema gate is needed. It is validation only: it neither
-creates a database nor applies migrations.
+## Protected diagnostics endpoints
+
+`MapEventLoomAdminDiagnostics("EventLoomOperators")` maps protected, aggregate-only
+diagnostics:
+
+- `GET /admin/eventloom/schema` returns `IsCompatible`, `CanConnect`,
+  `MissingCount`, and `IncompatibleCount`;
+- `GET /admin/eventloom/diagnostics` returns the same schema data plus
+  projection and outbox backlog summaries.
+
+Resolve `IStorageSchema` directly in deployment tooling when an explicit storage
+gate is needed. Validation is read-only: it neither creates nor migrates a
+store.

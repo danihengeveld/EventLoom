@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\EventLoom\EventLoom.csproj" />
     <ProjectReference Include="..\EventLoom.Hosting\EventLoom.Hosting.csproj" />
+    <ProjectReference Include="..\EventLoom.Storage\EventLoom.Storage.csproj" />
     <ProjectReference Include="..\EventLoom.EntityFrameworkCore.Sqlite\EventLoom.EntityFrameworkCore.Sqlite.csproj" />
   </ItemGroup>
 
