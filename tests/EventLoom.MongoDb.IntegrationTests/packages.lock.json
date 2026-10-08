@@ -4,11 +4,11 @@
     "net10.0": {
       "Testcontainers.MongoDb": {
         "type": "Direct",
-        "requested": "[4.15.0, )",
-        "resolved": "4.15.0",
-        "contentHash": "580TtnAkbtfbSumIonCk9dTu1CweRGBumXUdHP+OGwAznRcSAZ/a9Xem5kTh8W8rOFihZi/FnqB80CFwOXSIrg==",
+        "requested": "[4.16.0, )",
+        "resolved": "4.16.0",
+        "contentHash": "CIEgj8Vc1lxLHpSSGcygzSW/a+lr1BaoqAiWxl0kOfAZaGKCSm6Ho6q5+D+1ZqCbUL6VH8YKikaJnerVE6AtOQ==",
         "dependencies": {
-          "Testcontainers": "4.15.0"
+          "Testcontainers": "4.16.0"
         }
       },
       "TUnit": {
@@ -323,8 +323,8 @@
       },
       "Testcontainers": {
         "type": "Transitive",
-        "resolved": "4.15.0",
-        "contentHash": "8tCZKMm++C/9dHIr8lsE1iDBIBmthbo2XlGFDr4gorT1vgZrJwU36fNkCGuX7h7V39rpQoTK/aG+FhJz3jhY3A==",
+        "resolved": "4.16.0",
+        "contentHash": "JmMUZk6ZXQovbGQjaMB+YxOR0PbJTdYjOYjRcrm5LrA2dhLVMuCbhVGGunzCGIQfFMUB5Lno2LPOHMMuaGmuIg==",
         "dependencies": {
           "Docker.DotNet.Enhanced": "4.3.3",
           "Docker.DotNet.Enhanced.X509": "4.3.3",
