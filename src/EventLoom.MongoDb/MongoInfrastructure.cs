@@ -41,7 +41,8 @@ internal sealed class MongoStorageCatalog
         Events = Database.GetCollection<EventDocument>(EventsCollectionName);
         Offsets = Database.GetCollection<OffsetDocument>(OffsetsCollectionName);
         Snapshots = Database.GetCollection<SnapshotDocument>(SnapshotsCollectionName);
-        ProjectionCheckpoints = Database.GetCollection<ProjectionCheckpointDocument>(ProjectionCheckpointsCollectionName);
+        ProjectionCheckpoints =
+            Database.GetCollection<ProjectionCheckpointDocument>(ProjectionCheckpointsCollectionName);
         ProjectionFailures = Database.GetCollection<ProjectionFailureDocument>(ProjectionFailuresCollectionName);
         ProjectionLeases = Database.GetCollection<ProjectionLeaseDocument>(ProjectionLeasesCollectionName);
         Outbox = Database.GetCollection<OutboxDocument>(OutboxCollectionName);
@@ -96,41 +97,42 @@ internal sealed class MongoStorageCatalog
 
     public string OutboxAttemptsCollectionName { get; }
 
-    public IReadOnlyDictionary<string, IReadOnlyList<string>> ExpectedIndexes => new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
-    {
-        [StreamsCollectionName] = ["ux_streams_tenant_stream"],
-        [EventsCollectionName] =
-        [
-            "ux_events_tenant_stream_version",
-            "ux_events_tenant_offset",
-            "ux_events_tenant_event",
-            "ix_events_tenant_append"
-        ],
-        [OffsetsCollectionName] = [],
-        [SnapshotsCollectionName] = ["ix_snapshots_tenant_stream_aggregate_version"],
-        [ProjectionCheckpointsCollectionName] =
-        [
-            "ux_projection_checkpoints_tenant_name_version",
-            "ix_projection_checkpoints_tenant_status_updated_at"
-        ],
-        [ProjectionFailuresCollectionName] =
-        [
-            "ix_projection_failures_tenant_projection_resolved_offset",
-            "ux_projection_failures_tenant_projection_event_resolved"
-        ],
-        [ProjectionLeasesCollectionName] = ["ux_projection_leases_tenant_name"],
-        [OutboxCollectionName] =
-        [
-            "ux_outbox_tenant_message",
-            "ix_outbox_tenant_published_offset"
-        ],
-        [OutboxAttemptsCollectionName] =
-        [
-            "ux_outbox_attempts_tenant_message_attempt",
-            "ux_outbox_attempts_message_attempt",
-            "ix_outbox_attempts_tenant_message"
-        ]
-    };
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> ExpectedIndexes =>
+        new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal)
+        {
+            [StreamsCollectionName] = ["ux_streams_tenant_stream"],
+            [EventsCollectionName] =
+            [
+                "ux_events_tenant_stream_version",
+                "ux_events_tenant_offset",
+                "ux_events_tenant_event",
+                "ix_events_tenant_append"
+            ],
+            [OffsetsCollectionName] = [],
+            [SnapshotsCollectionName] = ["ix_snapshots_tenant_stream_aggregate_version"],
+            [ProjectionCheckpointsCollectionName] =
+            [
+                "ux_projection_checkpoints_tenant_name_version",
+                "ix_projection_checkpoints_tenant_status_updated_at"
+            ],
+            [ProjectionFailuresCollectionName] =
+            [
+                "ix_projection_failures_tenant_projection_resolved_offset",
+                "ux_projection_failures_tenant_projection_event_resolved"
+            ],
+            [ProjectionLeasesCollectionName] = ["ux_projection_leases_tenant_name"],
+            [OutboxCollectionName] =
+            [
+                "ux_outbox_tenant_message",
+                "ix_outbox_tenant_published_offset"
+            ],
+            [OutboxAttemptsCollectionName] =
+            [
+                "ux_outbox_attempts_tenant_message_attempt",
+                "ux_outbox_attempts_message_attempt",
+                "ix_outbox_attempts_tenant_message"
+            ]
+        };
 }
 
 internal sealed class MongoStorageInitializer(MongoStorageCatalog catalog)
@@ -157,7 +159,8 @@ internal sealed class MongoStorageInitializer(MongoStorageCatalog catalog)
             var existingCollectionCursor = await catalog.Database
                 .ListCollectionNamesAsync(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-            var existingCollections = (await existingCollectionCursor.ToListAsync(cancellationToken).ConfigureAwait(false))
+            var existingCollections =
+                (await existingCollectionCursor.ToListAsync(cancellationToken).ConfigureAwait(false))
                 .ToHashSet(StringComparer.Ordinal);
 
             foreach (var collectionName in catalog.ExpectedIndexes.Keys)
@@ -166,7 +169,8 @@ internal sealed class MongoStorageInitializer(MongoStorageCatalog catalog)
                 {
                     try
                     {
-                        await catalog.Database.CreateCollectionAsync(collectionName, cancellationToken: cancellationToken)
+                        await catalog.Database
+                            .CreateCollectionAsync(collectionName, cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
                     }
                     catch (MongoCommandException exception) when (exception.Code == 48)
@@ -345,7 +349,8 @@ internal static class MongoStorageTime
 
     public static DateTimeOffset FromUtcTicks(long value) => new(value, TimeSpan.Zero);
 
-    public static DateTimeOffset? FromUtcTicks(long? value) => value is null ? null : new DateTimeOffset(value.Value, TimeSpan.Zero);
+    public static DateTimeOffset? FromUtcTicks(long? value) =>
+        value is null ? null : new DateTimeOffset(value.Value, TimeSpan.Zero);
 }
 
 internal static class MongoMetadata
@@ -594,149 +599,140 @@ internal static class MongoDocumentMaps
         RegisterOutboxAttempt();
     }
 
-    private static void RegisterStream() => Register<StreamDocument>(
-        map =>
-        {
-            map.AutoMap();
-            map.MapIdMember(value => value.Id);
-            map.MapMember(value => value.TenantId).SetElementName("tenantId");
-            map.MapMember(value => value.StreamId).SetElementName("streamId");
-            map.MapMember(value => value.AggregateType).SetElementName("aggregateType");
-            map.MapMember(value => value.Version).SetElementName("version");
-        });
+    private static void RegisterStream() => Register<StreamDocument>(map =>
+    {
+        map.AutoMap();
+        map.MapIdMember(value => value.Id);
+        map.MapMember(value => value.TenantId).SetElementName("tenantId");
+        map.MapMember(value => value.StreamId).SetElementName("streamId");
+        map.MapMember(value => value.AggregateType).SetElementName("aggregateType");
+        map.MapMember(value => value.Version).SetElementName("version");
+    });
 
-    private static void RegisterEvent() => Register<EventDocument>(
-        map =>
-        {
-            map.AutoMap();
-            map.MapIdMember(value => value.Id);
-            map.MapMember(value => value.EventId)
-                .SetElementName("eventId")
-                .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
-            map.MapMember(value => value.TenantId).SetElementName("tenantId");
-            map.MapMember(value => value.StreamId).SetElementName("streamId");
-            map.MapMember(value => value.AggregateType).SetElementName("aggregateType");
-            map.MapMember(value => value.StreamVersion).SetElementName("streamVersion");
-            map.MapMember(value => value.TenantOffset).SetElementName("tenantOffset");
-            map.MapMember(value => value.EventType).SetElementName("eventType");
-            map.MapMember(value => value.EventTypeVersion).SetElementName("eventTypeVersion");
-            map.MapMember(value => value.Payload).SetElementName("payload");
-            map.MapMember(value => value.OccurredAtTicks).SetElementName("occurredAtTicks");
-            map.MapMember(value => value.CorrelationId).SetElementName("correlationId").SetIgnoreIfNull(true);
-            map.MapMember(value => value.CausationId).SetElementName("causationId").SetIgnoreIfNull(true);
-            map.MapMember(value => value.Actor).SetElementName("actor").SetIgnoreIfNull(true);
-            map.MapMember(value => value.Headers).SetElementName("headers").SetIgnoreIfNull(true);
-            map.MapMember(value => value.AppendId).SetElementName("appendId").SetIgnoreIfNull(true);
-        });
+    private static void RegisterEvent() => Register<EventDocument>(map =>
+    {
+        map.AutoMap();
+        map.MapIdMember(value => value.Id);
+        map.MapMember(value => value.EventId)
+            .SetElementName("eventId")
+            .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
+        map.MapMember(value => value.TenantId).SetElementName("tenantId");
+        map.MapMember(value => value.StreamId).SetElementName("streamId");
+        map.MapMember(value => value.AggregateType).SetElementName("aggregateType");
+        map.MapMember(value => value.StreamVersion).SetElementName("streamVersion");
+        map.MapMember(value => value.TenantOffset).SetElementName("tenantOffset");
+        map.MapMember(value => value.EventType).SetElementName("eventType");
+        map.MapMember(value => value.EventTypeVersion).SetElementName("eventTypeVersion");
+        map.MapMember(value => value.Payload).SetElementName("payload");
+        map.MapMember(value => value.OccurredAtTicks).SetElementName("occurredAtTicks");
+        map.MapMember(value => value.CorrelationId).SetElementName("correlationId").SetIgnoreIfNull(true);
+        map.MapMember(value => value.CausationId).SetElementName("causationId").SetIgnoreIfNull(true);
+        map.MapMember(value => value.Actor).SetElementName("actor").SetIgnoreIfNull(true);
+        map.MapMember(value => value.Headers).SetElementName("headers").SetIgnoreIfNull(true);
+        map.MapMember(value => value.AppendId).SetElementName("appendId").SetIgnoreIfNull(true);
+    });
 
-    private static void RegisterOffset() => Register<OffsetDocument>(
-        map =>
-        {
-            map.AutoMap();
-            map.MapIdMember(value => value.Id);
-            map.MapMember(value => value.TenantId).SetElementName("tenantId");
-            map.MapMember(value => value.NextOffset).SetElementName("nextOffset");
-        });
+    private static void RegisterOffset() => Register<OffsetDocument>(map =>
+    {
+        map.AutoMap();
+        map.MapIdMember(value => value.Id);
+        map.MapMember(value => value.TenantId).SetElementName("tenantId");
+        map.MapMember(value => value.NextOffset).SetElementName("nextOffset");
+    });
 
-    private static void RegisterSnapshot() => Register<SnapshotDocument>(
-        map =>
-        {
-            map.AutoMap();
-            map.MapIdMember(value => value.Id);
-            map.MapMember(value => value.TenantId).SetElementName("tenantId");
-            map.MapMember(value => value.StreamId).SetElementName("streamId");
-            map.MapMember(value => value.AggregateType).SetElementName("aggregateType");
-            map.MapMember(value => value.StreamVersion).SetElementName("streamVersion");
-            map.MapMember(value => value.SnapshotType).SetElementName("snapshotType");
-            map.MapMember(value => value.SchemaVersion).SetElementName("schemaVersion");
-            map.MapMember(value => value.Payload).SetElementName("payload");
-            map.MapMember(value => value.CreatedAtTicks).SetElementName("createdAtTicks");
-        });
+    private static void RegisterSnapshot() => Register<SnapshotDocument>(map =>
+    {
+        map.AutoMap();
+        map.MapIdMember(value => value.Id);
+        map.MapMember(value => value.TenantId).SetElementName("tenantId");
+        map.MapMember(value => value.StreamId).SetElementName("streamId");
+        map.MapMember(value => value.AggregateType).SetElementName("aggregateType");
+        map.MapMember(value => value.StreamVersion).SetElementName("streamVersion");
+        map.MapMember(value => value.SnapshotType).SetElementName("snapshotType");
+        map.MapMember(value => value.SchemaVersion).SetElementName("schemaVersion");
+        map.MapMember(value => value.Payload).SetElementName("payload");
+        map.MapMember(value => value.CreatedAtTicks).SetElementName("createdAtTicks");
+    });
 
-    private static void RegisterProjectionCheckpoint() => Register<ProjectionCheckpointDocument>(
-        map =>
-        {
-            map.AutoMap();
-            map.MapIdMember(value => value.Id);
-            map.MapMember(value => value.TenantId).SetElementName("tenantId");
-            map.MapMember(value => value.ProjectionName).SetElementName("projectionName");
-            map.MapMember(value => value.ProjectionVersion).SetElementName("projectionVersion");
-            map.MapMember(value => value.TenantOffset).SetElementName("tenantOffset");
-            map.MapMember(value => value.Status).SetElementName("status");
-            map.MapMember(value => value.UpdatedAtTicks).SetElementName("updatedAtTicks");
-        });
+    private static void RegisterProjectionCheckpoint() => Register<ProjectionCheckpointDocument>(map =>
+    {
+        map.AutoMap();
+        map.MapIdMember(value => value.Id);
+        map.MapMember(value => value.TenantId).SetElementName("tenantId");
+        map.MapMember(value => value.ProjectionName).SetElementName("projectionName");
+        map.MapMember(value => value.ProjectionVersion).SetElementName("projectionVersion");
+        map.MapMember(value => value.TenantOffset).SetElementName("tenantOffset");
+        map.MapMember(value => value.Status).SetElementName("status");
+        map.MapMember(value => value.UpdatedAtTicks).SetElementName("updatedAtTicks");
+    });
 
-    private static void RegisterProjectionFailure() => Register<ProjectionFailureDocument>(
-        map =>
-        {
-            map.AutoMap();
-            map.MapIdMember(value => value.Id);
-            map.MapMember(value => value.TenantId).SetElementName("tenantId");
-            map.MapMember(value => value.ProjectionName).SetElementName("projectionName");
-            map.MapMember(value => value.ProjectionVersion).SetElementName("projectionVersion");
-            map.MapMember(value => value.EventId)
-                .SetElementName("eventId")
-                .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
-            map.MapMember(value => value.EventType).SetElementName("eventType");
-            map.MapMember(value => value.TenantOffset).SetElementName("tenantOffset");
-            map.MapMember(value => value.AttemptCount).SetElementName("attemptCount");
-            map.MapMember(value => value.ExceptionType).SetElementName("exceptionType");
-            map.MapMember(value => value.FailedAtTicks).SetElementName("failedAtTicks");
-            map.MapMember(value => value.ResolvedAtTicks).SetElementName("resolvedAtTicks").SetIgnoreIfNull(true);
-            map.MapMember(value => value.WasSkipped).SetElementName("wasSkipped");
-        });
+    private static void RegisterProjectionFailure() => Register<ProjectionFailureDocument>(map =>
+    {
+        map.AutoMap();
+        map.MapIdMember(value => value.Id);
+        map.MapMember(value => value.TenantId).SetElementName("tenantId");
+        map.MapMember(value => value.ProjectionName).SetElementName("projectionName");
+        map.MapMember(value => value.ProjectionVersion).SetElementName("projectionVersion");
+        map.MapMember(value => value.EventId)
+            .SetElementName("eventId")
+            .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
+        map.MapMember(value => value.EventType).SetElementName("eventType");
+        map.MapMember(value => value.TenantOffset).SetElementName("tenantOffset");
+        map.MapMember(value => value.AttemptCount).SetElementName("attemptCount");
+        map.MapMember(value => value.ExceptionType).SetElementName("exceptionType");
+        map.MapMember(value => value.FailedAtTicks).SetElementName("failedAtTicks");
+        map.MapMember(value => value.ResolvedAtTicks).SetElementName("resolvedAtTicks").SetIgnoreIfNull(true);
+        map.MapMember(value => value.WasSkipped).SetElementName("wasSkipped");
+    });
 
-    private static void RegisterProjectionLease() => Register<ProjectionLeaseDocument>(
-        map =>
-        {
-            map.AutoMap();
-            map.MapIdMember(value => value.Id);
-            map.MapMember(value => value.TenantId).SetElementName("tenantId");
-            map.MapMember(value => value.LeaseName).SetElementName("leaseName");
-            map.MapMember(value => value.OwnerId).SetElementName("ownerId");
-            map.MapMember(value => value.FencingToken).SetElementName("fencingToken");
-            map.MapMember(value => value.LeaseUntilTicks).SetElementName("leaseUntilTicks");
-        });
+    private static void RegisterProjectionLease() => Register<ProjectionLeaseDocument>(map =>
+    {
+        map.AutoMap();
+        map.MapIdMember(value => value.Id);
+        map.MapMember(value => value.TenantId).SetElementName("tenantId");
+        map.MapMember(value => value.LeaseName).SetElementName("leaseName");
+        map.MapMember(value => value.OwnerId).SetElementName("ownerId");
+        map.MapMember(value => value.FencingToken).SetElementName("fencingToken");
+        map.MapMember(value => value.LeaseUntilTicks).SetElementName("leaseUntilTicks");
+    });
 
-    private static void RegisterOutbox() => Register<OutboxDocument>(
-        map =>
-        {
-            map.AutoMap();
-            map.MapIdMember(value => value.Id);
-            map.MapMember(value => value.MessageId)
-                .SetElementName("messageId")
-                .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
-            map.MapMember(value => value.TenantId).SetElementName("tenantId");
-            map.MapMember(value => value.StreamId).SetElementName("streamId");
-            map.MapMember(value => value.AggregateType).SetElementName("aggregateType");
-            map.MapMember(value => value.StreamVersion).SetElementName("streamVersion");
-            map.MapMember(value => value.TenantOffset).SetElementName("tenantOffset");
-            map.MapMember(value => value.EventType).SetElementName("eventType");
-            map.MapMember(value => value.EventTypeVersion).SetElementName("eventTypeVersion");
-            map.MapMember(value => value.Payload).SetElementName("payload");
-            map.MapMember(value => value.OccurredAtTicks).SetElementName("occurredAtTicks");
-            map.MapMember(value => value.CorrelationId).SetElementName("correlationId").SetIgnoreIfNull(true);
-            map.MapMember(value => value.CausationId).SetElementName("causationId").SetIgnoreIfNull(true);
-            map.MapMember(value => value.Actor).SetElementName("actor").SetIgnoreIfNull(true);
-            map.MapMember(value => value.Headers).SetElementName("headers").SetIgnoreIfNull(true);
-            map.MapMember(value => value.AttemptCount).SetElementName("attemptCount");
-            map.MapMember(value => value.PublishedAtTicks).SetElementName("publishedAtTicks").SetIgnoreIfNull(true);
-        });
+    private static void RegisterOutbox() => Register<OutboxDocument>(map =>
+    {
+        map.AutoMap();
+        map.MapIdMember(value => value.Id);
+        map.MapMember(value => value.MessageId)
+            .SetElementName("messageId")
+            .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
+        map.MapMember(value => value.TenantId).SetElementName("tenantId");
+        map.MapMember(value => value.StreamId).SetElementName("streamId");
+        map.MapMember(value => value.AggregateType).SetElementName("aggregateType");
+        map.MapMember(value => value.StreamVersion).SetElementName("streamVersion");
+        map.MapMember(value => value.TenantOffset).SetElementName("tenantOffset");
+        map.MapMember(value => value.EventType).SetElementName("eventType");
+        map.MapMember(value => value.EventTypeVersion).SetElementName("eventTypeVersion");
+        map.MapMember(value => value.Payload).SetElementName("payload");
+        map.MapMember(value => value.OccurredAtTicks).SetElementName("occurredAtTicks");
+        map.MapMember(value => value.CorrelationId).SetElementName("correlationId").SetIgnoreIfNull(true);
+        map.MapMember(value => value.CausationId).SetElementName("causationId").SetIgnoreIfNull(true);
+        map.MapMember(value => value.Actor).SetElementName("actor").SetIgnoreIfNull(true);
+        map.MapMember(value => value.Headers).SetElementName("headers").SetIgnoreIfNull(true);
+        map.MapMember(value => value.AttemptCount).SetElementName("attemptCount");
+        map.MapMember(value => value.PublishedAtTicks).SetElementName("publishedAtTicks").SetIgnoreIfNull(true);
+    });
 
-    private static void RegisterOutboxAttempt() => Register<OutboxAttemptDocument>(
-        map =>
-        {
-            map.AutoMap();
-            map.MapIdMember(value => value.Id);
-            map.MapMember(value => value.MessageId)
-                .SetElementName("messageId")
-                .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
-            map.MapMember(value => value.TenantId).SetElementName("tenantId");
-            map.MapMember(value => value.AttemptNumber).SetElementName("attemptNumber");
-            map.MapMember(value => value.AttemptedAtTicks).SetElementName("attemptedAtTicks");
-            map.MapMember(value => value.Succeeded).SetElementName("succeeded");
-            map.MapMember(value => value.ExceptionType).SetElementName("exceptionType").SetIgnoreIfNull(true);
-        });
+    private static void RegisterOutboxAttempt() => Register<OutboxAttemptDocument>(map =>
+    {
+        map.AutoMap();
+        map.MapIdMember(value => value.Id);
+        map.MapMember(value => value.MessageId)
+            .SetElementName("messageId")
+            .SetSerializer(new GuidSerializer(GuidRepresentation.Standard));
+        map.MapMember(value => value.TenantId).SetElementName("tenantId");
+        map.MapMember(value => value.AttemptNumber).SetElementName("attemptNumber");
+        map.MapMember(value => value.AttemptedAtTicks).SetElementName("attemptedAtTicks");
+        map.MapMember(value => value.Succeeded).SetElementName("succeeded");
+        map.MapMember(value => value.ExceptionType).SetElementName("exceptionType").SetIgnoreIfNull(true);
+    });
 
     private static void Register<TDocument>(Action<BsonClassMap<TDocument>> configure)
     {

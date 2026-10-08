@@ -41,7 +41,8 @@ public sealed class PostgreSqlEventStoreTests : PostgreSqlIntegrationTest
             .Throws<EventStoreConcurrencyException>();
 
         await using var verificationContext = database.CreateContext();
-        var store = EfTestStores.EventStore(verificationContext, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+        var store = EfTestStores.EventStore(verificationContext, new EventSerializer(registry),
+            new UuidV7EventIdGenerator(),
             TimeProvider.System);
         var result = await store.AppendAsync(new AppendRequest(
             "tenant-a", "accepted", "order", ExpectedVersion.NoStream,

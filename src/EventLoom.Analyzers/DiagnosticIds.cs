@@ -1,5 +1,3 @@
-
-
 namespace EventLoom.Analyzers;
 
 /// <summary>The stable identifiers of the EventLoom analyzer diagnostics.</summary>

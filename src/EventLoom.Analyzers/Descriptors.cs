@@ -13,7 +13,8 @@ internal static class Descriptors
         Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Concrete aggregates pass themselves as TSelf; abstract generic bases forward their own TSelf type parameter.");
+        description:
+        "Concrete aggregates pass themselves as TSelf; abstract generic bases forward their own TSelf type parameter.");
 
     internal static readonly DiagnosticDescriptor RaiseInHandler = new(
         DiagnosticIds.RaiseInHandler,
@@ -22,7 +23,8 @@ internal static class Descriptors
         Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Handlers run again on every replay. Raising from them duplicates events; raise only from command methods.");
+        description:
+        "Handlers run again on every replay. Raising from them duplicates events; raise only from command methods.");
 
     internal static readonly DiagnosticDescriptor RaiseInConstructor = new(
         DiagnosticIds.RaiseInConstructor,
@@ -49,7 +51,8 @@ internal static class Descriptors
         Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Replay must reproduce the same state. Put clocks, random values, identifiers, and I/O results in the event instead.");
+        description:
+        "Replay must reproduce the same state. Put clocks, random values, identifiers, and I/O results in the event instead.");
 
     internal static readonly DiagnosticDescriptor NonConstantIdentity = new(
         DiagnosticIds.NonConstantIdentity,
@@ -58,7 +61,8 @@ internal static class Descriptors
         Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Event and snapshot names and versions are persisted; they must be compile-time constants with valid values.");
+        description:
+        "Event and snapshot names and versions are persisted; they must be compile-time constants with valid values.");
 
     internal static readonly DiagnosticDescriptor DuplicateIdentity = new(
         DiagnosticIds.DuplicateIdentity,
@@ -67,7 +71,8 @@ internal static class Descriptors
         Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Each persisted event or snapshot name maps to exactly one type. Model schema changes with versions and upcasters.",
+        description:
+        "Each persisted event or snapshot name maps to exactly one type. Model schema changes with versions and upcasters.",
         customTags: WellKnownDiagnosticTags.CompilationEnd);
 
     internal static readonly DiagnosticDescriptor MutableContract = new(
@@ -77,7 +82,8 @@ internal static class Descriptors
         Category,
         DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "Use init-only properties and readonly fields so persisted history cannot change after it is raised.");
+        description:
+        "Use init-only properties and readonly fields so persisted history cannot change after it is raised.");
 
     internal static readonly DiagnosticDescriptor ForeignApplyHandler = new(
         DiagnosticIds.ForeignApplyHandler,
@@ -86,7 +92,8 @@ internal static class Descriptors
         Category,
         DiagnosticSeverity.Info,
         isEnabledByDefault: true,
-        description: "EventLoom only dispatches events owned by the aggregate through IDomainEvent<TSelf, TAggregate>.");
+        description:
+        "EventLoom only dispatches events owned by the aggregate through IDomainEvent<TSelf, TAggregate>.");
 
     internal static readonly DiagnosticDescriptor StateChangedOutsideApply = new(
         DiagnosticIds.StateChangedOutsideApply,
@@ -95,5 +102,6 @@ internal static class Descriptors
         Category,
         DiagnosticSeverity.Info,
         isEnabledByDefault: false,
-        description: "State changed outside handlers is lost on replay. Raise an event and change state in its handler.");
+        description:
+        "State changed outside handlers is lost on replay. Raise an event and change state in its handler.");
 }

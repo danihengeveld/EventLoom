@@ -50,12 +50,12 @@ public static class MongoProjectionRegistrationExtensions
             where THandler : class, IMongoProjectionHandler<TEvent>
         {
             ArgumentNullException.ThrowIfNull(builder);
-            return builder.RegisterTransactional<THandler, TEvent>(
-                static (handler, envelope, context, cancellationToken) =>
-                    handler.HandleAsync(
-                        envelope,
-                        (MongoProjectionTransaction)context,
-                        cancellationToken));
+            return builder.RegisterTransactional<THandler, TEvent>(static (handler, envelope, context,
+                    cancellationToken) =>
+                handler.HandleAsync(
+                    envelope,
+                    (MongoProjectionTransaction)context,
+                    cancellationToken));
         }
     }
 }

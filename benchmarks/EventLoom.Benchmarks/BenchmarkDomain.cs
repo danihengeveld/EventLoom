@@ -5,7 +5,8 @@ public sealed record CounterIncremented(int Amount, string Data) : IDomainEvent<
     public static string EventType => "benchmarks.counter-incremented";
 }
 
-public sealed class BenchmarkCounter(Guid id) : Aggregate<BenchmarkCounter, Guid>(id), IApply<CounterIncremented>, ISnapshotable<CounterSnapshot>
+public sealed class BenchmarkCounter(Guid id) : Aggregate<BenchmarkCounter, Guid>(id), IApply<CounterIncremented>,
+    ISnapshotable<CounterSnapshot>
 {
     public int Value { get; private set; }
 

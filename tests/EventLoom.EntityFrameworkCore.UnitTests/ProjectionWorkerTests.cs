@@ -106,7 +106,9 @@ public sealed class ProjectionWorkerTests
             await Assert.That(paused.Properties["ProjectionName"]).IsEqualTo("tests.failing");
             await Assert.That(paused.Properties["Attempts"]).IsEqualTo(2);
             await Assert.That(paused.Exception).IsNull();
-            await Assert.That(paused.Message.Contains(persistedFailures.Single().EventId.ToString(), StringComparison.Ordinal)).IsFalse();
+            await Assert
+                .That(paused.Message.Contains(persistedFailures.Single().EventId.ToString(), StringComparison.Ordinal))
+                .IsFalse();
             await Assert.That(paused.Message.Contains("tenant-a", StringComparison.Ordinal)).IsFalse();
             await Assert.That(paused.Properties.ContainsKey("EventId")).IsFalse();
             await Assert.That(logs.Entries.Count(entry => entry.EventId == 3001)).IsEqualTo(1);

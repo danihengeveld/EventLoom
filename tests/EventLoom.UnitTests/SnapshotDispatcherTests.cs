@@ -8,7 +8,8 @@ public sealed class SnapshotDispatcherTests
     public async Task Dispatcher_reads_snapshot_identity_from_the_contract()
     {
         var dispatcher = AggregateSnapshotDispatcher.Create<CounterAggregate, Guid, CounterSnapshot>(null);
-        var defaultVersion = AggregateSnapshotDispatcher.Create<DefaultVersionAggregate, Guid, DefaultVersionSnapshot>(null);
+        var defaultVersion =
+            AggregateSnapshotDispatcher.Create<DefaultVersionAggregate, Guid, DefaultVersionSnapshot>(null);
 
         await Assert.That(dispatcher.SnapshotType).IsEqualTo("tests.counter");
         await Assert.That(dispatcher.SchemaVersion).IsEqualTo(2);
@@ -68,7 +69,8 @@ public sealed class SnapshotDispatcherTests
     {
         await Assert.That(() => AggregateSnapshotDispatcher.Create<EmptyNameAggregate, Guid, EmptyNameSnapshot>(null))
             .Throws<InvalidOperationException>();
-        await Assert.That(() => AggregateSnapshotDispatcher.Create<ZeroVersionAggregate, Guid, ZeroVersionSnapshot>(null))
+        await Assert.That(() =>
+                AggregateSnapshotDispatcher.Create<ZeroVersionAggregate, Guid, ZeroVersionSnapshot>(null))
             .Throws<InvalidOperationException>();
     }
 

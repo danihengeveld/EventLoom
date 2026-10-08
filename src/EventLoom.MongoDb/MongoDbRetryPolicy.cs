@@ -86,8 +86,10 @@ internal static class MongoDbExceptionClassifier
 
             return mongoException switch
             {
-                MongoWriteException { WriteError.Code: 11000 or 11001 or 12582 } => MongoDbExceptionClassification.DuplicateKey,
-                MongoBulkWriteException<EventDocument> { WriteErrors: var errors } when errors.Any(error => error.Code is 11000 or 11001 or 12582)
+                MongoWriteException { WriteError.Code: 11000 or 11001 or 12582 } => MongoDbExceptionClassification
+                    .DuplicateKey,
+                MongoBulkWriteException<EventDocument> { WriteErrors: var errors } when errors.Any(error =>
+                        error.Code is 11000 or 11001 or 12582)
                     => MongoDbExceptionClassification.DuplicateKey,
                 MongoCommandException { Code: 11000 or 11001 or 12582 } => MongoDbExceptionClassification.DuplicateKey,
                 MongoWriteException { WriteError.Code: 112 } => MongoDbExceptionClassification.WriteConflict,

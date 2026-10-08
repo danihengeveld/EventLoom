@@ -400,7 +400,8 @@ public sealed class AggregateRepositoryTests
         public static string EventType => "tests.incremented";
     }
 
-    private sealed class Counter(Guid id) : Aggregate<Counter, Guid>(id), IApply<Incremented>, ISnapshotable<CounterSnapshot>
+    private sealed class Counter(Guid id)
+        : Aggregate<Counter, Guid>(id), IApply<Incremented>, ISnapshotable<CounterSnapshot>
     {
         public int Value { get; private set; }
 

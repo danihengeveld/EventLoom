@@ -9,7 +9,9 @@ internal sealed class MongoStorageSchema(
     MongoStorageInitializer initializer) : IStorageSchema
 {
     private readonly MongoStorageCatalog catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
-    private readonly MongoStorageInitializer initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
+
+    private readonly MongoStorageInitializer initializer =
+        initializer ?? throw new ArgumentNullException(nameof(initializer));
 
     public Task EnsureCreatedAsync(CancellationToken cancellationToken = default) =>
         initializer.EnsureCreatedAsync(cancellationToken);
@@ -29,7 +31,8 @@ internal sealed class MongoStorageSchema(
             var existingCollectionCursor = await catalog.Database
                 .ListCollectionNamesAsync(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-            var existingCollections = (await existingCollectionCursor.ToListAsync(cancellationToken).ConfigureAwait(false))
+            var existingCollections =
+                (await existingCollectionCursor.ToListAsync(cancellationToken).ConfigureAwait(false))
                 .ToHashSet(StringComparer.Ordinal);
             var missingCount = 0;
             foreach (var collection in catalog.ExpectedIndexes)

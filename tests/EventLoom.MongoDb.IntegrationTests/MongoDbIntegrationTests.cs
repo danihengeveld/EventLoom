@@ -1,5 +1,4 @@
 using EventLoom.Hosting;
-using EventLoom.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using MongoDB.Bson;
@@ -47,8 +46,7 @@ public sealed class MongoDbIntegrationTests : MongoDbIntegrationTest
                 }
 
                 await Task.Delay(50);
-            }
-            while (DateTimeOffset.UtcNow < deadline);
+            } while (DateTimeOffset.UtcNow < deadline);
 
             await Assert.That(count).IsEqualTo(2);
             await using var scope = services.CreateAsyncScope();

@@ -1,6 +1,6 @@
-using EventLoom.Storage;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
+using EventLoom.Storage;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 

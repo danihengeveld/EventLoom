@@ -9,7 +9,10 @@ internal sealed class MongoOutboxStorage(
     TimeProvider timeProvider) : IOutboxStorage
 {
     private readonly MongoStorageCatalog catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
-    private readonly MongoStorageInitializer initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
+
+    private readonly MongoStorageInitializer initializer =
+        initializer ?? throw new ArgumentNullException(nameof(initializer));
+
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     public async Task<IReadOnlyList<string>> ReadPendingTenantIdsAsync(CancellationToken cancellationToken = default)
@@ -97,11 +100,12 @@ internal sealed class MongoOutboxStorage(
         {
             await VerifyLeaseAsync(session, message.TenantId, lease, cancellationToken).ConfigureAwait(false);
             var document = await catalog.Outbox.Find(
-                    session,
-                    Builders<OutboxDocument>.Filter.Eq(value => value.TenantId, message.TenantId) &
-                    Builders<OutboxDocument>.Filter.Eq(value => value.MessageId, message.MessageId))
-                .SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false)
-                ?? throw new InvalidOperationException($"Outbox message '{message.MessageId}' does not exist.");
+                                   session,
+                                   Builders<OutboxDocument>.Filter.Eq(value => value.TenantId, message.TenantId) &
+                                   Builders<OutboxDocument>.Filter.Eq(value => value.MessageId, message.MessageId))
+                               .SingleOrDefaultAsync(cancellationToken).ConfigureAwait(false)
+                           ?? throw new InvalidOperationException(
+                               $"Outbox message '{message.MessageId}' does not exist.");
             if (document.PublishedAtTicks is not null)
             {
                 await MongoTransactionUtilities.AbortIfNeededAsync(session, cancellationToken).ConfigureAwait(false);
@@ -143,7 +147,8 @@ internal sealed class MongoOutboxStorage(
                 Builders<OutboxDocument>.Filter.Eq(value => value.Id, document.Id),
                 Builders<OutboxDocument>.Update
                     .Set(value => value.AttemptCount, attemptNumber)
-                    .Set(value => value.PublishedAtTicks, exceptionType is null ? attemptedAtTicks : document.PublishedAtTicks),
+                    .Set(value => value.PublishedAtTicks,
+                        exceptionType is null ? attemptedAtTicks : document.PublishedAtTicks),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             await session.CommitTransactionAsync(cancellationToken).ConfigureAwait(false);
             return true;

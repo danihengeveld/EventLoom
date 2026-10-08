@@ -67,13 +67,13 @@ public sealed class AggregateContractAnalyzer : DiagnosticAnalyzer
                 OperationKind.Increment,
                 OperationKind.Decrement);
 
-            startContext.RegisterOperationBlockAction(
-                value => IdentityChecks.AnalyzeIdentityGetter(value, symbols, identities));
+            startContext.RegisterOperationBlockAction(value =>
+                IdentityChecks.AnalyzeIdentityGetter(value, symbols, identities));
             startContext.RegisterOperationAction(
                 value => IdentityChecks.AnalyzeIdentityInitializer(value, symbols, identities),
                 OperationKind.PropertyInitializer);
-            startContext.RegisterCompilationEndAction(
-                value => IdentityChecks.ReportDuplicateIdentities(value, identities));
+            startContext.RegisterCompilationEndAction(value =>
+                IdentityChecks.ReportDuplicateIdentities(value, identities));
         });
     }
 

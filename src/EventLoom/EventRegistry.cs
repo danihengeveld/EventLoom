@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 
 namespace EventLoom;
 
@@ -46,7 +47,7 @@ public sealed class EventRegistry
             }
             catch (TargetInvocationException exception) when (exception.InnerException is not null)
             {
-                System.Runtime.ExceptionServices.ExceptionDispatchInfo.Throw(exception.InnerException);
+                ExceptionDispatchInfo.Throw(exception.InnerException);
             }
         }
 

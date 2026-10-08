@@ -35,13 +35,13 @@ internal static class CompilationHarness
     }
 
     public static ImmutableArray<string> CompilerErrors(string source) =>
-        [
-            .. Compile(source)
-                .GetDiagnostics()
-                .Where(static value => value.Severity == DiagnosticSeverity.Error)
-                .Select(static value => value.Id)
-                .Distinct()
-        ];
+    [
+        .. Compile(source)
+            .GetDiagnostics()
+            .Where(static value => value.Severity == DiagnosticSeverity.Error)
+            .Select(static value => value.Id)
+            .Distinct()
+    ];
 
     public static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(
         string source,
@@ -54,7 +54,8 @@ internal static class CompilationHarness
         if (errors.Length > 0)
         {
             throw new InvalidOperationException(
-                "Test source does not compile: " + string.Join(Environment.NewLine, errors.Select(static e => e.ToString())));
+                "Test source does not compile: " +
+                string.Join(Environment.NewLine, errors.Select(static e => e.ToString())));
         }
 
         return await compilation
@@ -65,7 +66,10 @@ internal static class CompilationHarness
     public static async Task<string[]> AnalyzerIdsAsync(
         string source,
         IReadOnlyDictionary<string, ReportDiagnostic>? diagnosticOptions = null) =>
-        [.. (await AnalyzeAsync(source, diagnosticOptions)).Select(static value => value.Id).Order(StringComparer.Ordinal)];
+    [
+        .. (await AnalyzeAsync(source, diagnosticOptions)).Select(static value => value.Id)
+        .Order(StringComparer.Ordinal)
+    ];
 
     private static ImmutableArray<MetadataReference> CreateReferences()
     {
@@ -73,7 +77,8 @@ internal static class CompilationHarness
         var platform = AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!
             .ToString()!
             .Split(Path.PathSeparator)
-            .Where(path => !string.Equals(Path.GetFileName(path), Path.GetFileName(eventLoom), StringComparison.Ordinal));
+            .Where(path =>
+                !string.Equals(Path.GetFileName(path), Path.GetFileName(eventLoom), StringComparison.Ordinal));
         return [.. platform.Append(eventLoom).Select(static path => MetadataReference.CreateFromFile(path))];
     }
 }

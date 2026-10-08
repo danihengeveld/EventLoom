@@ -62,7 +62,8 @@ public sealed class DomainKernelTests
         var aggregate = new CounterAggregate(Guid.NewGuid());
         aggregate.Increment(1);
 
-        await Assert.That(() => ((IList<Aggregate<CounterAggregate, Guid>.PendingEvent>)aggregate.PendingEvents).Clear())
+        await Assert
+            .That(() => ((IList<Aggregate<CounterAggregate, Guid>.PendingEvent>)aggregate.PendingEvents).Clear())
             .Throws<NotSupportedException>();
     }
 

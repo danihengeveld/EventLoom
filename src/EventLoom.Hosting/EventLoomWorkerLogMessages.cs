@@ -9,12 +9,14 @@ internal static partial class EventLoomWorkerLogMessages
     internal static partial void ProjectionLeaseLost(this ILogger logger);
 
     [LoggerMessage(EventId = 3001, Level = LogLevel.Debug,
-        Message = "Projection {ProjectionName} v{ProjectionVersion} delivery failed on attempt {Attempt} with {ExceptionType}; retrying.")]
+        Message =
+            "Projection {ProjectionName} v{ProjectionVersion} delivery failed on attempt {Attempt} with {ExceptionType}; retrying.")]
     internal static partial void ProjectionRetry(
         this ILogger logger, string projectionName, int projectionVersion, int attempt, string exceptionType);
 
     [LoggerMessage(EventId = 3002, Level = LogLevel.Warning,
-        Message = "Projection {ProjectionName} v{ProjectionVersion} paused after {Attempts} failed delivery attempts with {ExceptionType}.")]
+        Message =
+            "Projection {ProjectionName} v{ProjectionVersion} paused after {Attempts} failed delivery attempts with {ExceptionType}.")]
     internal static partial void ProjectionPaused(
         this ILogger logger, string projectionName, int projectionVersion, int attempts, string exceptionType);
 

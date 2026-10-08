@@ -1,4 +1,3 @@
-using EventLoom.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace EventLoom.EntityFrameworkCore.TestSupport;

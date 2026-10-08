@@ -8,7 +8,9 @@ internal sealed class MongoSnapshotStorage(
     MongoStorageInitializer initializer) : ISnapshotStorage
 {
     private readonly MongoStorageCatalog catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
-    private readonly MongoStorageInitializer initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
+
+    private readonly MongoStorageInitializer initializer =
+        initializer ?? throw new ArgumentNullException(nameof(initializer));
 
     public async Task WriteAsync(
         SnapshotRecord snapshot,
@@ -94,7 +96,8 @@ internal sealed class MongoSnapshotStorage(
                 Builders<SnapshotDocument>.Filter.Eq(value => value.SnapshotType, snapshot.SnapshotType) &
                 Builders<SnapshotDocument>.Filter.Eq(value => value.SchemaVersion, snapshot.SchemaVersion) &
                 Builders<SnapshotDocument>.Filter.Eq(value => value.Payload, snapshot.Payload) &
-                Builders<SnapshotDocument>.Filter.Eq(value => value.CreatedAtTicks, MongoStorageTime.ToUtcTicks(snapshot.CreatedAt)),
+                Builders<SnapshotDocument>.Filter.Eq(value => value.CreatedAtTicks,
+                    MongoStorageTime.ToUtcTicks(snapshot.CreatedAt)),
                 cancellationToken)
             .ConfigureAwait(false);
     }

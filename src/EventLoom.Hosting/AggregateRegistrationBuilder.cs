@@ -42,8 +42,8 @@ public sealed class AggregateRegistrationBuilder<TAggregate, TId>
         ArgumentNullException.ThrowIfNull(configure);
         var builder = new AggregateSnapshotBuilder<TAggregate, TSnapshot>();
         configure(builder);
-        snapshotConfiguration = builder.Build(
-            static upcasters => AggregateSnapshotDispatcher.Create<TAggregate, TId, TSnapshot>(upcasters));
+        snapshotConfiguration = builder.Build(static upcasters =>
+            AggregateSnapshotDispatcher.Create<TAggregate, TId, TSnapshot>(upcasters));
         return this;
     }
 

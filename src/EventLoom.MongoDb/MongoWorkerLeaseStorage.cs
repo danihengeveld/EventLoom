@@ -9,7 +9,10 @@ internal sealed class MongoWorkerLeaseStorage(
     TimeProvider timeProvider) : IWorkerLeaseStorage
 {
     private readonly MongoStorageCatalog catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
-    private readonly MongoStorageInitializer initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
+
+    private readonly MongoStorageInitializer initializer =
+        initializer ?? throw new ArgumentNullException(nameof(initializer));
+
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     public async Task<WorkerLease?> TryAcquireAsync(
@@ -56,11 +59,13 @@ internal sealed class MongoWorkerLeaseStorage(
                     lease.FencingToken,
                     MongoStorageTime.FromUtcTicks(lease.LeaseUntilTicks));
         }
-        catch (MongoWriteException exception) when (MongoDbExceptionClassifier.Classify(exception) == MongoDbExceptionClassification.DuplicateKey)
+        catch (MongoWriteException exception) when (MongoDbExceptionClassifier.Classify(exception) ==
+                                                    MongoDbExceptionClassification.DuplicateKey)
         {
             return null;
         }
-        catch (MongoCommandException exception) when (MongoDbExceptionClassifier.Classify(exception) == MongoDbExceptionClassification.DuplicateKey)
+        catch (MongoCommandException exception) when (MongoDbExceptionClassifier.Classify(exception) ==
+                                                      MongoDbExceptionClassification.DuplicateKey)
         {
             return null;
         }

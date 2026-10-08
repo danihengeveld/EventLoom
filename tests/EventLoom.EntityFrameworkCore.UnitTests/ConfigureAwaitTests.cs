@@ -1,6 +1,5 @@
 using EventLoom.Hosting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EventLoom.EntityFrameworkCore.UnitTests;

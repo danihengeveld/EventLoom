@@ -1,4 +1,3 @@
-using EventLoom.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EventLoom.Storage.Conformance;
@@ -74,7 +73,8 @@ public abstract partial class StorageConformanceTests
 
         await Assert.That(await leases.TryAcquireAsync(Tenant, "projection:a", "owner-1", LeaseDuration)).IsNotNull();
         await Assert.That(await leases.TryAcquireAsync(Tenant, "projection:b", "owner-2", LeaseDuration)).IsNotNull();
-        await Assert.That(await leases.TryAcquireAsync("tenant-b", "projection:a", "owner-2", LeaseDuration)).IsNotNull();
+        await Assert.That(await leases.TryAcquireAsync("tenant-b", "projection:a", "owner-2", LeaseDuration))
+            .IsNotNull();
     }
 
     [Test]
@@ -83,7 +83,8 @@ public abstract partial class StorageConformanceTests
         await using var environment = await CreateEnvironmentAsync();
         if (!environment.Capabilities.IsDistributed)
         {
-            Skip.Test($"{environment.Capabilities.ProviderName} is single-node; concurrency is validated by distributed providers.");
+            Skip.Test(
+                $"{environment.Capabilities.ProviderName} is single-node; concurrency is validated by distributed providers.");
         }
 
         var results = await Task.WhenAll(Enumerable.Range(0, 8).Select(async index =>

@@ -9,7 +9,10 @@ internal sealed class MongoProjectionStorage(
     TimeProvider timeProvider) : IProjectionStorage
 {
     private readonly MongoStorageCatalog catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
-    private readonly MongoStorageInitializer initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
+
+    private readonly MongoStorageInitializer initializer =
+        initializer ?? throw new ArgumentNullException(nameof(initializer));
+
     private readonly TimeProvider timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
 
     public async Task<ProjectionCheckpoint?> GetCheckpointAsync(
@@ -121,7 +124,8 @@ internal sealed class MongoProjectionStorage(
                 return ProjectionDeliveryResult.AlreadyProcessed;
             }
 
-            await apply(new MongoProjectionTransaction(session, catalog.Database), cancellationToken).ConfigureAwait(false);
+            await apply(new MongoProjectionTransaction(session, catalog.Database), cancellationToken)
+                .ConfigureAwait(false);
             await VerifyLeaseAsync(session, tenantId, key, lease, cancellationToken).ConfigureAwait(false);
             var nowTicks = MongoStorageTime.ToUtcTicks(timeProvider.GetUtcNow());
             await catalog.ProjectionCheckpoints.UpdateOneAsync(
@@ -335,7 +339,8 @@ internal sealed class MongoProjectionStorage(
         }
     }
 
-    private static FilterDefinition<ProjectionCheckpointDocument> FilterCheckpoint(string tenantId, ProjectionKey key) =>
+    private static FilterDefinition<ProjectionCheckpointDocument>
+        FilterCheckpoint(string tenantId, ProjectionKey key) =>
         Builders<ProjectionCheckpointDocument>.Filter.Eq(value => value.TenantId, tenantId) &
         Builders<ProjectionCheckpointDocument>.Filter.Eq(value => value.ProjectionName, key.Name) &
         Builders<ProjectionCheckpointDocument>.Filter.Eq(value => value.ProjectionVersion, key.Version);

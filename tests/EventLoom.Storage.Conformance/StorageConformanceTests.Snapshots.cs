@@ -1,4 +1,3 @@
-using EventLoom.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EventLoom.Storage.Conformance;
@@ -39,16 +38,20 @@ public abstract partial class StorageConformanceTests
         }
 
         await snapshots.WriteAsync(Snapshot(1, "other-stream", stream: "order-2"), 2);
-        await Assert.That((await snapshots.ReadLatestAsync(Tenant, "order-1", "order", "tests.snapshot"))!.StreamVersion)
+        await Assert
+            .That((await snapshots.ReadLatestAsync(Tenant, "order-1", "order", "tests.snapshot"))!.StreamVersion)
             .IsEqualTo(4);
-        await Assert.That((await snapshots.ReadLatestAsync(Tenant, "order-2", "order", "tests.snapshot"))!.StreamVersion)
+        await Assert
+            .That((await snapshots.ReadLatestAsync(Tenant, "order-2", "order", "tests.snapshot"))!.StreamVersion)
             .IsEqualTo(1);
 
         var latest = (await snapshots.ReadLatestAsync(Tenant, "order-1", "order", "tests.snapshot"))!;
         await snapshots.InvalidateAsync(latest);
-        await Assert.That((await snapshots.ReadLatestAsync(Tenant, "order-1", "order", "tests.snapshot"))!.StreamVersion)
+        await Assert
+            .That((await snapshots.ReadLatestAsync(Tenant, "order-1", "order", "tests.snapshot"))!.StreamVersion)
             .IsEqualTo(3);
-        await snapshots.InvalidateAsync((await snapshots.ReadLatestAsync(Tenant, "order-1", "order", "tests.snapshot"))!);
+        await snapshots.InvalidateAsync(
+            (await snapshots.ReadLatestAsync(Tenant, "order-1", "order", "tests.snapshot"))!);
         await Assert.That(await snapshots.ReadLatestAsync(Tenant, "order-1", "order", "tests.snapshot")).IsNull();
     }
 

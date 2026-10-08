@@ -393,7 +393,8 @@ public sealed partial class EventLoomBuilder
 
         foreach (var registration in projectionRegistrations)
         {
-            if (registration.Mode == ProjectionMode.Transactional && !storageCapabilities.SupportsTransactionalProjections)
+            if (registration.Mode == ProjectionMode.Transactional &&
+                !storageCapabilities.SupportsTransactionalProjections)
             {
                 throw new InvalidOperationException(
                     $"The {storageCapabilities.ProviderName} storage provider does not support transactional projections.");

@@ -175,12 +175,14 @@ public sealed class AggregateRepository<TAggregate, TId>
                 }
                 catch (SnapshotIncompatibleException)
                 {
-                    await LogSnapshotFallbackAsync(snapshot, SnapshotInvalidationReason.Incompatible, cancellationToken);
+                    await LogSnapshotFallbackAsync(snapshot, SnapshotInvalidationReason.Incompatible,
+                        cancellationToken);
                     aggregate = CreateAggregate(id);
                 }
                 catch (SnapshotUpcastException)
                 {
-                    await LogSnapshotFallbackAsync(snapshot, SnapshotInvalidationReason.UpcastFailed, cancellationToken);
+                    await LogSnapshotFallbackAsync(snapshot, SnapshotInvalidationReason.UpcastFailed,
+                        cancellationToken);
                     aggregate = CreateAggregate(id);
                 }
             }

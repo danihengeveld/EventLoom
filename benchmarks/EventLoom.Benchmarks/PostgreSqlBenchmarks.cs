@@ -1,7 +1,7 @@
-using EventLoom.EntityFrameworkCore.PostgreSql;
-using EventLoom.Hosting;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Engines;
+using EventLoom.EntityFrameworkCore.PostgreSql;
+using EventLoom.Hosting;
 using Testcontainers.PostgreSql;
 
 namespace EventLoom.Benchmarks;

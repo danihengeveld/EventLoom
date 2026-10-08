@@ -1,6 +1,7 @@
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -71,7 +72,7 @@ public sealed class OperationalLoggingTests
     public async Task Expected_version_conflict_logs_at_debug_not_error()
     {
         var logger = new RecordingLogger<EventStore>();
-        await using var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+        await using var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
         await using var context = new EventStoreDbContext(
             new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
@@ -92,7 +93,8 @@ public sealed class OperationalLoggingTests
 
         var rejected = await logger.WaitForAsync(1000);
         await Assert.That(rejected.Level).IsEqualTo(LogLevel.Debug);
-        await Assert.That(rejected.Properties["ExceptionType"]).IsEqualTo(typeof(WrongExpectedVersionException).FullName);
+        await Assert.That(rejected.Properties["ExceptionType"])
+            .IsEqualTo(typeof(WrongExpectedVersionException).FullName);
         await Assert.That(logger.Entries.Any(entry => entry.EventId == 1001)).IsFalse();
         await Assert.That(rejected.Message.Contains("private", StringComparison.Ordinal)).IsFalse();
         await Assert.That(rejected.Exception).IsNull();

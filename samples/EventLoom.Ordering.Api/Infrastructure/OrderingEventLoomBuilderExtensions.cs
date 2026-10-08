@@ -1,6 +1,5 @@
 using EventLoom.Hosting;
 using EventLoom.Ordering.Api.Domain;
-using EventLoom.Ordering.Api.Projections;
 
 namespace EventLoom.Ordering.Api.Infrastructure;
 

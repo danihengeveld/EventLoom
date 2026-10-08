@@ -3,7 +3,6 @@ using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
-using EventLoom.Storage;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -111,7 +110,8 @@ public sealed class EventLoomHostingTests
 
         await Assert.That(() => services.AddEventLoom(eventLoom => eventLoom.AddAggregateEvents<Counter>()))
             .Throws<InvalidOperationException>()
-            .WithMessage("Configure an EventLoom storage provider with a provider-specific extension such as UsePostgreSql, UseSqlite, or UseMongoDb.");
+            .WithMessage(
+                "Configure an EventLoom storage provider with a provider-specific extension such as UsePostgreSql, UseSqlite, or UseMongoDb.");
     }
 
     [Test]
@@ -299,7 +299,8 @@ public sealed class EventLoomHostingTests
         }
     }
 
-    private sealed class NoopProjection : IEfProjectionHandler<CounterIncremented>, IInlineProjectionHandler<CounterIncremented>
+    private sealed class NoopProjection : IEfProjectionHandler<CounterIncremented>,
+        IInlineProjectionHandler<CounterIncremented>
     {
         public Task HandleAsync(
             EventEnvelope<CounterIncremented> envelope,
@@ -321,7 +322,8 @@ public sealed class EventLoomHostingTests
             Task.CompletedTask;
     }
 
-    private sealed class Counter(Guid id) : Aggregate<Counter, Guid>(id), IApply<CounterIncremented>, ISnapshotable<CounterSnapshot>
+    private sealed class Counter(Guid id)
+        : Aggregate<Counter, Guid>(id), IApply<CounterIncremented>, ISnapshotable<CounterSnapshot>
     {
         void IApply<CounterIncremented>.Apply(CounterIncremented @event)
         {

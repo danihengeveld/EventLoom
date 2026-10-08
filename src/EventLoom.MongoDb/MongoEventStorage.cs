@@ -9,13 +9,18 @@ internal sealed class MongoEventStorage(
     MongoSessionAccessor sessionAccessor) : IEventStorage
 {
     private readonly MongoStorageCatalog catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
-    private readonly MongoStorageInitializer initializer = initializer ?? throw new ArgumentNullException(nameof(initializer));
-    private readonly MongoSessionAccessor sessionAccessor = sessionAccessor ?? throw new ArgumentNullException(nameof(sessionAccessor));
+
+    private readonly MongoStorageInitializer initializer =
+        initializer ?? throw new ArgumentNullException(nameof(initializer));
+
+    private readonly MongoSessionAccessor sessionAccessor =
+        sessionAccessor ?? throw new ArgumentNullException(nameof(sessionAccessor));
 
     public async Task<IStorageTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
         await initializer.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
-        var session = await catalog.Client.StartSessionAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+        var session = await catalog.Client.StartSessionAsync(cancellationToken: cancellationToken)
+            .ConfigureAwait(false);
         session.StartTransaction(catalog.TransactionOptions);
         return new MongoStorageTransaction(catalog, session);
     }
@@ -29,7 +34,8 @@ internal sealed class MongoEventStorage(
         await initializer.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
         if (transaction is not null)
         {
-            if (transaction is not MongoStorageTransaction mongoTransaction || !ReferenceEquals(mongoTransaction.Catalog, catalog))
+            if (transaction is not MongoStorageTransaction mongoTransaction ||
+                !ReferenceEquals(mongoTransaction.Catalog, catalog))
             {
                 throw new InvalidOperationException(
                     "The supplied transaction was not created by this EventLoom MongoDB storage scope.");
@@ -37,7 +43,8 @@ internal sealed class MongoEventStorage(
 
             try
             {
-                return await AppendCoreAsync(request, mongoTransaction.Session, cancellationToken).ConfigureAwait(false);
+                return await AppendCoreAsync(request, mongoTransaction.Session, cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (Exception exception) when (ShouldWrapConcurrency(exception))
             {
@@ -141,8 +148,9 @@ internal sealed class MongoEventStorage(
     {
         if (request.AppendId is not null)
         {
-            var replay = await TryReadIdempotentReplayAsync(session, request.TenantId, request.AppendId, cancellationToken)
-                .ConfigureAwait(false);
+            var replay =
+                await TryReadIdempotentReplayAsync(session, request.TenantId, request.AppendId, cancellationToken)
+                    .ConfigureAwait(false);
             if (replay is not null)
             {
                 return replay;
@@ -174,7 +182,8 @@ internal sealed class MongoEventStorage(
                     },
                     cancellationToken: cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception exception) when (MongoDbExceptionClassifier.Classify(exception) == MongoDbExceptionClassification.DuplicateKey)
+            catch (Exception exception) when (MongoDbExceptionClassifier.Classify(exception) ==
+                                              MongoDbExceptionClassification.DuplicateKey)
             {
                 throw new EventStoreConcurrencyException(request.TenantId, request.StreamId, exception);
             }
@@ -184,7 +193,8 @@ internal sealed class MongoEventStorage(
             var advanced = await catalog.Streams.UpdateOneAsync(
                 session,
                 streamFilter & Builders<StreamDocument>.Filter.Eq(value => value.Version, currentVersion!.Value),
-                Builders<StreamDocument>.Update.Set(value => value.Version, currentVersion.Value + request.Events.Count),
+                Builders<StreamDocument>.Update.Set(value => value.Version,
+                    currentVersion.Value + request.Events.Count),
                 cancellationToken: cancellationToken).ConfigureAwait(false);
             if (advanced.MatchedCount != 1)
             {

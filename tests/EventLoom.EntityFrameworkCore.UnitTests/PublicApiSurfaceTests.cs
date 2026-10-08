@@ -3,7 +3,6 @@ using EventLoom.EntityFrameworkCore;
 using EventLoom.EntityFrameworkCore.PostgreSql;
 using EventLoom.EntityFrameworkCore.Sqlite;
 using EventLoom.Hosting;
-using EventLoom.Storage;
 
 namespace EventLoom.UnitTests;
 

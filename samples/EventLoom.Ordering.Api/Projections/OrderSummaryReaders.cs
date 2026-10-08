@@ -22,7 +22,8 @@ internal sealed class MongoOrderSummaryReader(MongoSessionAccessor mongo) : IOrd
 {
     public async Task<OrderSummary?> FindAsync(string tenantId, Guid orderId, CancellationToken cancellationToken)
     {
-        var document = await mongo.Database.GetCollection<OrderSummaryDocument>(MongoOrderSummaryProjection.CollectionName)
+        var document = await mongo.Database
+            .GetCollection<OrderSummaryDocument>(MongoOrderSummaryProjection.CollectionName)
             .Find(value => value.Id == OrderSummaryDocument.KeyFor(tenantId, orderId.ToString("D")))
             .SingleOrDefaultAsync(cancellationToken);
         return document?.ToSummary();

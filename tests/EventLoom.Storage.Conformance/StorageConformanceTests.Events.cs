@@ -1,4 +1,3 @@
-using EventLoom.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EventLoom.Storage.Conformance;
@@ -282,8 +281,10 @@ public abstract partial class StorageConformanceTests
 
         await using (var rolledBack = await events.BeginTransactionAsync())
         {
-            await events.AppendAsync(Request("order-1", ExpectedVersion.NoStream, 1) with { WriteOutbox = true }, rolledBack);
-            await events.AppendAsync(Request("order-2", ExpectedVersion.NoStream, 1) with { WriteOutbox = true }, rolledBack);
+            await events.AppendAsync(Request("order-1", ExpectedVersion.NoStream, 1) with { WriteOutbox = true },
+                rolledBack);
+            await events.AppendAsync(Request("order-2", ExpectedVersion.NoStream, 1) with { WriteOutbox = true },
+                rolledBack);
             await rolledBack.RollbackAsync();
         }
 
@@ -292,8 +293,10 @@ public abstract partial class StorageConformanceTests
 
         await using (var committed = await events.BeginTransactionAsync())
         {
-            await events.AppendAsync(Request("order-1", ExpectedVersion.NoStream, 1) with { WriteOutbox = true }, committed);
-            await events.AppendAsync(Request("order-1", ExpectedVersion.Exact(1), 1) with { WriteOutbox = true }, committed);
+            await events.AppendAsync(Request("order-1", ExpectedVersion.NoStream, 1) with { WriteOutbox = true },
+                committed);
+            await events.AppendAsync(Request("order-1", ExpectedVersion.Exact(1), 1) with { WriteOutbox = true },
+                committed);
             await committed.CommitAsync();
         }
 
@@ -335,7 +338,8 @@ public abstract partial class StorageConformanceTests
 
         var heads = await events.ReadTenantHeadsAsync();
 
-        await Assert.That(heads.OrderBy(value => value.TenantId).Select(value => $"{value.TenantId}:{value.LastOffset}"))
+        await Assert
+            .That(heads.OrderBy(value => value.TenantId).Select(value => $"{value.TenantId}:{value.LastOffset}"))
             .IsEquivalentTo(new[] { "tenant-a:3", "tenant-b:1" });
     }
 
@@ -345,7 +349,8 @@ public abstract partial class StorageConformanceTests
         await using var environment = await CreateEnvironmentAsync();
         if (!environment.Capabilities.IsDistributed)
         {
-            Skip.Test($"{environment.Capabilities.ProviderName} is single-node; concurrency is validated by distributed providers.");
+            Skip.Test(
+                $"{environment.Capabilities.ProviderName} is single-node; concurrency is validated by distributed providers.");
         }
 
         var outcomes = await Task.WhenAll(Enumerable.Range(0, 8).Select(async _ =>
@@ -376,7 +381,8 @@ public abstract partial class StorageConformanceTests
         await using var environment = await CreateEnvironmentAsync();
         if (!environment.Capabilities.IsDistributed)
         {
-            Skip.Test($"{environment.Capabilities.ProviderName} is single-node; concurrency is validated by distributed providers.");
+            Skip.Test(
+                $"{environment.Capabilities.ProviderName} is single-node; concurrency is validated by distributed providers.");
         }
 
         const int Writers = 6;
@@ -407,7 +413,8 @@ public abstract partial class StorageConformanceTests
         await using var environment = await CreateEnvironmentAsync();
         if (!environment.Capabilities.IsDistributed)
         {
-            Skip.Test($"{environment.Capabilities.ProviderName} is single-node; concurrency is validated by distributed providers.");
+            Skip.Test(
+                $"{environment.Capabilities.ProviderName} is single-node; concurrency is validated by distributed providers.");
         }
 
         var results = await Task.WhenAll(Enumerable.Range(0, 6).Select(async _ =>
@@ -438,7 +445,8 @@ public abstract partial class StorageConformanceTests
             : policy.ExecuteAsync(token => events.AppendAsync(request, null, token));
     }
 
-    private static async Task<StorageAppendResult> AppendWithRetryAsync(IServiceProvider services, StorageAppendRequest request)
+    private static async Task<StorageAppendResult> AppendWithRetryAsync(IServiceProvider services,
+        StorageAppendRequest request)
     {
         for (var attempt = 0;; attempt++)
         {

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using EventLoom.Analyzers.Symbols;
@@ -61,7 +62,7 @@ internal static class IdentityChecks
     }
 
     private static void ValidateIdentityValue(
-        System.Action<Diagnostic> report,
+        Action<Diagnostic> report,
         ConcurrentBag<DeclaredIdentity> identities,
         IPropertySymbol property,
         IdentityContract contract,
@@ -103,7 +104,7 @@ internal static class IdentityChecks
             var types = group
                 .GroupBy(static value => value.Type, SymbolEqualityComparer.Default)
                 .Select(static value => value.First())
-                .OrderBy(static value => value.Type.ToDisplayString(), System.StringComparer.Ordinal)
+                .OrderBy(static value => value.Type.ToDisplayString(), StringComparer.Ordinal)
                 .ToArray();
             if (types.Length < 2)
             {

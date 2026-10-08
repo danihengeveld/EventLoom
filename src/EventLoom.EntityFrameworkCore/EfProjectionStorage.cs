@@ -78,7 +78,8 @@ internal sealed class EfProjectionStorage(EventStoreDbContext context, TimeProvi
             .Where(value => value.ResolvedAt == null)
             .Select(value => new { value.ProjectionName, value.ProjectionVersion })
             .ToArrayAsync(cancellationToken).ConfigureAwait(false);
-        return failures.Count(value => keySet.Contains(new ProjectionKey(value.ProjectionName, value.ProjectionVersion)));
+        return failures.Count(value =>
+            keySet.Contains(new ProjectionKey(value.ProjectionName, value.ProjectionVersion)));
     }
 
     public async Task<ProjectionDeliveryResult> ProcessAsync(

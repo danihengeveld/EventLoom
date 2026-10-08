@@ -1,4 +1,3 @@
-using EventLoom.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EventLoom.Storage.Conformance;
@@ -17,7 +16,11 @@ public abstract partial class StorageConformanceTests
         var applied = 0;
 
         var result = await projections.ProcessAsync(
-            Tenant, OrdersProjection, envelope, lease, (_, _) => { applied++; return Task.CompletedTask; });
+            Tenant, OrdersProjection, envelope, lease, (_, _) =>
+            {
+                applied++;
+                return Task.CompletedTask;
+            });
 
         var checkpoint = await projections.GetCheckpointAsync(Tenant, OrdersProjection);
         await Assert.That(result).IsEqualTo(ProjectionDeliveryResult.Processed);
@@ -36,6 +39,7 @@ public abstract partial class StorageConformanceTests
         var (envelope, lease) = await ArrangeProjectionAsync(scope.ServiceProvider);
         var projections = scope.ServiceProvider.GetRequiredService<IProjectionStorage>();
         var applied = 0;
+
         Task Apply(IProjectionTransactionContext _, CancellationToken __)
         {
             applied++;

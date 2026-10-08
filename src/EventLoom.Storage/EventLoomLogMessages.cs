@@ -13,9 +13,11 @@ internal static partial class EventLoomLogMessages
     internal static partial void AppendFailed(this ILogger logger, string aggregateType, string exceptionType);
 
     [LoggerMessage(EventId = 1002, Level = LogLevel.Warning,
-        Message = "Snapshot {SnapshotType} schema v{SchemaVersion} could not be restored ({Reason}); replaying history. Invalidated: {Invalidated}.")]
+        Message =
+            "Snapshot {SnapshotType} schema v{SchemaVersion} could not be restored ({Reason}); replaying history. Invalidated: {Invalidated}.")]
     internal static partial void SnapshotFallback(
-        this ILogger logger, string snapshotType, int schemaVersion, SnapshotInvalidationReason reason, bool invalidated);
+        this ILogger logger, string snapshotType, int schemaVersion, SnapshotInvalidationReason reason,
+        bool invalidated);
 
     [LoggerMessage(EventId = 1003, Level = LogLevel.Information,
         Message = "Projection {ProjectionName} v{ProjectionVersion} resumed.")]
@@ -27,5 +29,6 @@ internal static partial class EventLoomLogMessages
 
     [LoggerMessage(EventId = 1005, Level = LogLevel.Information,
         Message = "Projection {ProjectionName} v{ProjectionVersion} checkpoint reset for replay.")]
-    internal static partial void ProjectionReplayStarted(this ILogger logger, string projectionName, int projectionVersion);
+    internal static partial void ProjectionReplayStarted(this ILogger logger, string projectionName,
+        int projectionVersion);
 }

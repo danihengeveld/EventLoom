@@ -23,7 +23,8 @@ public sealed class EventStoreAppendTests
         await connection.OpenAsync();
         await using var context = CreateContext(connection);
         await context.Database.EnsureCreatedAsync();
-        var store = EfTestStores.EventStore(context, new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
+        var store = EfTestStores.EventStore(context,
+            new EventSerializer(new EventRegistry().RegisterAggregate<TestAggregate>()),
             new UuidV7EventIdGenerator(), TimeProvider.System);
 
         await store.AppendAsync(new AppendRequest(

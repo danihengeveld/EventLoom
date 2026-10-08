@@ -1,4 +1,3 @@
-using EventLoom.EntityFrameworkCore;
 using EventLoom.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 

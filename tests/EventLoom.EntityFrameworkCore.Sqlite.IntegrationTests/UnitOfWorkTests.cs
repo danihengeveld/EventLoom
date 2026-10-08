@@ -31,7 +31,8 @@ public sealed class UnitOfWorkTests
         await using var verificationApplicationContext = new ApplicationDbContext(CreateApplicationOptions(connection));
         await Assert.That((await CreateEventStore(verificationContext).ReadStreamAsync("tenant-a", "order-1")).Count)
             .IsEqualTo(1);
-        await Assert.That((await EfTestStores.Outbox(verificationContext, TimeProvider.System).ReadPendingAsync("tenant-a"))
+        await Assert.That(
+                (await EfTestStores.Outbox(verificationContext, TimeProvider.System).ReadPendingAsync("tenant-a"))
                 .Count)
             .IsEqualTo(1);
         await Assert.That((await verificationApplicationContext.Records.SingleAsync()).Name).IsEqualTo("committed");
@@ -62,7 +63,8 @@ public sealed class UnitOfWorkTests
         await using var verificationApplicationContext = new ApplicationDbContext(CreateApplicationOptions(connection));
         await Assert.That((await CreateEventStore(verificationContext).ReadStreamAsync("tenant-a", "order-1")).Count)
             .IsEqualTo(0);
-        await Assert.That((await EfTestStores.Outbox(verificationContext, TimeProvider.System).ReadPendingAsync("tenant-a"))
+        await Assert.That(
+                (await EfTestStores.Outbox(verificationContext, TimeProvider.System).ReadPendingAsync("tenant-a"))
                 .Count)
             .IsEqualTo(0);
         await Assert.That(await verificationApplicationContext.Records.CountAsync()).IsEqualTo(0);

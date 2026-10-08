@@ -1,5 +1,4 @@
 using EventLoom.Hosting;
-using EventLoom.Storage;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EventLoom.Storage.Conformance;

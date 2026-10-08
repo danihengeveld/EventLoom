@@ -1,5 +1,4 @@
 using EventLoom.Storage;
-using Microsoft.EntityFrameworkCore;
 
 namespace EventLoom.EntityFrameworkCore;
 

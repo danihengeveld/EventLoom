@@ -30,7 +30,7 @@ public sealed class PostgreSqlConcurrencyTests : PostgreSqlIntegrationTest
     public async Task Concurrent_first_appends_with_the_same_append_id_replay_one_result()
     {
         var options = new EntityFrameworkStorageOptions
-        { UseSchema = true, Schema = "eventloom_idempotency", TablePrefix = "eventloom_" };
+            { UseSchema = true, Schema = "eventloom_idempotency", TablePrefix = "eventloom_" };
         await using var database = await Server.CreateDatabaseAsync(options);
         await using var firstContext = database.CreateContext();
         await using var secondContext = database.CreateContext();
@@ -61,7 +61,7 @@ public sealed class PostgreSqlConcurrencyTests : PostgreSqlIntegrationTest
     public async Task Concurrent_instances_assign_contiguous_committed_tenant_offsets()
     {
         var options = new EntityFrameworkStorageOptions
-        { UseSchema = true, Schema = "eventloom_offsets", TablePrefix = "eventloom_" };
+            { UseSchema = true, Schema = "eventloom_offsets", TablePrefix = "eventloom_" };
         await using var database = await Server.CreateDatabaseAsync(options);
 
         var registry = new EventRegistry().RegisterAggregate<TestAggregate>();

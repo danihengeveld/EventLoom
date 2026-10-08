@@ -32,12 +32,12 @@ public static class EfProjectionRegistrationExtensions
             where TProjection : class, IEfProjectionHandler<TEvent>
         {
             ArgumentNullException.ThrowIfNull(builder);
-            return builder.RegisterTransactional<TProjection, TEvent>(
-                (handler, envelope, transaction, cancellationToken) =>
-                    handler.HandleAsync(
-                        envelope,
-                        ((EfProjectionTransaction)transaction).Context,
-                        cancellationToken));
+            return builder.RegisterTransactional<TProjection, TEvent>((handler, envelope, transaction,
+                    cancellationToken) =>
+                handler.HandleAsync(
+                    envelope,
+                    ((EfProjectionTransaction)transaction).Context,
+                    cancellationToken));
         }
     }
 }

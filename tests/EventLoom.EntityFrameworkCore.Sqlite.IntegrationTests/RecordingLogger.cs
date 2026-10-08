@@ -3,7 +3,11 @@ using Microsoft.Extensions.Logging;
 namespace EventLoom.EntityFrameworkCore.Sqlite.IntegrationTests;
 
 internal sealed record RecordedLog(
-    LogLevel Level, int EventId, string Message, IReadOnlyDictionary<string, object?> Properties, Exception? Exception);
+    LogLevel Level,
+    int EventId,
+    string Message,
+    IReadOnlyDictionary<string, object?> Properties,
+    Exception? Exception);
 
 internal sealed class RecordingLogger<T> : ILogger<T>
 {
