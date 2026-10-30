@@ -1,7 +1,5 @@
-using DotNet.Testcontainers.Builders;
-using DotNet.Testcontainers.Containers;
-using MongoDB.Bson;
 using MongoDB.Driver;
+using Testcontainers.MongoDb;
 using TUnit.Core.Interfaces;
 
 namespace EventLoom.MongoDb.IntegrationTests;
@@ -19,8 +17,7 @@ public abstract class MongoDbIntegrationTest
 public sealed class MongoDbTestServer : IAsyncInitializer, IAsyncDisposable
 {
     private const string ConnectionStringVariable = "EVENTLOOM_MONGODB_CONNECTION_STRING";
-    private const int MongoPort = 27017;
-    private IContainer? container;
+    private MongoDbContainer? container;
 
     public string ConnectionString { get; private set; } = string.Empty;
 
@@ -33,53 +30,12 @@ public sealed class MongoDbTestServer : IAsyncInitializer, IAsyncDisposable
             return;
         }
 
-        // WORKAROUND: the replica set is initiated through the driver instead of the simpler
-        // `new MongoDbBuilder("mongo:8").WithReplicaSet().Build()` (Testcontainers.MongoDb).
-        // That builder finds mongosh via `docker exec` once and caches the result, including a
-        // failed lookup. On GitHub Actions the first lookup fails ("The mongosh or mongo binary
-        // could not be found"), so every test fails, while it passes locally.
-        // Revert to MongoDbBuilder (and the Testcontainers.MongoDb package reference) once a
-        // Testcontainers release no longer caches a failed lookup and CI passes with it; try it
-        // on a branch first. Testcontainers.MongoDb is still used by the benchmarks.
-        container = new ContainerBuilder("mongo:8")
-            .WithPortBinding(MongoPort, true)
-            .WithCommand("--replSet", "rs0", "--bind_ip_all")
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("Waiting for connections"))
-            .Build();
+        // WORKAROUND: pinned to 7.0 because MongoDB 8.0+ crashes on startup on Linux kernel 6.19+
+        // (https://jira.mongodb.org/browse/SERVER-121912), which the GitHub Actions runners now use.
+        // Move back to "mongo:8" once a fixed 8.x image is published and CI passes with it.
+        container = new MongoDbBuilder("mongo:7.0").WithReplicaSet().Build();
         await container.StartAsync();
-        ConnectionString = $"mongodb://{container.Hostname}:{container.GetMappedPublicPort(MongoPort)}/?directConnection=true";
-        await InitiateReplicaSetAsync();
-    }
-
-    private async Task InitiateReplicaSetAsync()
-    {
-        using var client = new MongoClient(ConnectionString);
-        var admin = client.GetDatabase("admin");
-        await admin.RunCommandAsync<BsonDocument>(new BsonDocument
-        {
-            ["replSetInitiate"] = new BsonDocument
-            {
-                ["_id"] = "rs0",
-                ["members"] = new BsonArray { new BsonDocument { ["_id"] = 0, ["host"] = "127.0.0.1:27017" } },
-            },
-        });
-
-        var deadline = DateTime.UtcNow.AddSeconds(60);
-        while (true)
-        {
-            var hello = await admin.RunCommandAsync<BsonDocument>(new BsonDocument("hello", 1));
-            if (hello.GetValue("isWritablePrimary", false).ToBoolean())
-            {
-                return;
-            }
-
-            if (DateTime.UtcNow > deadline)
-            {
-                throw new TimeoutException("The MongoDB replica set did not elect a primary in time.");
-            }
-
-            await Task.Delay(200);
-        }
+        ConnectionString = container.GetConnectionString();
     }
 
     public string NewDatabaseName() => $"eventloom_test_{Guid.NewGuid():N}";
