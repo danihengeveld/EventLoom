@@ -22,11 +22,11 @@
       },
       "Testcontainers.MongoDb": {
         "type": "Direct",
-        "requested": "[4.16.0, )",
-        "resolved": "4.16.0",
-        "contentHash": "CIEgj8Vc1lxLHpSSGcygzSW/a+lr1BaoqAiWxl0kOfAZaGKCSm6Ho6q5+D+1ZqCbUL6VH8YKikaJnerVE6AtOQ==",
+        "requested": "[4.15.0, )",
+        "resolved": "4.15.0",
+        "contentHash": "580TtnAkbtfbSumIonCk9dTu1CweRGBumXUdHP+OGwAznRcSAZ/a9Xem5kTh8W8rOFihZi/FnqB80CFwOXSIrg==",
         "dependencies": {
-          "Testcontainers": "4.16.0"
+          "Testcontainers": "4.15.0"
         }
       },
       "Testcontainers.PostgreSql": {
