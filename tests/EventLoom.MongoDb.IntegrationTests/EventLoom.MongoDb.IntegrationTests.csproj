@@ -2,7 +2,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\EventLoom.MongoDb\EventLoom.MongoDb.csproj" />
     <PackageReference Include="TUnit" />
-    <PackageReference Include="Testcontainers.MongoDb" />
+    <PackageReference Include="Testcontainers" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="..\EventLoom.Storage.Conformance\*.cs" LinkBase="Conformance" />

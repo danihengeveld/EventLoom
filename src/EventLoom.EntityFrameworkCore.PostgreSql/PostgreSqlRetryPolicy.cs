@@ -33,7 +33,10 @@ internal sealed class PostgreSqlRetryPolicy(
                 !cancellationToken.IsCancellationRequested &&
                 PostgreSqlExceptionClassifier.IsTransient(PostgreSqlExceptionClassifier.Classify(exception)))
             {
-                var delay = TimeSpan.FromMilliseconds(Math.Min(1000, 50 * Math.Pow(2, attempt)));
+                // Jitter keeps contending writers from retrying in lockstep and repeatedly
+                // failing serialization against each other.
+                var ceiling = Math.Min(1000, 50 * Math.Pow(2, attempt));
+                var delay = TimeSpan.FromMilliseconds((ceiling / 2) + (Random.Shared.NextDouble() * ceiling / 2));
                 logger.RetryScheduled(
                     PostgreSqlExceptionClassifier.Classify(exception), attempt + 1, delay.TotalMilliseconds);
                 await Task.Delay(delay, timeProvider, cancellationToken);
