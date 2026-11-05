@@ -13,15 +13,15 @@
       },
       "Microsoft.OpenApi": {
         "type": "Direct",
-        "requested": "[2.12.2, )",
-        "resolved": "2.12.2",
-        "contentHash": "ZkT7qiJe0Kj0+DTZOZo+xrDy1kNmdsWFQVPIQLNx9ZJ0T9cB2LG7r+Bi60so8/+yg1nkS7QCPadrzsTG4VPKrA=="
+        "requested": "[3.11.0, )",
+        "resolved": "3.11.0",
+        "contentHash": "kvQz+mL/fnDw2VaE8zMyQhbMv7FmOYUydIhCVNKxQdrLu9XiMT/07DHwJ5YkRO2uzcxTFvMAKFKKywxoyLKHcA=="
       },
       "Scalar.AspNetCore": {
         "type": "Direct",
-        "requested": "[2.18.6, )",
-        "resolved": "2.18.6",
-        "contentHash": "p1/caWXu7+dmGCVm57hNIIzPz9PhxxUSd8ska9Nq0zbfDFajjGrfo6cw7Lm5LHCVaK6BFa0w8W3pYCERBpC2lQ=="
+        "requested": "[2.19.0, )",
+        "resolved": "2.19.0",
+        "contentHash": "nTXL9wsg6UhQ27KPUhuMr3/BE02H3zjuii2I5x7vbx7myPHkJzvzGDj7hfd1lKZBmJgUcKI+W7wcIzDdV/N/Dg=="
       },
       "DnsClient": {
         "type": "Transitive",
@@ -204,7 +204,7 @@
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.20.1, )",
           "OpenTelemetry.Extensions.Hosting": "[1.20.1, )",
           "OpenTelemetry.Instrumentation.AspNetCore": "[1.20.1, )",
-          "OpenTelemetry.Instrumentation.Http": "[1.20.1, )",
+          "OpenTelemetry.Instrumentation.Http": "[1.20.2, )",
           "OpenTelemetry.Instrumentation.Runtime": "[1.20.1, )"
         }
       },
@@ -320,9 +320,9 @@
       },
       "OpenTelemetry.Instrumentation.Http": {
         "type": "CentralTransitive",
-        "requested": "[1.20.1, )",
-        "resolved": "1.20.1",
-        "contentHash": "XJTM6imVztxLraOrzsdlZf5shdH9TVeEWNBxpyepB5e3Gy+KNeQf2hyic398210UxqlPtt4iOkBELtjfIFTzug==",
+        "requested": "[1.20.2, )",
+        "resolved": "1.20.2",
+        "contentHash": "B84T2n4U7r3l+N5qP8vmoztGhbliWXc+vSz0BefjYNXbW9BA9q7iqU9+xn5dtCPlMNdHb+9Horgk8YhcO+eNTw==",
         "dependencies": {
           "OpenTelemetry.Api.ProviderBuilderExtensions": "[1.20.1, 2.0.0)"
         }
