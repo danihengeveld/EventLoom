@@ -14,10 +14,16 @@ public sealed class PostgreSqlExceptionClassifierTests
     }
 
     [Test]
-    public async Task Classifies_provider_failures_as_transient()
+    public async Task Classifies_only_npgsql_transient_failures_as_transient()
     {
-        await Assert.That(PostgreSqlExceptionClassifier.Classify(new NpgsqlException("connection failed")))
+        await Assert.That(PostgreSqlExceptionClassifier.Classify(
+                new NpgsqlException("connection failed", new IOException("connection reset"))))
             .IsEqualTo(PostgreSqlExceptionClassification.Transient);
+        await Assert.That(PostgreSqlExceptionClassifier.Classify(
+                new NpgsqlException("connection failed", new TimeoutException())))
+            .IsEqualTo(PostgreSqlExceptionClassification.Transient);
+        await Assert.That(PostgreSqlExceptionClassifier.Classify(new NpgsqlException("protocol violation")))
+            .IsEqualTo(PostgreSqlExceptionClassification.Unknown);
         await Assert.That(PostgreSqlExceptionClassifier.IsTransient(PostgreSqlExceptionClassification.Deadlock))
             .IsTrue();
         await Assert.That(PostgreSqlExceptionClassifier.IsTransient(PostgreSqlExceptionClassification.UniqueViolation))

@@ -4,7 +4,9 @@
 PostgreSQL. It provides transactional tenant offsets, transient-failure retry
 classification, and fenced worker leases for multi-instance deployments.
 
-Transient append retries are logged at debug level through the normal
+Deadlocks, serialization failures, connection-class SQL states, and Npgsql
+failures that Npgsql itself marks transient (I/O, socket, and timeout errors)
+are retried; other failures surface immediately. Transient append retries are logged at debug level through the normal
 application logging providers, without an EventLoom-specific opt-in. Retry
 logs include classification, attempt, and delay, never SQL or application
 identifiers.

@@ -36,7 +36,7 @@ var result = await repository.SaveAsync(
         CorrelationId: correlationId,
         Actor: currentUserId),
     appendId: commandId,
-    cancellationToken);
+    cancellationToken: cancellationToken);
 
 var reloaded = await repository.LoadAsync(orderId, cancellationToken);
 ```
@@ -115,6 +115,11 @@ this lower-level reader for explicit background or administrative processing.
   append conflict. Treat it like an optimistic-concurrency failure.
 - PostgreSQL and MongoDB install bounded provider-specific retry policies for
   transient infrastructure failures. SQLite surfaces conflicts directly.
+  These automatic retries are safe even when a commit succeeded but its
+  acknowledgement was lost: every attempt carries the same event IDs, so the
+  provider recognizes the committed attempt and returns it with
+  `WasIdempotentReplay` instead of appending duplicates or reporting a false
+  version conflict.
 - Reuse the same caller-owned `AppendId` after an ambiguous failure. Append IDs
   are tenant-wide; reusing one for a different command in the same tenant is
   invalid.

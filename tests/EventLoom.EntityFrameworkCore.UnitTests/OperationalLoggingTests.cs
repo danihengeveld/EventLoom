@@ -23,7 +23,7 @@ public sealed class OperationalLoggingTests
         {
             if (attempts++ == 0)
             {
-                throw new NpgsqlException("private connection details");
+                throw new NpgsqlException("private connection details", new IOException("connection reset"));
             }
 
             return Task.FromResult(42);

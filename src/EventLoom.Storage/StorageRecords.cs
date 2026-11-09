@@ -40,6 +40,13 @@ public sealed record StoredEvent(
 /// An optional callback the provider invokes after it has assigned stream versions and tenant offsets and
 /// staged its writes, but before it commits. Inline projections run here. A failure aborts the append.
 /// </param>
+/// <param name="IsRetry">
+/// Whether this is a retry of an attempt whose outcome is unknown, so that attempt may already have committed.
+/// Every attempt of one append carries the same <see cref="Events"/>, including their event identifiers. When this
+/// is <see langword="true"/>, the provider must first look for the first event's <see cref="NewStoredEvent.EventId"/>
+/// in the tenant and, if it exists, return the committed events of that append as an idempotent replay without
+/// writing anything or enforcing <see cref="ExpectedVersion"/>.
+/// </param>
 public sealed record StorageAppendRequest(
     string TenantId,
     string StreamId,
@@ -49,11 +56,15 @@ public sealed record StorageAppendRequest(
     EventMetadata Metadata,
     string? AppendId,
     bool WriteOutbox,
-    Func<IReadOnlyList<StoredEvent>, CancellationToken, Task>? BeforeCommit = null);
+    Func<IReadOnlyList<StoredEvent>, CancellationToken, Task>? BeforeCommit = null,
+    bool IsRetry = false);
 
 /// <summary>Describes the outcome of a provider-level append.</summary>
 /// <param name="Events">The committed events, or the events of the original append for an idempotent replay.</param>
-/// <param name="WasIdempotentReplay">Whether the <c>AppendId</c> matched an earlier append, so nothing was written.</param>
+/// <param name="WasIdempotentReplay">
+/// Whether nothing was written because the <c>AppendId</c> matched an earlier append, or because a retried attempt
+/// found that its earlier attempt had already committed.
+/// </param>
 public sealed record StorageAppendResult(IReadOnlyList<StoredEvent> Events, bool WasIdempotentReplay);
 
 /// <summary>Describes the highest committed tenant offset for one tenant.</summary>

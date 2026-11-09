@@ -31,7 +31,11 @@ A provider implements the contract interfaces and registers them through `EventL
 4. grant leases with monotonically increasing fencing tokens and verify them when a worker records progress;
 5. make `ReleaseAsync` expire the lease rather than delete it, so fencing tokens never restart;
 6. treat an `AppendId` as tenant-wide: appending it again returns the original events with `WasIdempotentReplay`;
-7. throw `WrongExpectedVersionException` for a failed version expectation and `EventStoreConcurrencyException`
+7. when `StorageAppendRequest.IsRetry` is set, first look up the request's event IDs in the tenant and, if an
+   earlier attempt already committed them, return those events with `WasIdempotentReplay` instead of writing
+   again or enforcing `ExpectedVersion`. The engine assigns event IDs once per append, so every retry attempt
+   carries the same IDs;
+8. throw `WrongExpectedVersionException` for a failed version expectation and `EventStoreConcurrencyException`
    for a lost write race it cannot retry.
 
 The shared conformance suite in `tests/EventLoom.Storage.Conformance` exercises these guarantees and is run

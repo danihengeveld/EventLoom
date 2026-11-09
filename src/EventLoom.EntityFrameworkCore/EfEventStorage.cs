@@ -71,6 +71,26 @@ internal sealed class EfEventStorage(EventStoreDbContext context, EfStorageDiale
             }
         }
 
+        if (request.IsRetry)
+        {
+            // An earlier attempt of this append may have committed before its outcome was lost. Its event
+            // identifiers are unique to this append, so finding them means the append already succeeded.
+            var eventIds = request.Events.Select(value => value.EventId).ToArray();
+            var committed = await context.Events
+                .Where(value => value.TenantId == tenantId && eventIds.Contains(value.EventId))
+                .OrderBy(value => value.StreamVersion)
+                .ToListAsync(cancellationToken).ConfigureAwait(false);
+            if (committed.Count > 0)
+            {
+                if (transaction is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
+                }
+
+                return new StorageAppendResult(committed.Select(ToStored).ToArray(), true);
+            }
+        }
+
         var currentVersion = stream?.Version;
         if (!request.ExpectedVersion.IsMatch(currentVersion))
         {
