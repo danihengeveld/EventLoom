@@ -41,6 +41,7 @@ for package in "$package_directory"/*.nupkg; do
   unzip -p "$package" '*.nuspec' | grep --fixed-strings "<version>$version</version>" > /dev/null
   unzip -p "$package" '*.nuspec' | grep --fixed-strings '<icon>eventloom-icon.png</icon>' > /dev/null
   unzip -p "$package" '*.nuspec' | grep --fixed-strings '<repository type="git"' > /dev/null
+  unzip -p "$package" '*.nuspec' | grep --fixed-strings '<license type="expression">MIT</license>' > /dev/null
 done
 
 core_package="$package_directory/EventLoom.$version.nupkg"

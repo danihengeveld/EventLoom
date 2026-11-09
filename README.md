@@ -147,3 +147,7 @@ dotnet run --project tests/EventLoom.UnitTests
 dotnet run --project tests/EventLoom.MongoDb.IntegrationTests # requires Docker
 pnpm --dir docs build
 ```
+
+## License
+
+EventLoom is licensed under the [MIT License](LICENSE).
