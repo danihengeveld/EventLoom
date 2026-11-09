@@ -152,6 +152,16 @@ Pass these options to `AddOutboxPublisher`. They do not inherit
 | `MaxRetryAttempts` | 5 | 0 through 100. |
 | `SuccessfulDeliveryRetention` | `TimeSpan.Zero` | Non-negative. Zero deletes a successfully delivered message and its attempts immediately. |
 
+### Worker failure handling
+
+If a projection or outbox worker iteration fails outside per-message delivery
+(for example tenant discovery, a checkpoint read, or lease acquisition throws
+because the store is unreachable), the worker logs a warning with the exception
+type only and keeps running. It waits `PollInterval` after the first
+consecutive failure and doubles the wait for each further failure, up to 30
+seconds (or `PollInterval` when that is longer). The first successful iteration
+resets the backoff. Failures never stop the host or end the worker silently.
+
 ## Snapshot configuration
 
 Declare an immutable snapshot DTO as

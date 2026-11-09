@@ -31,4 +31,16 @@ internal static partial class EventLoomWorkerLogMessages
     [LoggerMessage(EventId = 3005, Level = LogLevel.Warning,
         Message = "Outbox delivery exhausted {Attempts} attempts with {ExceptionType}; message remains pending.")]
     internal static partial void OutboxAttemptsExhausted(this ILogger logger, int attempts, string exceptionType);
+
+    [LoggerMessage(EventId = 3006, Level = LogLevel.Warning,
+        Message =
+            "Projection worker iteration failed with {ExceptionType} ({ConsecutiveFailures} consecutive); retrying in {RetryDelay}.")]
+    internal static partial void ProjectionIterationFailed(
+        this ILogger logger, string exceptionType, int consecutiveFailures, TimeSpan retryDelay);
+
+    [LoggerMessage(EventId = 3007, Level = LogLevel.Warning,
+        Message =
+            "Outbox publisher iteration failed with {ExceptionType} ({ConsecutiveFailures} consecutive); retrying in {RetryDelay}.")]
+    internal static partial void OutboxIterationFailed(
+        this ILogger logger, string exceptionType, int consecutiveFailures, TimeSpan retryDelay);
 }

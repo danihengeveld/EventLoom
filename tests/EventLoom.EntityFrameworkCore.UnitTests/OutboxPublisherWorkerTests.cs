@@ -72,6 +72,57 @@ public sealed class OutboxPublisherWorkerTests
     }
 
     [Test]
+    public async Task Publisher_survives_storage_failures_and_resumes_publishing()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
+        var recorder = new SuccessfulPublisherRecorder();
+        var services = new ServiceCollection();
+        services.AddSingleton(recorder);
+        var logs = new RecordingLogger<OutboxPublisherWorker>();
+        services.AddSingleton<ILogger<OutboxPublisherWorker>>(logs);
+        services.AddEventLoom(eventLoom => eventLoom
+            .AddAggregateEvents<TestAggregate>()
+            .UseSingleTenancy("tenant-a")
+            .UseSqlite($"Data Source={databasePath}")
+            .AddOutboxPublisher<SuccessfulPublisher>(options =>
+            {
+                options.InstanceId = Guid.NewGuid().ToString("N");
+                options.PollInterval = TimeSpan.FromMilliseconds(10);
+                options.LeaseDuration = TimeSpan.FromSeconds(1);
+                options.LeaseRenewalInterval = TimeSpan.FromMilliseconds(100);
+            }));
+        var budget = new LeaseFailureBudget(failures: 2);
+        FlakyWorkerLeaseStorage.Decorate(services, budget);
+        var provider = services.BuildServiceProvider();
+        var worker = (BackgroundService)provider.GetServices<IHostedService>().Single();
+
+        try
+        {
+            await EnsureCreatedAsync(provider);
+            var eventId = await AppendAsync(provider);
+            await worker.StartAsync(CancellationToken.None);
+
+            var delivered = await recorder.Delivered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var failure = await logs.WaitForAsync(3007);
+
+            await Assert.That(delivered.MessageId).IsEqualTo(eventId);
+            await Assert.That(budget.Failed).IsEqualTo(2);
+            await Assert.That(worker.ExecuteTask!.IsCompleted).IsFalse();
+            await Assert.That(failure.Level).IsEqualTo(LogLevel.Warning);
+            await Assert.That(failure.Properties["ExceptionType"]).IsEqualTo(typeof(TimeoutException).FullName);
+            await Assert.That(failure.Exception).IsNull();
+            await Assert.That(logs.Entries.Count(entry => entry.EventId == 3007)).IsEqualTo(2);
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+            await provider.DisposeAsync();
+            SqliteConnection.ClearAllPools();
+            File.Delete(databasePath);
+        }
+    }
+
+    [Test]
     public async Task Publisher_deletes_successful_message_and_attempts_by_default()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");

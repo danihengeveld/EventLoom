@@ -29,12 +29,33 @@ internal sealed class OutboxPublisherWorker(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         options.Validate();
+        var consecutiveFailures = 0;
         while (!stoppingToken.IsCancellationRequested)
         {
-            if (!await RunIterationAsync(stoppingToken))
+            TimeSpan delay;
+            try
             {
-                await Task.Delay(options.PollInterval, timeProvider, stoppingToken).ConfigureAwait(false);
+                var progressed = await RunIterationAsync(stoppingToken);
+                consecutiveFailures = 0;
+                if (progressed)
+                {
+                    continue;
+                }
+
+                delay = options.PollInterval;
             }
+            catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
+            {
+                // A storage or publisher failure must not stop the host or silently end this worker.
+                consecutiveFailures++;
+                delay = WorkerFailureBackoff.GetDelay(options.PollInterval, consecutiveFailures);
+                logger.OutboxIterationFailed(
+                    exception.GetType().FullName ?? exception.GetType().Name,
+                    consecutiveFailures,
+                    delay);
+            }
+
+            await Task.Delay(delay, timeProvider, stoppingToken).ConfigureAwait(false);
         }
     }
 

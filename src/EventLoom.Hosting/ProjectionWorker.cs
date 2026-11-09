@@ -24,13 +24,33 @@ internal sealed class ProjectionWorker(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         options.Validate();
+        var consecutiveFailures = 0;
         while (!stoppingToken.IsCancellationRequested)
         {
-            var progressed = await RunIterationAsync(stoppingToken);
-            if (!progressed)
+            TimeSpan delay;
+            try
             {
-                await Task.Delay(options.PollInterval, timeProvider, stoppingToken).ConfigureAwait(false);
+                var progressed = await RunIterationAsync(stoppingToken);
+                consecutiveFailures = 0;
+                if (progressed)
+                {
+                    continue;
+                }
+
+                delay = options.PollInterval;
             }
+            catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
+            {
+                // A storage or handler failure must not stop the host or silently end this worker.
+                consecutiveFailures++;
+                delay = WorkerFailureBackoff.GetDelay(options.PollInterval, consecutiveFailures);
+                logger.ProjectionIterationFailed(
+                    exception.GetType().FullName ?? exception.GetType().Name,
+                    consecutiveFailures,
+                    delay);
+            }
+
+            await Task.Delay(delay, timeProvider, stoppingToken).ConfigureAwait(false);
         }
     }
 
