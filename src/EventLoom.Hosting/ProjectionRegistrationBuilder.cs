@@ -67,7 +67,6 @@ public sealed class ProjectionRegistrationBuilder
 
     internal void Validate()
     {
-        key.Validate();
         if (registrationCount == 0)
         {
             throw new InvalidOperationException(

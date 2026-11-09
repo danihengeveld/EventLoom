@@ -207,6 +207,51 @@ public abstract partial class StorageConformanceTests
     }
 
     [Test]
+    public async Task Retry_after_an_ambiguous_commit_replays_the_committed_attempt()
+    {
+        await using var environment = await CreateEnvironmentAsync();
+        await using var scope = environment.CreateScope();
+        var events = scope.ServiceProvider.GetRequiredService<IEventStorage>();
+        await events.AppendAsync(Request("order-1", ExpectedVersion.NoStream, 1), null);
+        var exact = Request("order-1", ExpectedVersion.Exact(1), 2);
+        var any = Request("order-1", ExpectedVersion.Any, 1);
+
+        // The first attempts commit, but the engine never observes their results and retries the same events.
+        var committedExact = await events.AppendAsync(exact, null);
+        var committedAny = await events.AppendAsync(any, null);
+        var retriedExact = await events.AppendAsync(exact with { IsRetry = true }, null);
+        var retriedAny = await events.AppendAsync(any with { IsRetry = true }, null);
+
+        await Assert.That(retriedExact.WasIdempotentReplay).IsTrue();
+        await Assert.That(retriedExact.Events.Select(value => value.EventId))
+            .IsEquivalentTo(committedExact.Events.Select(value => value.EventId));
+        await Assert.That(retriedExact.Events.Select(value => value.StreamVersion))
+            .IsEquivalentTo(new long[] { 2, 3 });
+        await Assert.That(retriedAny.WasIdempotentReplay).IsTrue();
+        await Assert.That(retriedAny.Events.Single().EventId).IsEqualTo(committedAny.Events.Single().EventId);
+        await Assert.That((await events.ReadStreamAsync(Tenant, "order-1", null, null)).Count).IsEqualTo(4);
+        await Assert.That((await events.ReadTenantAsync(Tenant, 0, 10)).Count).IsEqualTo(4);
+    }
+
+    [Test]
+    public async Task Retry_of_an_attempt_that_never_committed_appends_normally()
+    {
+        await using var environment = await CreateEnvironmentAsync();
+        await using var scope = environment.CreateScope();
+        var events = scope.ServiceProvider.GetRequiredService<IEventStorage>();
+        await events.AppendAsync(Request("order-1", ExpectedVersion.NoStream, 1), null);
+
+        var retried = await events.AppendAsync(
+            Request("order-1", ExpectedVersion.Exact(1), 1) with { IsRetry = true }, null);
+
+        await Assert.That(retried.WasIdempotentReplay).IsFalse();
+        await Assert.That(retried.Events.Single().StreamVersion).IsEqualTo(2);
+        await Assert.That(async () => await events.AppendAsync(
+                Request("order-1", ExpectedVersion.Exact(1), 1) with { IsRetry = true }, null))
+            .Throws<WrongExpectedVersionException>();
+    }
+
+    [Test]
     public async Task Append_ids_are_scoped_to_their_tenant()
     {
         await using var environment = await CreateEnvironmentAsync();

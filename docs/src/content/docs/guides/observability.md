@@ -21,7 +21,8 @@ builder.Logging.AddFilter("EventLoom", LogLevel.Warning);
 The `EventLoom.*` logger categories include the provider-neutral engine,
 storage-provider implementations, and hosted workers. Warnings report a
 projection paused after persisted failures, an outbox delivery cycle that
-exhausted retries, and snapshot fallback to event history. Debug logs describe
+exhausted retries, a worker iteration that failed (for example because the
+store was unreachable), and snapshot fallback to event history. Debug logs describe
 transient provider retries, intermediate worker delivery retries, lease loss,
 and rejected appends. Successful projection resume, skip, and replay operations
 log once at information level. Ordinary appends, reads, successful deliveries,

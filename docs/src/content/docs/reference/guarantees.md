@@ -7,7 +7,7 @@ description: Authoritative delivery guarantees, storage-provider rules, and admi
 
 | Area | Guarantee | Application responsibility |
 | --- | --- | --- |
-| Append | A batch of events commits atomically with stream versions and tenant offsets. | Supply the correct expected version and preserve a command's append ID when retrying an ambiguous outcome. |
+| Append | A batch of events commits atomically with stream versions and tenant offsets. Provider retries within one append never duplicate it, even after a lost commit acknowledgement. | Supply the correct expected version and preserve a command's append ID when retrying an ambiguous outcome. |
 | Aggregate repository | A successful non-idempotent save clears pending events. | Keep aggregate state changes inside `Apply` methods. |
 | Append replay | Reusing the same `AppendId` in one tenant returns the original append result. | Keep append IDs unique per tenant and command. |
 | Tenant order | Events have consecutive, committed `TenantOffset` values per tenant. | Scope checkpoints and background reads to one tenant. |

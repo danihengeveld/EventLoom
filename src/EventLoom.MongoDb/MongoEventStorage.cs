@@ -79,6 +79,15 @@ internal sealed class MongoEventStorage(
                 }
             }
 
+            // The commit may have succeeded even though its acknowledgement was lost. This append's event
+            // identifiers are unique to it, so finding them means it committed.
+            var committed = await TryReadCommittedAttemptAsync(session: null, request, cancellationToken)
+                .ConfigureAwait(false);
+            if (committed is not null)
+            {
+                return committed;
+            }
+
             if (ShouldWrapConcurrency(exception))
             {
                 throw new EventStoreConcurrencyException(request.TenantId, request.StreamId, exception);
@@ -154,6 +163,16 @@ internal sealed class MongoEventStorage(
             if (replay is not null)
             {
                 return replay;
+            }
+        }
+
+        if (request.IsRetry)
+        {
+            var committed = await TryReadCommittedAttemptAsync(session, request, cancellationToken)
+                .ConfigureAwait(false);
+            if (committed is not null)
+            {
+                return committed;
             }
         }
 
@@ -295,6 +314,22 @@ internal sealed class MongoEventStorage(
                 session,
                 Builders<EventDocument>.Filter.Eq(value => value.TenantId, tenantId) &
                 Builders<EventDocument>.Filter.Eq(value => value.AppendId, appendId))
+            .SortBy(value => value.StreamVersion)
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+        return documents.Count == 0 ? null : new StorageAppendResult(documents.Select(ToStored).ToArray(), true);
+    }
+
+    private async Task<StorageAppendResult?> TryReadCommittedAttemptAsync(
+        IClientSessionHandle? session,
+        StorageAppendRequest request,
+        CancellationToken cancellationToken)
+    {
+        var filter = Builders<EventDocument>.Filter.Eq(value => value.TenantId, request.TenantId) &
+                     Builders<EventDocument>.Filter.In(
+                         value => value.EventId,
+                         request.Events.Select(value => value.EventId));
+        var find = session is null ? catalog.Events.Find(filter) : catalog.Events.Find(session, filter);
+        var documents = await find
             .SortBy(value => value.StreamVersion)
             .ToListAsync(cancellationToken).ConfigureAwait(false);
         return documents.Count == 0 ? null : new StorageAppendResult(documents.Select(ToStored).ToArray(), true);

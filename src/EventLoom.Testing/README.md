@@ -26,16 +26,26 @@ using EventLoom.Testing;
 
 var scenario = AggregateScenario.For<Order, Guid>(id => new Order(id))
     .Given(orderId, new OrderPlaced("coffee", 2))
-    .When(order => order.Cancel("out of stock"));
+    .When(order => order.Cancel("out of stock"))
+    .ThenRaised(new OrderCancelled("out of stock"));
 
-await Assert.That(scenario.RaisedEvents.Single()).IsTypeOf<OrderCancelled>();
-await Assert.That(scenario.Aggregate.Status).IsEqualTo("cancelled");
+await scenario.ThenAsync(async order =>
+    await Assert.That(order.Status).IsEqualTo("cancelled"));
 ```
 
 `Given` replays history without adding it to the aggregate's pending events.
 `When` invokes one command and captures any thrown exception for
-`ThenThrows<TException>()` instead of letting it propagate. `ThenEvents` and
-`Then` assert against the raised events and the aggregate's public state.
+`ThenThrows<TException>()` instead of letting it propagate. Assert an expected
+exception with `ThenThrows` first: every other `Then` method fails while the
+command's exception is unasserted, so an unexpected exception cannot make a
+test pass.
+
+- `ThenRaised(...)` asserts the exact raised events, in order, by `Equals`.
+- `ThenAsync` and `ThenEventsAsync` await their assertion; use them with
+  assertion libraries such as TUnit whose assertions must be awaited.
+- `Then` and `ThenEvents` take synchronous assertions that throw on failure,
+  such as xUnit's or NUnit's.
+- `ThenNoEventsRaised()` asserts that the command raised nothing.
 
 ## SQLite test host
 
@@ -54,7 +64,7 @@ await host.RunScopedAsync(async (services, cancellationToken) =>
     var order = new Order(Guid.NewGuid());
     order.Place("coffee", 2);
 
-    await repository.SaveAsync(order);
+    await repository.SaveAsync(order, cancellationToken: cancellationToken);
 });
 
 host.Clock.Advance(TimeSpan.FromMinutes(5));

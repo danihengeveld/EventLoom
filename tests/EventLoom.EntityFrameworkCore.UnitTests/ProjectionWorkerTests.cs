@@ -63,6 +63,58 @@ public sealed class ProjectionWorkerTests
     }
 
     [Test]
+    public async Task Hosted_worker_survives_storage_failures_and_resumes_processing()
+    {
+        var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");
+        var recorder = new ProjectionRecorder();
+        var services = CreateServices(databasePath, recorder);
+        var budget = new LeaseFailureBudget(failures: 2);
+        FlakyWorkerLeaseStorage.Decorate(services, budget);
+        var logs = new RecordingLogger<ProjectionWorker>();
+        services.AddSingleton<ILogger<ProjectionWorker>>(logs);
+        var provider = services.BuildServiceProvider();
+        var worker = (BackgroundService)provider.GetServices<IHostedService>().Single();
+
+        try
+        {
+            await EnsureCreatedAsync(provider);
+            await AppendAsync(provider);
+            await worker.StartAsync(CancellationToken.None);
+
+            var envelope = await recorder.Handled.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var failure = await logs.WaitForAsync(3006);
+
+            await Assert.That(envelope.TenantOffset).IsEqualTo(1);
+            await Assert.That(budget.Failed).IsEqualTo(2);
+            await Assert.That(worker.ExecuteTask!.IsCompleted).IsFalse();
+            await Assert.That(failure.Level).IsEqualTo(LogLevel.Warning);
+            await Assert.That(failure.Properties["ExceptionType"]).IsEqualTo(typeof(TimeoutException).FullName);
+            await Assert.That(failure.Exception).IsNull();
+            await Assert.That(logs.Entries.Count(entry => entry.EventId == 3006)).IsEqualTo(2);
+        }
+        finally
+        {
+            await worker.StopAsync(CancellationToken.None);
+            await provider.DisposeAsync();
+            SqliteConnection.ClearAllPools();
+            File.Delete(databasePath);
+        }
+    }
+
+    [Test]
+    public async Task Failure_backoff_doubles_the_poll_interval_up_to_a_ceiling()
+    {
+        var poll = TimeSpan.FromMilliseconds(100);
+
+        await Assert.That(WorkerFailureBackoff.GetDelay(poll, 1)).IsEqualTo(poll);
+        await Assert.That(WorkerFailureBackoff.GetDelay(poll, 2)).IsEqualTo(TimeSpan.FromMilliseconds(200));
+        await Assert.That(WorkerFailureBackoff.GetDelay(poll, 4)).IsEqualTo(TimeSpan.FromMilliseconds(800));
+        await Assert.That(WorkerFailureBackoff.GetDelay(poll, 1_000)).IsEqualTo(WorkerFailureBackoff.MaximumDelay);
+        await Assert.That(WorkerFailureBackoff.GetDelay(TimeSpan.FromMinutes(5), 3))
+            .IsEqualTo(TimeSpan.FromMinutes(5));
+    }
+
+    [Test]
     public async Task Poison_event_pauses_only_its_projection_after_bounded_retries()
     {
         var databasePath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.db");

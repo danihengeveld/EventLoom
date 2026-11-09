@@ -56,7 +56,9 @@ internal static class PostgreSqlExceptionClassifier
             };
         }
 
-        return providerException is NpgsqlException
+        // Only Npgsql's own transient signal (I/O, socket, or timeout failures) is retryable; other Npgsql
+        // failures such as protocol or configuration errors would fail the same way on every attempt.
+        return providerException is NpgsqlException { IsTransient: true }
             ? PostgreSqlExceptionClassification.Transient
             : PostgreSqlExceptionClassification.Unknown;
     }

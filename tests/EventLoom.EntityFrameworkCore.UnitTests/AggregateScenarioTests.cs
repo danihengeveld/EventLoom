@@ -10,17 +10,82 @@ public sealed class AggregateScenarioTests
         var scenario = AggregateScenario.For<Counter, Guid>(id => new Counter(id))
             .Given(Guid.NewGuid(), new Incremented(2))
             .When(counter => counter.Increment(3))
-            .ThenEvents(events =>
-            {
-                if (events.Count != 1 || !Equals(events[0], new Incremented(3)))
-                {
-                    throw new InvalidOperationException("Unexpected events.");
-                }
-            });
+            .ThenRaised(new Incremented(3));
 
         await Assert.That(scenario.Aggregate.Value).IsEqualTo(5);
         await Assert.That(scenario.Aggregate.Version).IsEqualTo(2);
         await Assert.That(scenario.RaisedEvents).IsEquivalentTo([(object)new Incremented(3)]);
+    }
+
+    [Test]
+    public async Task Async_assertions_are_awaited_and_their_failures_propagate()
+    {
+        var scenario = AggregateScenario.For<Counter, Guid>(id => new Counter(id))
+            .Given(Guid.NewGuid(), new Incremented(2))
+            .When(counter => counter.Increment(3));
+
+        await scenario.ThenEventsAsync(async events => await Assert.That(events).Count().IsEqualTo(1));
+        await scenario.ThenAsync(async counter => await Assert.That(counter.Value).IsEqualTo(5));
+        await Assert.That(async () => await scenario.ThenEventsAsync(async _ =>
+            {
+                await Task.Yield();
+                throw new TimeoutException("late assertion failure");
+            }))
+            .Throws<TimeoutException>();
+        await Assert.That(async () => await scenario.ThenAsync(async _ =>
+            {
+                await Task.Yield();
+                throw new TimeoutException("late assertion failure");
+            }))
+            .Throws<TimeoutException>();
+    }
+
+    [Test]
+    public async Task Then_raised_rejects_different_or_missing_events()
+    {
+        var scenario = AggregateScenario.For<Counter, Guid>(id => new Counter(id))
+            .Given(Guid.NewGuid())
+            .When(counter => counter.Increment(3));
+
+        await Assert.That(() => scenario.ThenRaised(new Incremented(4)))
+            .Throws<InvalidOperationException>()
+            .WithMessageContaining("Incremented { Amount = 3 }");
+        await Assert.That(() => scenario.ThenRaised(new Incremented(3), new Incremented(3)))
+            .Throws<InvalidOperationException>();
+        await Assert.That(() => scenario.ThenRaised())
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task Unexpected_command_exceptions_fail_every_other_assertion()
+    {
+        var scenario = AggregateScenario.For<Counter, Guid>(id => new Counter(id))
+            .Given(Guid.NewGuid())
+            .When(counter => counter.Increment(-1));
+
+        await Assert.That(() => scenario.ThenNoEventsRaised())
+            .Throws<InvalidOperationException>()
+            .WithMessageContaining("ArgumentOutOfRangeException");
+        await Assert.That(() => scenario.Then(_ => { })).Throws<InvalidOperationException>();
+        await Assert.That(() => scenario.ThenEvents(_ => { })).Throws<InvalidOperationException>();
+        await Assert.That(() => scenario.ThenRaised()).Throws<InvalidOperationException>();
+        await Assert.That(async () => await scenario.ThenAsync(_ => Task.CompletedTask))
+            .Throws<InvalidOperationException>();
+        await Assert.That(async () => await scenario.ThenEventsAsync(_ => Task.CompletedTask))
+            .Throws<InvalidOperationException>();
+    }
+
+    [Test]
+    public async Task A_new_command_resets_the_observed_exception()
+    {
+        var scenario = AggregateScenario.For<Counter, Guid>(id => new Counter(id))
+            .Given(Guid.NewGuid())
+            .When(counter => counter.Increment(-1))
+            .ThenThrows<ArgumentOutOfRangeException>()
+            .When(counter => counter.Increment(2))
+            .ThenRaised(new Incremented(2));
+
+        await Assert.That(scenario.ThrownException).IsNull();
     }
 
     [Test]

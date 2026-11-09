@@ -40,6 +40,7 @@
     <RepositoryType>git</RepositoryType>
     <Description>EventLoom event sourcing framework component.</Description>
     <PackageTags>event-sourcing;event-store;dotnet</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageIcon>eventloom-icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>

@@ -64,6 +64,13 @@ the actual NuGet dependency graph. Reproduce the package checks with:
 The validation script uses an isolated NuGet package cache so a locally cached
 package with the same version cannot hide a packaging error.
 
+Some EventLoom packages share internals with each other (the grants are in each
+project's `Properties/AssemblyInfo.cs`), so mixed package versions could fail at
+runtime. `Directory.Build.targets` pins every dependency between EventLoom
+packages to the exact packed version (`[x.y.z]`), and `verify-packages.sh`
+fails if a packed dependency on another EventLoom package is not exact. Only add
+a production `InternalsVisibleTo` grant for an actual usage.
+
 See `RELEASING.md` for the complete release and repository setup process.
 
 ## Benchmarks

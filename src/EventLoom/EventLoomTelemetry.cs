@@ -16,58 +16,9 @@ public static class EventLoomTelemetry
     public static ActivitySource ActivitySource { get; } = new(ActivitySourceName);
 
     /// <summary>Gets the EventLoom metrics meter.</summary>
+    /// <remarks>
+    /// Each EventLoom package creates the instruments it records on this shared meter, so every EventLoom metric is
+    /// published under <see cref="MeterName"/>.
+    /// </remarks>
     public static Meter Meter { get; } = new(MeterName);
-
-    internal static Counter<long> Appends { get; } = Meter.CreateCounter<long>(
-        "eventloom.appends",
-        unit: "{append}",
-        description: "The number of EventLoom append operations.");
-
-    internal static Counter<long> AppendedEvents { get; } = Meter.CreateCounter<long>(
-        "eventloom.appended.events",
-        unit: "{event}",
-        description: "The number of EventLoom events committed by append operations.");
-
-    internal static Counter<long> AppendFailures { get; } = Meter.CreateCounter<long>(
-        "eventloom.append.failures",
-        unit: "{failure}",
-        description: "The number of failed EventLoom append operations.");
-
-    internal static Histogram<double> AppendDuration { get; } = Meter.CreateHistogram<double>(
-        "eventloom.append.duration",
-        unit: "ms",
-        description: "The duration of EventLoom append operations.");
-
-    internal static Counter<long> AggregateLoads { get; } = Meter.CreateCounter<long>(
-        "eventloom.aggregate.loads",
-        unit: "{load}",
-        description: "The number of aggregate load operations.");
-
-    internal static Counter<long> ReplayedEvents { get; } = Meter.CreateCounter<long>(
-        "eventloom.replayed.events",
-        unit: "{event}",
-        description: "The number of events applied while loading aggregates.");
-
-    internal static Histogram<double> AggregateLoadDuration { get; } = Meter.CreateHistogram<double>(
-        "eventloom.aggregate.load.duration",
-        unit: "ms",
-        description: "The duration of aggregate load operations.");
-
-    internal static Counter<long> ProjectionDeliveries { get; } = Meter.CreateCounter<long>(
-        "eventloom.projection.deliveries", unit: "{delivery}");
-
-    internal static Counter<long> ProjectionFailures { get; } = Meter.CreateCounter<long>(
-        "eventloom.projection.failures", unit: "{failure}");
-
-    internal static Counter<long> ProjectionLeaseLosses { get; } = Meter.CreateCounter<long>(
-        "eventloom.projection.lease_losses", unit: "{loss}");
-
-    internal static Counter<long> OutboxDeliveries { get; } = Meter.CreateCounter<long>(
-        "eventloom.outbox.deliveries", unit: "{delivery}");
-
-    internal static Counter<long> OutboxFailures { get; } = Meter.CreateCounter<long>(
-        "eventloom.outbox.failures", unit: "{failure}");
-
-    internal static Counter<long> OutboxLeaseLosses { get; } = Meter.CreateCounter<long>(
-        "eventloom.outbox.lease_losses", unit: "{loss}");
 }

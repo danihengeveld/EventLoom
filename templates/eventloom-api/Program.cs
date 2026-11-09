@@ -22,11 +22,12 @@ if (app.Environment.IsDevelopment())
 app.MapEventLoomHealthChecks();
 app.MapPost("/counters/{id:guid}/increment", async (
     Guid id,
-    AggregateRepository<Counter, Guid> repository) =>
+    AggregateRepository<Counter, Guid> repository,
+    CancellationToken cancellationToken) =>
 {
-    var counter = await repository.LoadAsync(id);
+    var counter = await repository.LoadAsync(id, cancellationToken);
     counter.Increment();
-    await repository.SaveAsync(counter);
+    await repository.SaveAsync(counter, cancellationToken: cancellationToken);
     return Results.Ok(new { counter.Id, counter.Value });
 });
 app.Run();

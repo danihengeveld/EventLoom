@@ -24,13 +24,33 @@ internal sealed class ProjectionWorker(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         options.Validate();
+        var consecutiveFailures = 0;
         while (!stoppingToken.IsCancellationRequested)
         {
-            var progressed = await RunIterationAsync(stoppingToken);
-            if (!progressed)
+            TimeSpan delay;
+            try
             {
-                await Task.Delay(options.PollInterval, timeProvider, stoppingToken).ConfigureAwait(false);
+                var progressed = await RunIterationAsync(stoppingToken);
+                consecutiveFailures = 0;
+                if (progressed)
+                {
+                    continue;
+                }
+
+                delay = options.PollInterval;
             }
+            catch (Exception exception) when (!stoppingToken.IsCancellationRequested)
+            {
+                // A storage or handler failure must not stop the host or silently end this worker.
+                consecutiveFailures++;
+                delay = WorkerFailureBackoff.GetDelay(options.PollInterval, consecutiveFailures);
+                logger.ProjectionIterationFailed(
+                    exception.GetType().FullName ?? exception.GetType().Name,
+                    consecutiveFailures,
+                    delay);
+            }
+
+            await Task.Delay(delay, timeProvider, stoppingToken).ConfigureAwait(false);
         }
     }
 
@@ -127,7 +147,7 @@ internal sealed class ProjectionWorker(
         }
         catch (ProjectionLeaseLostException)
         {
-            EventLoomTelemetry.ProjectionLeaseLosses.Add(1);
+            HostingTelemetry.ProjectionLeaseLosses.Add(1);
             logger.ProjectionLeaseLost();
             return false;
         }
@@ -169,7 +189,7 @@ internal sealed class ProjectionWorker(
                         context,
                         token),
                     cancellationToken);
-                EventLoomTelemetry.ProjectionDeliveries.Add(1);
+                HostingTelemetry.ProjectionDeliveries.Add(1);
                 return result;
             }
             catch (ProjectionLeaseLostException)
@@ -178,7 +198,7 @@ internal sealed class ProjectionWorker(
             }
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
-                EventLoomTelemetry.ProjectionFailures.Add(1);
+                HostingTelemetry.ProjectionFailures.Add(1);
                 failure = exception;
                 if (attempt <= options.MaxRetryAttempts)
                 {

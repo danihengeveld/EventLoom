@@ -55,7 +55,7 @@ internal sealed class ProjectionRegistry(IEnumerable<ProjectionHandlerRegistrati
         var materialized = registrations.ToArray();
         foreach (var registration in materialized)
         {
-            registration.Key.Validate();
+            ArgumentNullException.ThrowIfNull(registration, nameof(registrations));
         }
 
         if (materialized.GroupBy(value => new

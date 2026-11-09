@@ -73,6 +73,12 @@ original envelopes with `WasIdempotentReplay` set. Append IDs are **tenant-wide*
 reusing the same append ID for a different stream in the same tenant replays the
 original result instead of creating a second command.
 
+EventLoom's own transient-failure retries inside one `AppendAsync` call do not
+need an append ID. The engine assigns event IDs once per append, and a retry
+that finds those events already committed returns them as an idempotent replay.
+An append ID is still needed when *your* code retries a whole command after an
+ambiguous failure, because that is a new call with new event IDs.
+
 ## Read the right order
 
 - **Stream version** orders facts in one aggregate stream. Use it for replay

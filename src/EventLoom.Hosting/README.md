@@ -62,3 +62,7 @@ for MongoDB), and `Inline` runs within the event append transaction.
 The projection worker renews its fenced lease between events according to
 `LeaseRenewalInterval`; an expired or superseded lease cannot commit a
 checkpoint.
+
+Projection and outbox workers survive storage failures: a failed iteration logs
+a warning (exception type only) and retries with exponential backoff from
+`PollInterval` up to 30 seconds, instead of stopping the host.

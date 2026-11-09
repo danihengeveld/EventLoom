@@ -64,8 +64,19 @@ public sealed class EventStore
         var startedAt = timeProvider.GetTimestamp();
         try
         {
+            // Event identifiers and timestamps are assigned once, so every retry attempt carries the same events.
+            // A retry after an ambiguous commit then lets the provider recognize the earlier attempt's events
+            // instead of appending duplicates or reporting a false version conflict.
+            var events = CreateStoredEvents(request);
+            var attempts = 0;
             var result = await retryPolicy.ExecuteAsync(
-                token => AppendCoreAsync(request, tenantId, transaction: null, token),
+                token => AppendCoreAsync(
+                    request,
+                    tenantId,
+                    events,
+                    isRetry: Interlocked.Increment(ref attempts) > 1,
+                    transaction: null,
+                    token),
                 cancellationToken).ConfigureAwait(false);
             RecordAppendSuccess(request, result, startedAt, activity);
             return result;
@@ -109,7 +120,13 @@ public sealed class EventStore
         var tenantId = ResolveTenant(request.TenantId);
         try
         {
-            return await AppendCoreAsync(request, tenantId, transaction, cancellationToken).ConfigureAwait(false);
+            return await AppendCoreAsync(
+                request,
+                tenantId,
+                CreateStoredEvents(request),
+                isRetry: false,
+                transaction,
+                cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception) when (
             exception is EventStoreConcurrencyException or WrongExpectedVersionException ||
@@ -120,11 +137,7 @@ public sealed class EventStore
         }
     }
 
-    private async Task<AppendResult> AppendCoreAsync(
-        AppendRequest request,
-        string tenantId,
-        IStorageTransaction? transaction,
-        CancellationToken cancellationToken)
+    private NewStoredEvent[] CreateStoredEvents(AppendRequest request)
     {
         var events = new NewStoredEvent[request.Events.Count];
         for (var index = 0; index < events.Length; index++)
@@ -138,6 +151,17 @@ public sealed class EventStore
                 timeProvider.GetUtcNow());
         }
 
+        return events;
+    }
+
+    private async Task<AppendResult> AppendCoreAsync(
+        AppendRequest request,
+        string tenantId,
+        IReadOnlyList<NewStoredEvent> events,
+        bool isRetry,
+        IStorageTransaction? transaction,
+        CancellationToken cancellationToken)
+    {
         var result = await storage.AppendAsync(
             new StorageAppendRequest(
                 tenantId,
@@ -148,7 +172,8 @@ public sealed class EventStore
                 request.Metadata,
                 request.AppendId,
                 eventStoreOptions.OutboxEnabled,
-                inlineProjectionDispatcher is null ? null : DispatchInlineAsync),
+                inlineProjectionDispatcher is null ? null : DispatchInlineAsync,
+                isRetry),
             transaction,
             cancellationToken).ConfigureAwait(false);
         return result.WasIdempotentReplay
@@ -186,9 +211,9 @@ public sealed class EventStore
         {
             { "eventloom.aggregate.type", request.AggregateType }
         };
-        EventLoomTelemetry.Appends.Add(1, tags);
-        EventLoomTelemetry.AppendedEvents.Add(result.Events.Count, tags);
-        EventLoomTelemetry.AppendDuration.Record(timeProvider.GetElapsedTime(startedAt).TotalMilliseconds, tags);
+        StorageTelemetry.Appends.Add(1, tags);
+        StorageTelemetry.AppendedEvents.Add(result.Events.Count, tags);
+        StorageTelemetry.AppendDuration.Record(timeProvider.GetElapsedTime(startedAt).TotalMilliseconds, tags);
         activity?.SetTag("eventloom.append.idempotent_replay", result.WasIdempotentReplay);
         activity?.SetTag("eventloom.event.count", result.Events.Count);
         activity?.SetStatus(ActivityStatusCode.Ok);
@@ -205,8 +230,8 @@ public sealed class EventStore
             { "eventloom.aggregate.type", request.AggregateType },
             { "error.type", exception.GetType().FullName ?? exception.GetType().Name }
         };
-        EventLoomTelemetry.AppendFailures.Add(1, tags);
-        EventLoomTelemetry.AppendDuration.Record(timeProvider.GetElapsedTime(startedAt).TotalMilliseconds, tags);
+        StorageTelemetry.AppendFailures.Add(1, tags);
+        StorageTelemetry.AppendDuration.Record(timeProvider.GetElapsedTime(startedAt).TotalMilliseconds, tags);
         activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);
     }
 

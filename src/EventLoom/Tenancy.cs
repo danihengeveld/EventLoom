@@ -26,13 +26,3 @@ public interface ITenantAccessor
 {
     TenantId? TenantId { get; }
 }
-
-/// <summary>Controls whether EventLoom uses one configured tenant or resolves tenants per operation.</summary>
-internal enum TenancyMode
-{
-    /// <summary>Uses one configured tenant for normal application operations.</summary>
-    SingleTenant,
-
-    /// <summary>Requires a scoped tenant accessor and validates explicit tenant operations against it.</summary>
-    MultiTenant
-}
