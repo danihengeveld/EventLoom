@@ -78,18 +78,15 @@ public sealed class AggregateRepository<TAggregate, TId>
     }
 
     /// <summary>Loads an aggregate from its complete stream history, or creates a new instance when absent.</summary>
-    public Task<TAggregate> LoadAsync(
-        string tenantId,
-        string streamId,
-        TId id) =>
-        LoadAsync(tenantId, streamId, id, CancellationToken.None);
-
-    /// <summary>Loads an aggregate from its complete stream history, or creates a new instance when absent.</summary>
+    /// <param name="tenantId">The tenant that owns the stream.</param>
+    /// <param name="streamId">The stream to replay.</param>
+    /// <param name="id">The aggregate identifier.</param>
+    /// <param name="cancellationToken">Cancels the load.</param>
     public async Task<TAggregate> LoadAsync(
         string tenantId,
         string streamId,
         TId id,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var aggregate = CreateAggregate(id);
         using var activity = EventLoomTelemetry.ActivitySource.StartActivity(
@@ -122,13 +119,9 @@ public sealed class AggregateRepository<TAggregate, TId>
     /// <summary>
     /// Loads an aggregate using the configured stream identity and scoped tenant.
     /// </summary>
-    public Task<TAggregate> LoadAsync(TId id) =>
-        LoadAsync(id, CancellationToken.None);
-
-    /// <summary>
-    /// Loads an aggregate using the configured stream identity and scoped tenant.
-    /// </summary>
-    public async Task<TAggregate> LoadAsync(TId id, CancellationToken cancellationToken)
+    /// <param name="id">The aggregate identifier.</param>
+    /// <param name="cancellationToken">Cancels the load.</param>
+    public async Task<TAggregate> LoadAsync(TId id, CancellationToken cancellationToken = default)
     {
         EnsureConfigured();
         var tenantId = ResolveTenant();
@@ -216,33 +209,21 @@ public sealed class AggregateRepository<TAggregate, TId>
     }
 
     /// <summary>Saves pending aggregate events using the aggregate's current version as the expectation.</summary>
-    public Task<AppendResult> SaveAsync(
-        string tenantId,
-        string streamId,
-        string aggregateType,
-        TAggregate aggregate,
-        EventMetadata metadata) =>
-        SaveAsync(tenantId, streamId, aggregateType, aggregate, metadata, null, CancellationToken.None);
-
-    /// <summary>Saves pending aggregate events using the aggregate's current version as the expectation.</summary>
-    public Task<AppendResult> SaveAsync(
-        string tenantId,
-        string streamId,
-        string aggregateType,
-        TAggregate aggregate,
-        EventMetadata metadata,
-        string? appendId) =>
-        SaveAsync(tenantId, streamId, aggregateType, aggregate, metadata, appendId, CancellationToken.None);
-
-    /// <summary>Saves pending aggregate events using the aggregate's current version as the expectation.</summary>
+    /// <param name="tenantId">The tenant that owns the stream.</param>
+    /// <param name="streamId">The stream receiving the events.</param>
+    /// <param name="aggregateType">The aggregate type recorded when the stream is created.</param>
+    /// <param name="aggregate">The aggregate whose pending events are appended.</param>
+    /// <param name="metadata">Operational metadata shared by every appended event.</param>
+    /// <param name="appendId">An optional tenant-wide idempotency key for retrying an ambiguous outcome.</param>
+    /// <param name="cancellationToken">Cancels the save.</param>
     public async Task<AppendResult> SaveAsync(
         string tenantId,
         string streamId,
         string aggregateType,
         TAggregate aggregate,
         EventMetadata metadata,
-        string? appendId,
-        CancellationToken cancellationToken)
+        string? appendId = null,
+        CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(aggregate);
         var events = pendingEvents(aggregate).ToArray();
@@ -271,36 +252,23 @@ public sealed class AggregateRepository<TAggregate, TId>
     }
 
     /// <summary>
-    /// Saves pending events using configured identity, scoped tenant, and empty metadata by default.
-    /// </summary>
-    public Task<AppendResult> SaveAsync(TAggregate aggregate) =>
-        SaveAsync(aggregate, null, null, CancellationToken.None);
-
-    /// <summary>
     /// Saves pending events using configured identity and scoped tenant.
     /// </summary>
-    public Task<AppendResult> SaveAsync(
-        TAggregate aggregate,
-        EventMetadata? metadata) =>
-        SaveAsync(aggregate, metadata, null, CancellationToken.None);
-
-    /// <summary>
-    /// Saves pending events using configured identity and scoped tenant.
-    /// </summary>
-    public Task<AppendResult> SaveAsync(
-        TAggregate aggregate,
-        EventMetadata? metadata,
-        string? appendId) =>
-        SaveAsync(aggregate, metadata, appendId, CancellationToken.None);
-
-    /// <summary>
-    /// Saves pending events using configured identity and scoped tenant.
-    /// </summary>
+    /// <param name="aggregate">The aggregate whose pending events are appended.</param>
+    /// <param name="metadata">Operational metadata shared by every appended event; empty when omitted.</param>
+    /// <param name="appendId">An optional tenant-wide idempotency key for retrying an ambiguous outcome.</param>
+    /// <param name="cancellationToken">Cancels the save.</param>
+    /// <example>
+    /// <code>
+    /// await repository.SaveAsync(order, cancellationToken: cancellationToken);
+    /// await repository.SaveAsync(order, appendId: commandId, cancellationToken: cancellationToken);
+    /// </code>
+    /// </example>
     public async Task<AppendResult> SaveAsync(
         TAggregate aggregate,
-        EventMetadata? metadata,
-        string? appendId,
-        CancellationToken cancellationToken)
+        EventMetadata? metadata = null,
+        string? appendId = null,
+        CancellationToken cancellationToken = default)
     {
         EnsureConfigured();
         ArgumentNullException.ThrowIfNull(aggregate);

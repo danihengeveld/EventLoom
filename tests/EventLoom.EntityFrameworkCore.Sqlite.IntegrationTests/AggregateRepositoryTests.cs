@@ -107,6 +107,46 @@ public sealed class AggregateRepositoryTests
     }
 
     [Test]
+    public async Task Configured_repository_accepts_named_optional_arguments()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = new EventStoreDbContext(
+            new DbContextOptionsBuilder<EventStoreDbContext>().UseSqlite(connection).Options,
+            new EntityFrameworkStorageOptions { TablePrefix = "test_" });
+        await context.Database.EnsureCreatedAsync();
+
+        var registry = new EventRegistry().RegisterAggregate<Counter>();
+        var store = EfTestStores.EventStore(context, new EventSerializer(registry), new UuidV7EventIdGenerator(),
+            TimeProvider.System);
+        var repository = new AggregateRepository<Counter, Guid>(
+            store,
+            id => new Counter(id),
+            "counter",
+            id => id.ToString("D"),
+            new TestTenantAccessor("tenant-a"));
+        using var cancellation = new CancellationTokenSource();
+        var aggregate = new Counter(Guid.NewGuid());
+        aggregate.Increment(2);
+
+        await repository.SaveAsync(aggregate, cancellationToken: cancellation.Token);
+        var reloaded = await repository.LoadAsync(aggregate.Id, cancellation.Token);
+        reloaded.Increment(3);
+        var first = await repository.SaveAsync(reloaded, appendId: "command-1");
+        var retried = await repository.LoadAsync(aggregate.Id);
+        retried.Increment(3);
+        var replay = await repository.SaveAsync(
+            retried,
+            appendId: "command-1",
+            cancellationToken: cancellation.Token);
+        var loaded = await repository.LoadAsync(aggregate.Id);
+
+        await Assert.That(first.WasIdempotentReplay).IsFalse();
+        await Assert.That(replay.WasIdempotentReplay).IsTrue();
+        await Assert.That(loaded.Value).IsEqualTo(5);
+    }
+
+    [Test]
     public async Task Configured_repository_restores_latest_snapshot_and_replays_tail_events()
     {
         await using var connection = new SqliteConnection("Data Source=:memory:");
