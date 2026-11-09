@@ -211,9 +211,9 @@ public sealed class EventStore
         {
             { "eventloom.aggregate.type", request.AggregateType }
         };
-        EventLoomTelemetry.Appends.Add(1, tags);
-        EventLoomTelemetry.AppendedEvents.Add(result.Events.Count, tags);
-        EventLoomTelemetry.AppendDuration.Record(timeProvider.GetElapsedTime(startedAt).TotalMilliseconds, tags);
+        StorageTelemetry.Appends.Add(1, tags);
+        StorageTelemetry.AppendedEvents.Add(result.Events.Count, tags);
+        StorageTelemetry.AppendDuration.Record(timeProvider.GetElapsedTime(startedAt).TotalMilliseconds, tags);
         activity?.SetTag("eventloom.append.idempotent_replay", result.WasIdempotentReplay);
         activity?.SetTag("eventloom.event.count", result.Events.Count);
         activity?.SetStatus(ActivityStatusCode.Ok);
@@ -230,8 +230,8 @@ public sealed class EventStore
             { "eventloom.aggregate.type", request.AggregateType },
             { "error.type", exception.GetType().FullName ?? exception.GetType().Name }
         };
-        EventLoomTelemetry.AppendFailures.Add(1, tags);
-        EventLoomTelemetry.AppendDuration.Record(timeProvider.GetElapsedTime(startedAt).TotalMilliseconds, tags);
+        StorageTelemetry.AppendFailures.Add(1, tags);
+        StorageTelemetry.AppendDuration.Record(timeProvider.GetElapsedTime(startedAt).TotalMilliseconds, tags);
         activity?.SetStatus(ActivityStatusCode.Error, exception.GetType().Name);
     }
 

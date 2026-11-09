@@ -147,7 +147,7 @@ internal sealed class ProjectionWorker(
         }
         catch (ProjectionLeaseLostException)
         {
-            EventLoomTelemetry.ProjectionLeaseLosses.Add(1);
+            HostingTelemetry.ProjectionLeaseLosses.Add(1);
             logger.ProjectionLeaseLost();
             return false;
         }
@@ -189,7 +189,7 @@ internal sealed class ProjectionWorker(
                         context,
                         token),
                     cancellationToken);
-                EventLoomTelemetry.ProjectionDeliveries.Add(1);
+                HostingTelemetry.ProjectionDeliveries.Add(1);
                 return result;
             }
             catch (ProjectionLeaseLostException)
@@ -198,7 +198,7 @@ internal sealed class ProjectionWorker(
             }
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
-                EventLoomTelemetry.ProjectionFailures.Add(1);
+                HostingTelemetry.ProjectionFailures.Add(1);
                 failure = exception;
                 if (attempt <= options.MaxRetryAttempts)
                 {

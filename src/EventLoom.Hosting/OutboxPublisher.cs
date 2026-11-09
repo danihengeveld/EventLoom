@@ -112,7 +112,7 @@ internal sealed class OutboxPublisherWorker(
         }
         catch (OutboxLeaseLostException)
         {
-            EventLoomTelemetry.OutboxLeaseLosses.Add(1);
+            HostingTelemetry.OutboxLeaseLosses.Add(1);
             logger.OutboxLeaseLost();
             return false;
         }
@@ -141,7 +141,7 @@ internal sealed class OutboxPublisherWorker(
                     exception: null,
                     options.SuccessfulDeliveryRetention,
                     cancellationToken);
-                EventLoomTelemetry.OutboxDeliveries.Add(1);
+                HostingTelemetry.OutboxDeliveries.Add(1);
                 return recorded;
             }
             catch (OutboxLeaseLostException)
@@ -150,7 +150,7 @@ internal sealed class OutboxPublisherWorker(
             }
             catch (Exception exception) when (!cancellationToken.IsCancellationRequested)
             {
-                EventLoomTelemetry.OutboxFailures.Add(1);
+                HostingTelemetry.OutboxFailures.Add(1);
                 await store.RecordAttemptAsync(message, lease, exception, cancellationToken);
                 if (attempt < options.MaxRetryAttempts)
                 {

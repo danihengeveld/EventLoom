@@ -191,7 +191,6 @@ public sealed partial class EventLoomBuilder
         where TProjection : class, IProjectionHandler<TEvent>
     {
         var key = new ProjectionKey(name, version);
-        key.Validate();
         services.TryAddScoped<TProjection>();
         projectionRegistrations.Add(ProjectionHandlerRegistration.CreateAsynchronous<TProjection, TEvent>(key));
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ProjectionWorker>());
@@ -209,7 +208,6 @@ public sealed partial class EventLoomBuilder
     {
         ArgumentNullException.ThrowIfNull(invoke);
         var key = new ProjectionKey(name, version);
-        key.Validate();
         services.TryAddScoped<TProjection>();
         projectionRegistrations.Add(ProjectionHandlerRegistration.CreateTransactional(key, invoke));
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, ProjectionWorker>());
@@ -226,7 +224,6 @@ public sealed partial class EventLoomBuilder
         where TProjection : class, IInlineProjectionHandler<TEvent>
     {
         var key = new ProjectionKey(name, version);
-        key.Validate();
         services.TryAddScoped<TProjection>();
         projectionRegistrations.Add(ProjectionHandlerRegistration.CreateInline<TProjection, TEvent>(key));
         services.TryAddScoped<IInlineProjectionDispatcher, InlineProjectionDispatcher>();

@@ -311,9 +311,9 @@ public sealed class AggregateRepository<TAggregate, TId>
         {
             { "eventloom.aggregate.type", aggregateType }
         };
-        EventLoomTelemetry.AggregateLoads.Add(1, tags);
-        EventLoomTelemetry.ReplayedEvents.Add(tailEventCount, tags);
-        EventLoomTelemetry.AggregateLoadDuration.Record(
+        StorageTelemetry.AggregateLoads.Add(1, tags);
+        StorageTelemetry.ReplayedEvents.Add(tailEventCount, tags);
+        StorageTelemetry.AggregateLoadDuration.Record(
             TimeProvider.System.GetElapsedTime(startedAt).TotalMilliseconds,
             tags);
         activity?.SetStatus(ActivityStatusCode.Ok);

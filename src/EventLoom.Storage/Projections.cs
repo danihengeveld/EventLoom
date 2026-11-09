@@ -4,17 +4,28 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace EventLoom.Storage;
 
 /// <summary>Identifies one version of a projection and its independent checkpoint.</summary>
+/// <param name="Name">The stable projection name. Must not be empty or whitespace.</param>
+/// <param name="Version">The projection version. Must be positive.</param>
+/// <exception cref="ArgumentException"><paramref name="Name"/> is empty or whitespace.</exception>
+/// <exception cref="ArgumentOutOfRangeException"><paramref name="Version"/> is less than one.</exception>
 public sealed record ProjectionKey(string Name, int Version)
 {
-    /// <summary>Validates the projection identity.</summary>
-    internal void Validate()
+    /// <summary>Gets the stable projection name.</summary>
+    public string Name { get; init => field = ValidateName(value); } = ValidateName(Name);
+
+    /// <summary>Gets the projection version.</summary>
+    public int Version { get; init => field = ValidateVersion(value); } = ValidateVersion(Version);
+
+    private static string ValidateName(string name)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(Name);
-        if (Version < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(Version), "Projection versions must be positive.");
-        }
+        ArgumentException.ThrowIfNullOrWhiteSpace(name, nameof(Name));
+        return name;
     }
+
+    private static int ValidateVersion(int version) =>
+        version >= 1
+            ? version
+            : throw new ArgumentOutOfRangeException(nameof(Version), "Projection versions must be positive.");
 }
 
 /// <summary>Describes whether a projection can continue processing events.</summary>
@@ -104,7 +115,7 @@ internal sealed class ProjectionStore(
         var projections = keys.Distinct().ToArray();
         foreach (var key in projections)
         {
-            key.Validate();
+            ArgumentNullException.ThrowIfNull(key, nameof(keys));
         }
 
         if (projections.Length == 0)
@@ -224,13 +235,12 @@ internal sealed class ProjectionStore(
     public static string GetLeaseName(ProjectionKey key)
     {
         ArgumentNullException.ThrowIfNull(key);
-        key.Validate();
         return $"projection:{key.Name}:v{key.Version}";
     }
 
     private static string Normalize(string tenantId, ProjectionKey key)
     {
-        key.Validate();
+        ArgumentNullException.ThrowIfNull(key);
         return new TenantId(tenantId).Value;
     }
 }

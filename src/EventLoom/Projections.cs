@@ -27,12 +27,3 @@ public interface IInlineProjectionHandler<TEvent>
     /// <param name="cancellationToken">Cancels projection execution.</param>
     Task HandleAsync(EventEnvelope<TEvent> envelope, CancellationToken cancellationToken);
 }
-
-/// <summary>Dispatches explicitly registered inline projections during an event append.</summary>
-internal interface IInlineProjectionDispatcher
-{
-    /// <summary>Dispatches an event to its inline projection handlers.</summary>
-    /// <param name="envelope">The persisted event envelope.</param>
-    /// <param name="cancellationToken">Cancels projection execution.</param>
-    Task DispatchAsync(EventEnvelope envelope, CancellationToken cancellationToken);
-}
