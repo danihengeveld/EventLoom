@@ -24,15 +24,35 @@ await Assert.That(scenario.RaisedEvents.Single()).IsTypeOf<OrderPlaced>();
 to pending events), so a scenario can also start from an existing aggregate:
 
 ```csharp
-AggregateScenario.For<Order, Guid>(id => new Order(id))
+var scenario = AggregateScenario.For<Order, Guid>(id => new Order(id))
     .Given(orderId, new OrderPlaced("coffee", 2))
     .When(order => order.Cancel("out of stock"))
-    .ThenEvents(events => Assert.That(events.Single()).IsTypeOf<OrderCancelled>())
-    .Then(order => Assert.That(order.Status).IsEqualTo("cancelled"));
+    .ThenRaised(new OrderCancelled("out of stock"));
+
+await scenario.ThenAsync(async order =>
+    await Assert.That(order.Status).IsEqualTo("cancelled"));
 ```
 
-`ThenNoEventsRaised()` asserts an idempotent no-op command, and
-`ThenThrows<TException>()` asserts that a command was rejected.
+- `ThenRaised(...)` asserts the exact raised events in order, compared with
+  `Equals` (records compare by value).
+- `ThenAsync` and `ThenEventsAsync` await their assertion. Use them with
+  assertion libraries whose assertions must be awaited, such as TUnit: an
+  unawaited TUnit assertion inside the synchronous `Then` or `ThenEvents`
+  never runs, so it can never fail. The synchronous forms suit assertions that
+  throw, such as xUnit's `Assert.Equal`.
+- `ThenNoEventsRaised()` asserts an idempotent no-op command.
+- `ThenThrows<TException>()` asserts that a command was rejected. `When`
+  captures exceptions, so assert an expected exception with `ThenThrows` first:
+  every other `Then` method fails while the command's exception is unasserted,
+  so an unexpected exception cannot make a test pass.
+
+```csharp
+AggregateScenario.For<Order, Guid>(id => new Order(id))
+    .Given(orderId)
+    .When(order => order.Cancel(""))
+    .ThenThrows<ArgumentException>()
+    .ThenNoEventsRaised();
+```
 
 Keep tests for aggregate invariants, event payloads, registration,
 serialization, and upcasters independent of storage providers.
