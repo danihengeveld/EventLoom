@@ -237,6 +237,14 @@ Use this impact guide:
 - Every packable project under `src/` is expected to produce exactly one supported
   package. `EventLoom.Analyzers` is bundled into `EventLoom` and is not published
   separately. Keep package README and icon inclusion intact.
+- A few package pairs are friend packages that share internals through
+  `InternalsVisibleTo`: the kernel with `EventLoom.Storage`, `EventLoom.Hosting`,
+  and `EventLoom.Testing`; `EventLoom.Storage` with `EventLoom.Hosting`; and
+  `EventLoom.EntityFrameworkCore` with its PostgreSQL and SQLite packages.
+  `Directory.Build.targets` therefore pins every dependency between EventLoom
+  packages to the exact packed version, and `scripts/verify-packages.sh`
+  enforces it. Do not add a production `InternalsVisibleTo` grant without a
+  real usage; prefer moving the code to the package that owns it.
 - `EventLoom.PackageConsumerTests` must restore from `artifacts/packages`
   using its `NuGet.Config`; do not add project references as a shortcut.
 - Validate the generated template against locally packed packages after

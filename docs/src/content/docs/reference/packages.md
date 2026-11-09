@@ -84,6 +84,10 @@ provider:
 </ItemGroup>
 ```
 
+Reference every EventLoom package at the same version. EventLoom packages
+depend on each other with exact versions, so NuGet reports a version conflict
+instead of silently mixing package versions that were not built together.
+
 Substitute one of these provider packages as needed:
 
 - `EventLoom.EntityFrameworkCore.PostgreSql`

@@ -42,6 +42,13 @@ for package in "$package_directory"/*.nupkg; do
   unzip -p "$package" '*.nuspec' | grep --fixed-strings '<icon>eventloom-icon.png</icon>' > /dev/null
   unzip -p "$package" '*.nuspec' | grep --fixed-strings '<repository type="git"' > /dev/null
   unzip -p "$package" '*.nuspec' | grep --fixed-strings '<license type="expression">MIT</license>' > /dev/null
+  # EventLoom packages share internals, so dependencies between them must pin the exact packed version.
+  if unzip -p "$package" '*.nuspec' \
+    | grep --extended-regexp '<dependency id="EventLoom(\.[A-Za-z.]+)?"' \
+    | grep --invert-match --fixed-strings "version=\"[$version]\"" > /dev/null; then
+    echo "$(basename "$package") must depend on other EventLoom packages with the exact version [$version]." >&2
+    exit 1
+  fi
 done
 
 core_package="$package_directory/EventLoom.$version.nupkg"
